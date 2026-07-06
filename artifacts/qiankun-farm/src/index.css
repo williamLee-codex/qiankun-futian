@@ -68,54 +68,66 @@ body {
   top: 0; left: 0; right: 0;
   height: 7.5%;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   z-index: 50;
   pointer-events: auto;
 }
 
+/* One cell per resource — 3-row column: Icon / Label / Value */
 .hud-cell {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(4px, 1.5%, 10px);
+  gap: 0;
   padding: 0 1%;
-  border-right: 1px solid rgba(160,110,20,.2);
+  border-right: 1px solid rgba(160,110,20,.18);
 }
 .hud-cell:last-child { border-right: none; }
 
+/* Row 1 — Icon */
 .hud-icon {
-  font-size: clamp(16px, 3.5vh, 28px);
-  line-height: 1;
+  font-size: clamp(14px, 3vh, 28px);
+  line-height: 1.1;
   flex-shrink: 0;
 }
 
-.hud-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
-}
-
+/* Row 2 — Label */
 .hud-label {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: clamp(11px, 2vh, 18px);
-  color: #d4b878;
-  line-height: 1;
+  font-size: clamp(9px, 1.5vh, 14px);
+  font-weight: 700;
+  color: #c8a860;
+  line-height: 1.1;
   letter-spacing: .04em;
   white-space: nowrap;
 }
 
+/* Row 3 — Value */
 .hud-val {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: clamp(20px, 4.2vh, 40px);
+  font-size: clamp(13px, 2.5vh, 24px);
   font-weight: 700;
   color: #ffd76a;
-  text-shadow: 0 2px 6px rgba(0,0,0,.9), 0 0 12px rgba(255,210,80,.8);
-  line-height: 1;
+  text-shadow: 0 1px 4px rgba(0,0,0,.85), 0 0 8px rgba(255,210,80,.6);
+  line-height: 1.1;
   letter-spacing: .02em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
 }
+
+/* Weather value: icon already in row 1, text in row 3 (no duplicate icon) */
+.hud-val--weather {
+  color: #f0e8c0;
+  text-shadow: 0 1px 3px rgba(0,0,0,.7);
+}
+
+/* Unused — kept for safety */
+.hud-text { display: contents; }
 
 /* ══════════════════════════════════════════════════════════
    LAYER 2 — HOTSPOT LAYER
