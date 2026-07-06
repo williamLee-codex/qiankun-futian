@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+
 /* ═══════════════════════════════════════════════════════════
    乾坤福田 V2 — GAME SCENE ARCHITECTURE
    ─────────────────────────────────────────────────────────
@@ -219,9 +220,9 @@ body {
   overflow: hidden;
 }
 
-/* Value：18px 粗體，標楷體（Noto Serif TC web font + 系統回退） */
+/* Value：18px 粗體，楷書 web font 優先，系統字型次之 */
 .resource-value {
-  font-family: 'Noto Serif TC', 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif !important;
+  font-family: 'LXGW WenKai TC', 'cwTeXKai', 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', 'Noto Serif TC', serif !important;
   font-size: 18px;
   font-weight: 700;
   color: #fff7d0;
@@ -230,9 +231,9 @@ body {
   line-height: 1.1;
 }
 
-/* Label：10px，金色，標楷體（Noto Serif TC web font + 系統回退） */
+/* Label：10px，金色，楷書 web font 優先，系統字型次之 */
 .resource-label {
-  font-family: 'Noto Serif TC', 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif !important;
+  font-family: 'LXGW WenKai TC', 'cwTeXKai', 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', 'Noto Serif TC', serif !important;
   font-size: 10px;
   color: #d8b86a;
   text-shadow: 0 1px 2px #000;
