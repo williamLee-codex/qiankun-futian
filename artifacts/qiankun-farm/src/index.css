@@ -19,55 +19,50 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: #06070d;
+  background: #050505;
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   overflow: hidden;
-  height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-/* ── Outer wrapper: centers the scaled canvas ── */
+/* ── Viewport wrapper: 固定全螢幕，不參與 layout ── */
 .gw {
-  width: 100dvw;
-  height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #06070d;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #050505;
 }
 
 /* ══════════════════════════════════════════════════════════
-   GAME CANVAS — 390×844 固定設計稿，transform: scale() 適配全裝置
-   設計參考：iPhone 14（390×844, 9:19.5）
-   --gc-scale 由 App.tsx 內 useScaleViewport() 動態設定
+   GAME CANVAS — 390×844 唯一設計稿容器
+   • 所有 UI 都在此 390×844 坐標系內（absolute 定位）
+   • transform: translateX(-50%) scale(s) 置中並縮放
+   • transform-origin: top center → 從頂部展開，不留上方黑邊
+   • --gc-scale 由 App.tsx useScaleViewport() 動態計算
 ══════════════════════════════════════════════════════════ */
 .gc {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 50%;
   width: 390px;
   height: 844px;
-  transform: scale(var(--gc-scale, 1));
-  transform-origin: center center;
-  display: flex;
-  flex-direction: column;
+  transform: translateX(-50%) scale(var(--gc-scale, 1));
+  transform-origin: top center;
   background: #06070d;
   overflow: hidden;
-  box-shadow: 0 0 60px rgba(0,0,0,.95);
 }
 
 /* ══════════════════════════════════════════════════════════
-   HEADER — 位於背景圖上方，不重疊
+   HEADER — absolute 覆蓋在底圖頂部（不推動底圖）
    Row 1 (60px): 數值統計列
    Row 2 (50px): 留白（預留 Banner / 公告 / 限時活動）
-   總高 110px
+   總高 110px，z-index 100
 ══════════════════════════════════════════════════════════ */
 .game-header {
-  flex-shrink: 0;
-  width: 390px;
+  position: absolute;
+  top: 0; left: 0; right: 0;
   height: 110px;
-  background: linear-gradient(180deg, #050a04 0%, #0a1008 65%, #0d1508 100%);
-  border-bottom: 1px solid rgba(80,120,30,.3);
+  background: linear-gradient(180deg, #050a04 0%, #0a1008 70%, rgba(10,16,8,0.92) 100%);
+  border-bottom: 1px solid rgba(80,120,30,.25);
   display: flex;
   flex-direction: column;
   z-index: 100;
@@ -131,21 +126,14 @@ body {
   text-align: center;
 }
 
-/* ── Header 以下區域 ── */
-.game-scene {
-  flex: 1;                /* 844 - 110 = 734px */
-  display: flex;
-  flex-direction: column;
-  background: #06070d;   /* 背景圖下方 148px 深色空間 */
-}
-
 /* 背景圖容器：1023:1537 ≈ 2:3，390px 寬 → 高度 586px
+   absolute 定位從 top:0 開始（與 .gc 共用左上角原點）
    所有遊戲 Overlay（農田、Nav、InfoPanel、QuickActions）位於此層內 */
 .game-image-wrap {
+  position: absolute;
+  top: 0; left: 0;
   width: 390px;
   height: 586px;
-  flex-shrink: 0;
-  position: relative;
   background-size: cover;
   background-position: top center;
   background-repeat: no-repeat;

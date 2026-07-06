@@ -1,16 +1,19 @@
 /**
  * 乾坤福田 V2 — Game Scene Architecture
  *
- * 設計稿：390 × 844 px（iPhone 標準 9:16）
- * 所有裝置以 CSS transform: scale() 等比例縮放適配。
+ * 設計稿：390 × 844 px（iPhone 14 標準）
  *
- * 層次結構：
- *   .gc (390×844)
- *     GameHeader (110px: 60px stats + 50px blank)
- *     .game-scene (flex-1 = 734px)
- *       .game-image-wrap (390×586px, 2:3 ratio)  ← 所有遊戲 Overlay 在此
- *         FarmScene / HarvestAnimation / InfoPanel / QuickActions / BottomMenu
- *     PanelOverlay  ← 全 390×844 覆蓋（z-index 200）
+ * 縮放規則：
+ *   scale = min(vw / 390, vh / 844)
+ *   .gc 使用 transform: translateX(-50%) scale(s)
+ *   transform-origin: top center → 從頂部展開，不留上方黑邊
+ *
+ * 層次結構（所有元件都在 390×844 坐標系內）：
+ *   .gc (390×844, absolute, 唯一設計稿容器)
+ *     .game-image-wrap (390×586, absolute top:0)  ← 底圖 + 所有遊戲 Overlay
+ *       FarmScene / HarvestAnimation / InfoPanel / QuickActions / BottomMenu
+ *     .game-header (absolute top:0, 110px, z:100)  ← 不透明覆蓋底圖頂部
+ *     PanelOverlay (absolute inset:0, z:200)
  */
 import bgImage from '@assets/file_00000000a0cc72079e8a41dc508698fd_1783314944406.png';
 import { useEffect } from 'react';
@@ -47,25 +50,22 @@ function Game() {
 
   return (
     <div className="gc" onClick={() => dispatch({ type: 'DESELECT_PLOT' })}>
-      {/* ── Fixed stats header (NOT overlaid on background image) ── */}
-      <GameHeader />
-
-      {/* ── Game scene: background image + all play overlays ── */}
-      <div className="game-scene">
-        <div
-          className="game-image-wrap"
-          style={{ backgroundImage: `url(${bgImage})` }}
-        >
-          <FarmScene />
-          <HarvestAnimation />
-          <InfoPanel />
-          <QuickActions />
-          <BottomMenu />
-        </div>
-        {/* Remaining 148px dark gap (background-color of .game-scene) */}
+      {/* ── 底圖 + 所有遊戲 Overlay（390×586，absolute top:0） ── */}
+      <div
+        className="game-image-wrap"
+        style={{ backgroundImage: `url(${bgImage})` }}
+      >
+        <FarmScene />
+        <HarvestAnimation />
+        <InfoPanel />
+        <QuickActions />
+        <BottomMenu />
       </div>
 
-      {/* ── Full-canvas panel overlay (warehouse, law, seeds …) ── */}
+      {/* ── Header：不透明覆蓋底圖頂部，不推動底圖（absolute top:0, z:100） ── */}
+      <GameHeader />
+
+      {/* ── 全畫布 Panel（倉庫 / 律法 / 種子 …，z:200） ── */}
       <PanelOverlay />
     </div>
   );
@@ -74,7 +74,9 @@ function Game() {
 export default function App() {
   return (
     <GameProvider>
-      <Game />
+      <div className="gw">
+        <Game />
+      </div>
     </GameProvider>
   );
 }
