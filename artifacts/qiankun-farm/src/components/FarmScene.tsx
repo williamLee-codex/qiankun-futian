@@ -39,7 +39,7 @@ export default function FarmScene() {
       {/* ── 氣運倉庫 — building polygon hotspot (left) ── */}
       <button
         className="bh bh-left"
-        onClick={e => { e.stopPropagation(); dispatch({ type: 'OPEN_PANEL', panel: 'warehouseBuilding' }); }}
+        onClick={e => { e.stopPropagation(); dispatch({ type: 'OPEN_PANEL', panel: 'warehouse' }); }}
         aria-label="氣運倉庫"
       />
 
