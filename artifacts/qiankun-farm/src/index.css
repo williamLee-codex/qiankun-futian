@@ -219,9 +219,9 @@ body {
   overflow: hidden;
 }
 
-/* Value：18px 粗體，標楷體 */
+/* Value：18px 粗體，標楷體（Noto Serif TC web font + 系統回退） */
 .resource-value {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif !important;
+  font-family: 'Noto Serif TC', 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif !important;
   font-size: 18px;
   font-weight: 700;
   color: #fff7d0;
@@ -230,9 +230,9 @@ body {
   line-height: 1.1;
 }
 
-/* Label：10px，金色，標楷體 */
+/* Label：10px，金色，標楷體（Noto Serif TC web font + 系統回退） */
 .resource-label {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif !important;
+  font-family: 'Noto Serif TC', 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif !important;
   font-size: 10px;
   color: #d8b86a;
   text-shadow: 0 1px 2px #000;
