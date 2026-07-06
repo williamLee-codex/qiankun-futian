@@ -30,93 +30,127 @@ body {
   background: #06070d;
 }
 
-/* ── 1:1 Game Canvas ── */
-/* The artwork IS the canvas. All children are absolute overlays. */
+/* ── 9:16 Game Canvas ── */
+/* Flex-column: HUD → scene → info-panel → quick-actions → bottom-menu */
 .gc {
   position: relative;
-  width:  min(100dvw, 100dvh);
-  height: min(100dvw, 100dvh);
+  /* Largest 9:16 rectangle that fits the viewport */
+  width:  min(100dvw, calc(100dvh * 9 / 16));
+  height: min(100dvh, calc(100dvw * 16 / 9));
   overflow: hidden;
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  background: #0a0806;
   box-shadow: 0 0 0 2px #4a3808, 0 0 80px rgba(0,0,0,.95);
 }
 
-/* ════════════════════════════════════════════
-   HUD LAYER
-   Four slot-divs overlaid on the artwork's HUD frames.
-   Each slot uses flex to centre value inside the dark
-   display strip — no manual left% on individual numbers.
-════════════════════════════════════════════ */
-.hud-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 50;
-  pointer-events: none;
+/* ── Square scene wrapper — holds background image + hotspot overlays ── */
+/* In a 9:16 canvas, a 1:1 square = 56.25% of canvas height */
+.scene-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
 }
 
-/* Each HUD item covers the FULL frame area of the artwork.
-   Content aligns to the bottom where the dark value strip is.
-   A .hud-valbox with dark bg covers the image's empty box   */
+/* ════════════════════════════════════════════
+   HUD BAR  (top flex row — no longer an absolute overlay)
+   Clean floating text; no black box.
+════════════════════════════════════════════ */
+.hud-bar {
+  flex-shrink: 0;
+  width: 100%;
+  height: clamp(48px, 9.5%, 70px);
+  display: flex;
+  align-items: center;
+  padding: 0 2.5% 0 3%;
+  gap: 1%;
+  background: linear-gradient(180deg, rgba(10,6,2,.97) 0%, rgba(14,10,5,.99) 100%);
+  border-bottom: 1px solid rgba(160,110,20,.55);
+  box-shadow:
+    0 2px 10px rgba(0,0,0,.7),
+    inset 0 -1px 0 rgba(180,130,30,.18);
+  z-index: 50;
+}
 
-/* Frame spans: calibrated to artwork. Adjust left/width to nudge. */
-.hud-item {
-  position: absolute;
-  top: 0;
-  height: 13%;              /* full HUD frame height             */
+.hud-stats {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+}
+
+.hud-stat {
+  display: flex;
+  align-items: center;
+  gap: clamp(3px, 1.2%, 8px);
+  flex: 1;
+  min-width: 0;
+  padding: 0 clamp(4px, 1.5%, 10px);
+  border-right: 1px solid rgba(160,110,20,.3);
+}
+.hud-stat:last-child { border-right: none; }
+
+.hud-stat-icon {
+  font-size: clamp(14px, 3.2vmin, 22px);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.hud-stat-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.hud-stat-label {
+  font-size: clamp(6px, 1.15vmin, 9px);
+  color: #b8a070;
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: .04em;
+}
+
+.hud-stat-val {
+  font-size: clamp(13px, 2.8vmin, 20px);
+  font-weight: 900;
+  color: #fff6c8;
+  text-shadow: 0 2px 4px #000, 0 0 6px rgba(255,215,120,.7);
+  letter-spacing: .03em;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+
+/* 天道律法 button — right side of HUD bar */
+.hud-law-btn {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end; /* push valbox to the dark strip     */
-  padding-bottom: 1.2%;
-  pointer-events: none;
-}
-.hud-item-0 { left: 1.5%;  width: 18%;  } /* 金幣      */
-.hud-item-1 { left: 21%;   width: 17%;  } /* 水晶      */
-.hud-item-2 { left: 39.5%; width: 19.5%;} /* 累積儲值  */
-.hud-item-3 { left: 60%;   width: 17%;  } /* 天氣      */
-
-/* Semi-transparent dark box that sits over the image's value area */
-.hud-valbox {
-  width: 72%;
-  background: rgba(0, 0, 0, 0.55);
-  border-radius: 3px;
-  padding: 2px 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.hud-val {
-  font-size: clamp(12px, 2.5vmin, 18px);
-  font-weight: 900;
-  color: #fff8e0;
-  text-shadow:
-    0 0 8px rgba(240,200,60,.9),
-    0 1px 3px rgba(0,0,0,.95);
-  letter-spacing: .03em;
-  white-space: nowrap;
-  line-height: 1;
-}
-
-/* Transparent hotspot over the book button (天道律法) */
-.law-hot {
-  position: absolute;
-  top: 0%;
-  right: 0.5%;
-  width: 13%;
-  height: 13%;
-  background: transparent;
-  border: none;
+  gap: 1px;
+  background: linear-gradient(180deg, rgba(60,40,8,.9), rgba(30,20,4,.95));
+  border: 1px solid rgba(180,130,30,.6);
+  border-radius: 6px;
+  padding: clamp(3px,1.2%,7px) clamp(4px,1.5%,10px);
   cursor: pointer;
-  border-radius: 50%;
-  pointer-events: auto;
-  transition: background 0.2s;
+  font-family: inherit;
+  transition: background .2s, border-color .2s;
+  height: 80%;
+  aspect-ratio: 1.1;
+  box-shadow: 0 2px 6px rgba(0,0,0,.5), inset 0 1px 0 rgba(200,160,40,.15);
 }
-.law-hot:hover {
-  background: rgba(240, 200, 60, 0.10);
+.hud-law-btn:hover {
+  background: linear-gradient(180deg, rgba(80,55,10,.95), rgba(50,32,6,.99));
+  border-color: rgba(220,170,40,.8);
 }
+.hud-law-icon  { font-size: clamp(14px, 3vmin, 22px); line-height: 1; }
+.hud-law-label { font-size: clamp(5px, 1vmin, 7px); color: #d8c28a; white-space: nowrap; }
 
 /* ════════════════════════════════════════════
    HOTSPOT LAYER
@@ -233,244 +267,191 @@ body {
 }
 
 /* ════════════════════════════════════════════
-   INFO PANEL LAYER
-   Hidden by default; slides in when a plot
-   is selected. Overlays the bottom of the art.
+   INFO PANEL  (flex-column section — not absolute)
+   Shows per-plot info when a plot is selected.
 ════════════════════════════════════════════ */
 .info-panel {
-  position: absolute;
-  bottom: 11%;   /* sits just above the bottom menu */
-  left: 0; right: 0;
-  height: 17%;
-  z-index: 20;
-  /* Warm dark wood grain panel */
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2% 3.5%;
+  gap: 2.5%;
   background:
     repeating-linear-gradient(
       90deg,
       transparent, transparent 44px,
-      rgba(255,255,255,.010) 44px, rgba(255,255,255,.010) 45px
+      rgba(255,255,255,.008) 44px, rgba(255,255,255,.008) 45px
     ),
-    linear-gradient(180deg, rgba(16,12,6,.93) 0%, rgba(10,8,4,.97) 100%);
-  border-top:    2px solid #7a5618;
-  border-bottom: 1px solid #3a2a08;
+    linear-gradient(180deg, rgba(16,12,6,.97) 0%, rgba(10,8,4,.99) 100%);
+  border-top:    1px solid rgba(122,86,24,.5);
+  border-bottom: 1px solid rgba(40,28,8,.8);
   box-shadow:
-    0 -2px 0 rgba(0,0,0,.7),
-    0 -1px 0 rgba(240,200,60,.18),
-    inset 0 1px 0 rgba(200,150,40,.22);
+    0 -2px 8px rgba(0,0,0,.5),
+    inset 0 1px 0 rgba(200,150,40,.12);
+}
+
+/* Idle state (no plot selected) */
+.info-panel--idle {
+  align-items: center;
+  justify-content: center;
+}
+
+.ip-idle-hint {
+  font-size: clamp(10px, 2vmin, 14px);
+  color: #8a7050;
+  letter-spacing: .08em;
+}
+
+/* Locked plot */
+.info-panel--locked {}
+
+.ip-locked-header {
   display: flex;
   align-items: center;
-  gap: 2%;
-  padding: 1.2% 3%;
-
-  /* Slide-in animation */
-  transform: translateY(110%);
-  transition: transform 0.28s cubic-bezier(0.34, 1.10, 0.64, 1);
-  pointer-events: none;
-}
-
-/* Visible state – slides up */
-.info-panel--visible {
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-/* Global action bar — always visible, no plot selected */
-.info-panel--global {
-  transform: translateY(0);
-  pointer-events: auto;
-  height: 9%;
   gap: 3%;
-  justify-content: center;
-  align-items: center;
 }
 
-/* Completely hidden (legacy) */
-.info-panel--hidden {
-  height: 0;
-  padding: 0;
-  border: none;
-  transform: translateY(110%);
-  pointer-events: none;
+.ip-locked-icon { font-size: clamp(18px, 3.5vmin, 26px); flex-shrink: 0; }
+.ip-locked-name { font-size: clamp(10px, 2vmin, 14px); color: #f0d060; font-weight: 700; line-height: 1; }
+.ip-locked-sub  { font-size: clamp(7px, 1.3vmin, 10px); color: #d8c28a; margin-top: 2px; }
+
+.ip-locked-right {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
 }
-
-/* Gold side-bracket accents */
-.info-panel--visible::before,
-.info-panel--visible::after {
-  content: '';
-  position: absolute;
-  top: 6px; bottom: 6px; width: 2px;
-  background: linear-gradient(180deg, transparent, #c89030 25%, #c89030 75%, transparent);
-  opacity: .35;
-}
-.info-panel--visible::before { left:  7px; }
-.info-panel--visible::after  { right: 7px; }
-
-/* ── Locked plot state ── */
-.info-panel--locked { gap: 3%; flex-wrap: wrap; }
-
-.locked-header { display: flex; align-items: center; gap: 4%; flex-shrink: 0; }
-.locked-icon   { font-size: clamp(16px, 3.2vmin, 22px); }
-.locked-name   { font-size: clamp(10px, 2vmin, 14px); color: #f0d060; font-weight: 700; line-height: 1; }
-.locked-sub    { font-size: clamp(7px,  1.4vmin, 10px); color: #d8c28a; margin-top: 2px; }
-
-.locked-details { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.locked-row     { display: flex; justify-content: space-between; gap: 6px; }
-.lr-label { font-size: clamp(8px, 1.5vmin, 10px); color: #d8c28a; }
-.lr-val   { font-size: clamp(8px, 1.5vmin, 10px); color: #ffd76a; font-weight: 700; }
-
-.locked-progress {
+.ip-locked-progress-text { font-size: clamp(8px, 1.5vmin, 11px); color: #d8c28a; }
+.ip-locked-bar  {
+  width: clamp(60px, 18%, 100px);
   height: 5px;
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(140,100,20,.4);
   border-radius: 3px;
   overflow: hidden;
-  margin-top: 2px;
 }
-.locked-fill {
+.ip-locked-fill {
   height: 100%;
   background: linear-gradient(90deg, #6a4a10, #c89030);
   transition: width .5s;
 }
 
-.test-deposit-btn {
-  flex-shrink: 0;
-  background: linear-gradient(180deg, #162612, #0c1c0a);
-  border: 1px solid #3a7a30;
-  color: #70d860;
-  font-size: clamp(8px, 1.7vmin, 11px);
-  padding: 4% 5%;
-  border-radius: 5px;
-  cursor: pointer;
-  font-family: inherit;
-  white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0,0,0,.6), inset 0 1px 0 rgba(80,200,60,.15);
-  transition: background .2s, border-color .2s;
-}
-.test-deposit-btn:hover {
-  background: linear-gradient(180deg, #1e3418, #122210);
-  border-color: #5aaa48;
-}
-
-/* Cancel / deselect button in info panel */
-.ip-side-btns {
-  flex-shrink: 0;
+.ip-locked-actions {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 3%;
 }
 
-.ip-cancel-btn {
-  font-family: inherit;
-  font-size: clamp(9px, 1.9vmin, 13px);
-  padding: 5% 8%;
-  border-radius: 5px;
-  cursor: pointer;
-  background: rgba(30, 10, 5, 0.85);
-  border: 1px solid rgba(180, 80, 40, 0.55);
-  color: #ffa070;
-  transition: background .2s, border-color .2s, color .2s;
-  white-space: nowrap;
-}
-.ip-cancel-btn:hover {
-  background: rgba(50, 15, 8, 0.95);
-  border-color: rgba(220, 100, 50, 0.8);
-  color: #ffbf90;
+/* Active plot */
+.info-panel--active {}
+
+.ip-row {
+  display: flex;
+  align-items: center;
+  gap: 2.5%;
 }
 
-/* ── Active (unlocked) plot state ── */
-.info-panel--active { flex-wrap: wrap; }
+.ip-row--title {
+  gap: 3%;
+}
 
-.ip-title-row {
+.ip-name-group {
   display: flex;
   flex-direction: column;
   gap: 2px;
   flex-shrink: 0;
-  background: rgba(255,255,255,.035);
+  background: rgba(255,255,255,.03);
   border: 1px solid rgba(140,108,24,.4);
-  border-radius: 5px;
-  padding: 3.5% 5%;
+  border-radius: 4px;
+  padding: 4% 5%;
 }
 .ip-plot-name { font-size: clamp(10px, 2vmin, 14px); color: #f0d060; font-weight: 700; line-height: 1; }
-.ip-seed-name { font-size: clamp(7px, 1.3vmin, 9px); color: #d8c28a; margin-top: 2px; }
+.ip-plot-max  { font-size: clamp(6px, 1.1vmin, 9px); color: #d8c28a; margin-top: 1px; }
 
-.ip-stats {
-  display: flex;
-  flex: 1;
-  gap: 1.5%;
-  align-items: stretch;
-  min-width: 0;
-}
-
-.ip-stat {
+.ip-seeds-group,
+.ip-time-group {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 1px;
   background: rgba(255,255,255,.03);
-  border: 1px solid rgba(120,90,20,.4);
+  border: 1px solid rgba(120,90,20,.35);
   border-radius: 4px;
-  padding: 3%;
-  min-width: 0;
+  padding: 4% 3%;
 }
-.ip-stat--qty { flex: 1.4; }
-.ip-stat-label { font-size: clamp(6px, 1.1vmin, 8px); color: #d8c28a; white-space: nowrap; }
-.ip-stat-val   { font-size: clamp(10px, 1.9vmin, 13px); color: #f0d060; font-weight: 700; }
+.ip-seeds-label,
+.ip-time-label { font-size: clamp(6px, 1.1vmin, 9px); color: #d8c28a; white-space: nowrap; }
+.ip-seeds-val,
+.ip-time-val   { font-size: clamp(10px, 2vmin, 14px); color: #f0d060; font-weight: 700; }
 
-.qty-row {
+.ip-row--action {
+  gap: 2%;
+  flex-wrap: wrap;
+}
+
+.ip-qty-row {
   display: flex;
   align-items: center;
   border: 1px solid rgba(140,100,20,.5);
-  border-radius: 3px;
+  border-radius: 4px;
   overflow: hidden;
+  flex-shrink: 0;
 }
-.qty-btn {
+.ip-qty-btn {
   background: rgba(140,100,20,.2);
   border: none;
   color: #f0d060;
-  font-size: clamp(11px, 2.2vmin, 15px);
-  padding: 1px 6px;
+  font-size: clamp(12px, 2.4vmin, 17px);
+  padding: 2px 7px;
   cursor: pointer;
   font-family: inherit;
   line-height: 1;
   transition: background .15s;
 }
-.qty-btn:hover { background: rgba(140,100,20,.4); }
-.qty-num {
-  font-size: clamp(10px, 1.9vmin, 13px);
-  color: #f0d060;
-  min-width: 18px;
-  text-align: center;
-  padding: 0 2px;
-  background: rgba(0,0,0,.45);
-}
-
-/* ip-plot-meta: max seeds line */
-.ip-plot-meta { font-size: clamp(6px, 1.2vmin, 9px); color: #d8c28a; margin-top: 2px; }
-
-/* ready-state value highlight */
-.ip-stat-val--ready { color: #ffd76a; animation: harvest-glow .9s ease-in-out infinite alternate; }
-
-/* ip-hint (global bar) */
-.ip-hint { font-size: clamp(8px, 1.6vmin, 11px); color: #d8c28a; white-space: nowrap; flex-shrink: 0; }
-
-/* Max btn inside qty row */
-.qty-btn--max {
+.ip-qty-btn:hover { background: rgba(140,100,20,.4); }
+.ip-qty-btn--max {
   background: rgba(180,130,20,.35) !important;
   color: #ffd76a !important;
-  font-size: clamp(9px, 1.7vmin, 12px) !important;
-  padding: 1px 5px !important;
+  font-size: clamp(9px, 1.8vmin, 12px) !important;
+  padding: 2px 6px !important;
   border-left: 1px solid rgba(180,130,20,.5) !important;
   font-weight: 700;
 }
-.qty-btn--max:hover { background: rgba(200,150,20,.55) !important; }
+.ip-qty-btn--max:hover { background: rgba(200,150,20,.55) !important; }
+.ip-qty-num {
+  font-size: clamp(11px, 2.1vmin, 15px);
+  color: #f0d060;
+  min-width: 22px;
+  text-align: center;
+  padding: 0 3px;
+  background: rgba(0,0,0,.45);
+}
 
-.ip-actions { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
-/* Horizontal row variant for global bar */
-.ip-actions--row { flex-direction: row; gap: 3%; }
+.ip-growing-state {
+  font-size: clamp(10px, 2vmin, 14px);
+  color: #90b860;
+  flex: 1;
+}
 
-.ip-btn {
+.ip-ready-state {
+  font-size: clamp(10px, 2vmin, 14px);
+  color: #ffd76a;
+  font-weight: 700;
+  animation: harvest-glow .9s ease-in-out infinite alternate;
+  flex: 1;
+}
+@keyframes harvest-glow {
+  from { text-shadow: 0 0 4px rgba(220,180,40,.3); }
+  to   { text-shadow: 0 0 14px rgba(220,180,40,.9); }
+}
+
+/* Shared action button styles */
+.ip-action-btn {
   font-family: inherit;
   font-size: clamp(9px, 1.9vmin, 13px);
   letter-spacing: .04em;
@@ -478,104 +459,194 @@ body {
   border-radius: 5px;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0,0,0,.6), inset 0 1px 0 rgba(220,180,40,.2);
+  box-shadow: 0 2px 6px rgba(0,0,0,.6), inset 0 1px 0 rgba(220,180,40,.15);
   transition: all .2s;
+  flex-shrink: 0;
 }
-.ip-btn:disabled { opacity: .4; cursor: not-allowed; }
+.ip-action-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-.ip-btn--plant {
+.ip-action-btn--plant {
   background: linear-gradient(180deg, #0e2208, #081804);
   border: 1px solid #3a7830;
   color: #70d860;
 }
-.ip-btn--plant:hover:not(:disabled) {
+.ip-action-btn--plant:hover:not(:disabled) {
   background: linear-gradient(180deg, #162e10, #0e2208);
   border-color: #58a840;
   box-shadow: 0 0 10px rgba(80,200,60,.4);
 }
-.ip-btn--harvest {
+
+.ip-action-btn--harvest {
   background: linear-gradient(180deg, #261a04, #161002);
   border: 1px solid #c09020;
   color: #f0d040;
-  animation: harvest-glow .9s ease-in-out infinite alternate;
+  animation: btn-harvest-glow .9s ease-in-out infinite alternate;
 }
-@keyframes harvest-glow {
+@keyframes btn-harvest-glow {
   from { box-shadow: 0 0 4px rgba(220,180,40,.25), inset 0 1px 0 rgba(220,180,40,.2); }
   to   { box-shadow: 0 0 16px rgba(220,180,40,.75), inset 0 1px 0 rgba(220,180,40,.2); }
 }
-/* ── One-click plant ── */
-.ip-btn--plant-all {
-  background: linear-gradient(180deg, #0a1e08, #061204);
-  border: 1px solid #2a6020;
-  color: #60d050;
-  font-size: clamp(8px, 1.7vmin, 12px) !important;
+
+.ip-action-btn--deposit {
+  background: linear-gradient(180deg, #162612, #0c1c0a);
+  border: 1px solid #3a7a30;
+  color: #70d860;
 }
-.ip-btn--plant-all:hover:not(:disabled) {
-  background: linear-gradient(180deg, #122a10, #0a1e08);
-  border-color: #48901c;
-  box-shadow: 0 0 8px rgba(70,180,50,.45);
+.ip-action-btn--deposit:hover { background: linear-gradient(180deg, #1e3418, #122210); border-color: #5aaa48; }
+
+.ip-action-btn--close {
+  background: rgba(30,10,5,.85);
+  border: 1px solid rgba(180,80,40,.55);
+  color: #ffa070;
+  padding: 5% 6%;
+}
+.ip-action-btn--close:hover { background: rgba(50,15,8,.95); border-color: rgba(220,100,50,.8); color: #ffbf90; }
+
+/* ════════════════════════════════════════════
+   QUICK ACTIONS BAR  (one-click plant/harvest/harvest+plant)
+   Always visible; never over the scene.
+════════════════════════════════════════════ */
+.quick-actions {
+  flex-shrink: 0;
+  width: 100%;
+  height: clamp(44px, 9%, 64px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2%;
+  padding: 0 3%;
+  position: relative;           /* for vip-prompt absolute inside */
+  background: linear-gradient(180deg, rgba(12,8,4,.98) 0%, rgba(8,6,2,.99) 100%);
+  border-top: 1px solid rgba(100,70,10,.45);
+  border-bottom: 1px solid rgba(40,28,8,.6);
+  box-shadow: 0 -2px 8px rgba(0,0,0,.45), inset 0 1px 0 rgba(180,130,30,.1);
 }
 
-/* ── One-click harvest ── */
-.ip-btn--harvest-all {
-  background: linear-gradient(180deg, #1e1402, #120e02);
-  border: 1px solid #a07818;
-  color: #e0b830;
-  font-size: clamp(8px, 1.7vmin, 12px) !important;
-  animation: harvest-glow .9s ease-in-out infinite alternate;
+.qa-btn {
+  flex: 1;
+  max-width: 34%;
+  height: 72%;
+  font-family: inherit;
+  font-size: clamp(9px, 1.95vmin, 13px);
+  letter-spacing: .03em;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,.6), inset 0 1px 0 rgba(220,180,40,.15);
 }
-.ip-btn--harvest-all:disabled { animation: none; }
-.ip-btn--harvest-all:hover:not(:disabled) {
-  background: linear-gradient(180deg, #261c04, #1a1202);
-  border-color: #c89828;
-  box-shadow: 0 0 10px rgba(220,180,40,.5);
+.qa-btn:disabled { opacity: .38; cursor: not-allowed; }
+
+.qa-btn--plant {
+  background: linear-gradient(180deg, #0e2208, #081804);
+  border: 1px solid #3a7830;
+  color: #70d860;
+}
+.qa-btn--plant:hover:not(:disabled) {
+  background: linear-gradient(180deg, #162e10, #0e2208);
+  border-color: #58a840;
+  box-shadow: 0 0 10px rgba(80,200,60,.4);
 }
 
-/* ── VIP harvest+plant ── */
-.ip-btn--vip {
+.qa-btn--harvest {
+  background: linear-gradient(180deg, #261a04, #161002);
+  border: 1px solid #c09020;
+  color: #f0d040;
+}
+.qa-btn--harvest:not(:disabled) { animation: qa-harvest-glow .9s ease-in-out infinite alternate; }
+.qa-btn--harvest:hover:not(:disabled) {
+  background: linear-gradient(180deg, #301e06, #1c1202);
+  border-color: #d8a828;
+}
+@keyframes qa-harvest-glow {
+  from { box-shadow: 0 0 4px rgba(220,180,40,.25), inset 0 1px 0 rgba(220,180,40,.2); }
+  to   { box-shadow: 0 0 16px rgba(220,180,40,.75), inset 0 1px 0 rgba(220,180,40,.2); }
+}
+
+.qa-btn--vip {
   background: linear-gradient(180deg, #0a0a20, #060612);
   border: 1px solid #6050b0;
   color: #b090f0;
-  font-size: clamp(8px, 1.7vmin, 12px) !important;
 }
-.ip-btn--vip:hover:not(:disabled) {
+.qa-btn--vip:hover:not(:disabled) {
   background: linear-gradient(180deg, #14142c, #0a0a20);
   border-color: #8070d0;
   box-shadow: 0 0 10px rgba(140,100,220,.5);
 }
-.ip-btn--vip-locked {
-  background: linear-gradient(180deg, #0e0e0e, #080808);
-  border: 1px solid #404040;
-  color: #808080;
+.qa-btn--locked {
+  background: linear-gradient(180deg, #101010, #080808);
+  border: 1px solid #383838;
+  color: #686868;
 }
-.ip-btn--vip-locked:hover {
-  background: linear-gradient(180deg, #141414, #0e0e0e);
-  border-color: #585858;
+.qa-btn--locked:hover {
+  background: linear-gradient(180deg, #181818, #101010);
+  border-color: #505050;
+}
+
+/* VIP prompt — covers the whole .quick-actions area */
+.vip-prompt {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+  background: rgba(0,0,0,.75);
+  backdrop-filter: blur(3px);
+}
+
+.vip-prompt-box {
+  background: linear-gradient(155deg, #141828, #0c1020);
+  border: 1px solid #6050b0;
+  border-radius: 8px;
+  padding: 4% 6%;
+  max-width: 90%;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,.9),
+    0 0 20px rgba(120,80,220,.25),
+    inset 0 1px 0 rgba(160,120,255,.2);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.vip-prompt-msg {
+  font-size: clamp(9px, 1.85vmin, 13px);
+  color: #f7e6b0;
+  line-height: 1.6;
+  margin: 0;
+}
+.vip-prompt-progress {
+  font-size: clamp(9px, 1.7vmin, 12px);
+  color: #b090f0;
+  font-weight: 700;
+  margin: 0;
+}
+.vip-prompt-close {
+  font-family: inherit;
+  font-size: clamp(9px, 1.8vmin, 12px);
+  background: linear-gradient(180deg, #2a1e50, #1a1230);
+  border: 1px solid #7060c0;
+  color: #c0a0f0;
+  padding: 4px 16px;
+  border-radius: 5px;
   cursor: pointer;
+  margin-top: 4px;
+  transition: background .2s, border-color .2s;
 }
-
-/* ── Thin divider between single + global actions ── */
-.ip-btn-divider {
-  height: 1px;
-  background: rgba(180,140,40,.2);
-  margin: 1px 0;
-}
-
-.ip-btn--growing {
-  background: linear-gradient(180deg, #161206, #0c0e04);
-  border: 1px solid #5a5020;
-  color: #909060;
-  opacity: .6;
-  cursor: not-allowed;
-}
+.vip-prompt-close:hover { background: linear-gradient(180deg, #3c2870, #2a1e50); border-color: #9070d8; }
 
 /* ════════════════════════════════════════════
-   BOTTOM MENU LAYER
+   BOTTOM MENU BAR  (flex-column section — not absolute)
 ════════════════════════════════════════════ */
 .bottom-menu {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 11%;
+  flex-shrink: 0;
+  width: 100%;
+  height: clamp(52px, 10.5%, 76px);
   z-index: 20;
   display: flex;
   background: linear-gradient(180deg, #0e0a06, #080604);
@@ -837,67 +908,6 @@ body {
   30%  { opacity: 1; transform: scale(1.1); }
   60%  { opacity: 0.85; transform: scale(1.0); }
   100% { opacity: 0; transform: scale(1.3); }
-}
-
-/* ════════════════════════════════════════════
-   VIP PROMPT (one-click harvest+plant unlock)
-════════════════════════════════════════════ */
-.vip-prompt {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 900;
-  background: rgba(0,0,0,.65);
-  backdrop-filter: blur(2px);
-}
-
-.vip-prompt-box {
-  background: linear-gradient(155deg, #141828, #0c1020);
-  border: 1px solid #6050b0;
-  border-radius: 8px;
-  padding: 6% 7%;
-  max-width: 80%;
-  box-shadow:
-    0 8px 32px rgba(0,0,0,.9),
-    0 0 20px rgba(120,80,220,.25),
-    inset 0 1px 0 rgba(160,120,255,.2);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 3%;
-}
-
-.vip-prompt-msg {
-  font-size: clamp(10px, 2vmin, 14px);
-  color: #f7e6b0;
-  line-height: 1.6;
-  margin: 0;
-}
-
-.vip-prompt-progress {
-  font-size: clamp(9px, 1.7vmin, 12px);
-  color: #b090f0;
-  font-weight: 700;
-  margin: 0;
-}
-
-.vip-prompt-close {
-  font-family: inherit;
-  font-size: clamp(10px, 1.9vmin, 13px);
-  background: linear-gradient(180deg, #2a1e50, #1a1230);
-  border: 1px solid #7060c0;
-  color: #c0a0f0;
-  padding: 3% 10%;
-  border-radius: 5px;
-  cursor: pointer;
-  margin-top: 3%;
-  transition: background .2s, border-color .2s;
-}
-.vip-prompt-close:hover {
-  background: linear-gradient(180deg, #3c2870, #2a1e50);
-  border-color: #9070d8;
 }
 
 /* farmer locked desc was too dark — brighten it */

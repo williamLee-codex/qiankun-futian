@@ -28,7 +28,7 @@ export default function FarmPlot({ plot, pos }: Props) {
   return (
     <button
       className={`ph${selected ? ' ph--sel' : ''}`}
-      style={pos}
+      style={pos as React.CSSProperties}
       onClick={e => {
         e.stopPropagation(); /* prevent bubbling to gc background */
         dispatch({ type: 'SELECT_PLOT', id: plot.id });

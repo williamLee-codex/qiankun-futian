@@ -3,12 +3,12 @@ import type { GameState } from '../game/types';
 
 const MENU_ITEMS: { label: string; emoji: string; panel: GameState['openPanel'] }[] = [
   { label: '福田首頁', emoji: '🏠', panel: null },
-  { label: '倉庫', emoji: '📦', panel: 'warehouse' },
-  { label: '種子', emoji: '🌱', panel: 'seeds' },
-  { label: '靈寵', emoji: '🐾', panel: 'pets' },
-  { label: '農夫', emoji: '👨‍🌾', panel: 'farmer' },
-  { label: '任務', emoji: '📜', panel: 'tasks' },
-  { label: '市場', emoji: '🏪', panel: 'market' },
+  { label: '倉庫',    emoji: '📦', panel: 'warehouse' },
+  { label: '種子',    emoji: '🌱', panel: 'seeds' },
+  { label: '靈寵',    emoji: '🐾', panel: 'pets' },
+  { label: '農夫',    emoji: '👨‍🌾', panel: 'farmer' },
+  { label: '任務',    emoji: '📜', panel: 'tasks' },
+  { label: '市場',    emoji: '🏪', panel: 'market' },
 ];
 
 export default function BottomMenu() {
@@ -19,10 +19,9 @@ export default function BottomMenu() {
       {MENU_ITEMS.map(item => (
         <button
           key={item.label}
-          className={`bottom-menu-item ${state.openPanel === item.panel && item.panel !== null ? 'bottom-menu-item--active' : ''}`}
+          className={`bottom-menu-item${state.openPanel === item.panel && item.panel !== null ? ' bottom-menu-item--active' : ''}`}
           onClick={() => {
             if (item.panel === null) {
-              /* 福田首頁: close all panels AND clear plot selection */
               dispatch({ type: 'CLOSE_PANEL' });
               dispatch({ type: 'DESELECT_PLOT' });
             } else {
