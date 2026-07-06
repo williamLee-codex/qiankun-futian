@@ -156,23 +156,25 @@ body {
   background: transparent;
 }
 
-/* 每格：固定 34px icon 佔位 + 1fr 文字區，左右 padding 8px */
+/* 每格：34px icon 佔位 | auto 文字區（緊貼 icon）| 1fr 剩餘空間 */
 .resource-cell {
   display: grid;
-  grid-template-columns: 34px 1fr;
+  grid-template-columns: 34px auto 1fr;
   align-items: center;
   height: 100%;
-  padding: 0 8px;
+  padding: 0 6px;
 }
 
-/* 文字區：flex-column，value + label 縱向置中 */
+/* 文字區：grid 第 2 欄，靠左對齊緊貼 icon 右側 */
 .resource-text {
+  grid-column: 2;
+  justify-self: start;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   line-height: 1;
-  transform: translateY(0);
+  margin-left: 2px;
   overflow: hidden;
 }
 
