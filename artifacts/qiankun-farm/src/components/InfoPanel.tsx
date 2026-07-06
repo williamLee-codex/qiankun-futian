@@ -1,9 +1,12 @@
 /**
  * InfoPanel Component — Game Scene Layer 4
  *
- * Absolute overlay on the parchment/info area of the background image.
- * Shows per-plot data dynamically; covers the static "點選土地開始耕作" text.
- * No agriculture-related buttons here — those are in QuickActions.
+ * 土地解鎖規則：
+ *   第2塊（幽熒沃土）：花費 88  金幣直接解鎖
+ *   第3塊（朱砂烈土）：花費 888 金幣直接解鎖
+ *   第4塊（曜紫靈土）：累積儲值 100 水晶解鎖
+ *   第5塊（翡翠聖土）：累積儲值 300 水晶解鎖
+ *   第6塊（黑金晶土）：累積儲值 600 水晶解鎖
  */
 import { useGame } from '../game/GameContext';
 
@@ -15,7 +18,7 @@ export default function InfoPanel() {
     ? state.plots.find(p => p.id === state.selectedPlotId)
     : null;
 
-  /* ── No plot selected: show idle hint over the parchment text ── */
+  /* ── No plot selected ── */
   if (!plot) {
     return (
       <div className="ip-overlay ip-overlay--idle" onClick={stopProp}>
@@ -26,6 +29,30 @@ export default function InfoPanel() {
 
   /* ── Locked plot ── */
   if (!plot.unlocked) {
+    /* 花費金幣直接解鎖（第2、3塊） */
+    if (plot.unlockCoins !== null) {
+      const canAfford = state.coins >= plot.unlockCoins;
+      return (
+        <div className="ip-overlay ip-overlay--locked" onClick={stopProp}>
+          <div className="ip-locked-row">
+            <span className="ip-locked-icon">🔒</span>
+            <div className="ip-locked-info">
+              <span className="ip-name">{plot.name}</span>
+              <span className="ip-locked-sub">解鎖費用：{plot.unlockCoins} 🪙 金幣</span>
+            </div>
+            <button
+              className={`ip-unlock-btn${canAfford ? '' : ' ip-unlock-btn--poor'}`}
+              disabled={!canAfford}
+              onClick={() => dispatch({ type: 'UNLOCK_PLOT', plotId: plot.id })}
+            >
+              {canAfford ? '✨ 解鎖' : '金幣不足'}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    /* 累積儲值水晶解鎖（第4、5、6塊） */
     const pct = Math.min(100, (state.totalDeposit / (plot.unlockCrystals ?? 1)) * 100);
     return (
       <div className="ip-overlay ip-overlay--locked" onClick={stopProp}>

@@ -22,9 +22,12 @@ type Action =
   | { type: 'COMPLETE_TASK'; taskId: string }
   /**
    * 智慧一鍵收播：扣除金幣/水晶、補足種子後立即執行 PLANT_ALL 邏輯。
-   * coinsUsed / crystalsUsed 已在 QuickActions 中計算，reducer 直接套用。
    */
-  | { type: 'BUY_SEEDS_AND_PLANT_ALL'; coinsUsed: number; crystalsUsed: number; seedsBought: number };
+  | { type: 'BUY_SEEDS_AND_PLANT_ALL'; coinsUsed: number; crystalsUsed: number; seedsBought: number }
+  /**
+   * 花費金幣直接解鎖土地（第2、3塊）。
+   */
+  | { type: 'UNLOCK_PLOT'; plotId: number };
 
 const GROW_TIME_MS   = 10_000;
 const HARVEST_COINS  = 10;   /* coins per seed planted */
@@ -170,6 +173,20 @@ function reducer(state: GameState, action: Action): GameState {
         return pet;
       });
       return { ...state, totalDeposit: dep, plots: newPlots, pets: newPets, farmerUnlocked: dep >= 999 };
+    }
+
+    /* ── 金幣解鎖土地（第2、3塊）── */
+    case 'UNLOCK_PLOT': {
+      const plot = state.plots.find(p => p.id === action.plotId);
+      if (!plot || plot.unlocked || plot.unlockCoins === null) return state;
+      if (state.coins < plot.unlockCoins) return state;
+      return {
+        ...state,
+        coins: state.coins - plot.unlockCoins,
+        plots: state.plots.map(p =>
+          p.id === action.plotId ? { ...p, unlocked: true } : p
+        ),
+      };
     }
 
     /* ── 智慧收播：購買種子後立即播種 ── */

@@ -4,6 +4,9 @@ export interface Plot {
   id: number;
   name: string;
   unlocked: boolean;
+  /** 花費金幣直接解鎖（第2、3塊）*/
+  unlockCoins: number | null;
+  /** 累積儲值水晶解鎖（第4、5、6塊）*/
   unlockCrystals: number | null;
   state: PlotState;
   plantCount: number;

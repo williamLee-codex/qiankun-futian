@@ -13,12 +13,18 @@ export const initialState: GameState = {
   openPanel: null,
   harvestAnimations: [],
   plots: [
-    { id: 0, name: '微芒凡土', maxSeeds: 20, unlocked: true,  unlockCrystals: null, state: 'empty', plantCount: 0, growthEndTime: null },
-    { id: 1, name: '幽熒沃土', maxSeeds: 15, unlocked: true,  unlockCrystals: null, state: 'empty', plantCount: 0, growthEndTime: null },
-    { id: 2, name: '朱砂烈土', maxSeeds: 10, unlocked: true,  unlockCrystals: null, state: 'empty', plantCount: 0, growthEndTime: null },
-    { id: 3, name: '曜紫靈土', maxSeeds:  6, unlocked: false, unlockCrystals: 100,  state: 'empty', plantCount: 0, growthEndTime: null },
-    { id: 4, name: '翡翠聖土', maxSeeds:  4, unlocked: false, unlockCrystals: 300,  state: 'empty', plantCount: 0, growthEndTime: null },
-    { id: 5, name: '黑金晶土', maxSeeds:  2, unlocked: false, unlockCrystals: 600,  state: 'empty', plantCount: 0, growthEndTime: null },
+    /* 第1塊：初始解鎖 */
+    { id: 0, name: '微芒凡土', maxSeeds: 20, unlocked: true,  unlockCoins: null, unlockCrystals: null, state: 'empty', plantCount: 0, growthEndTime: null },
+    /* 第2塊：花費 88 金幣解鎖 */
+    { id: 1, name: '幽熒沃土', maxSeeds: 15, unlocked: false, unlockCoins: 88,   unlockCrystals: null, state: 'empty', plantCount: 0, growthEndTime: null },
+    /* 第3塊：花費 888 金幣解鎖 */
+    { id: 2, name: '朱砂烈土', maxSeeds: 10, unlocked: false, unlockCoins: 888,  unlockCrystals: null, state: 'empty', plantCount: 0, growthEndTime: null },
+    /* 第4塊：累積儲值 100 水晶解鎖 */
+    { id: 3, name: '曜紫靈土', maxSeeds:  6, unlocked: false, unlockCoins: null, unlockCrystals: 100,  state: 'empty', plantCount: 0, growthEndTime: null },
+    /* 第5塊：累積儲值 300 水晶解鎖 */
+    { id: 4, name: '翡翠聖土', maxSeeds:  4, unlocked: false, unlockCoins: null, unlockCrystals: 300,  state: 'empty', plantCount: 0, growthEndTime: null },
+    /* 第6塊：累積儲值 600 水晶解鎖 */
+    { id: 5, name: '黑金晶土', maxSeeds:  2, unlocked: false, unlockCoins: null, unlockCrystals: 600,  state: 'empty', plantCount: 0, growthEndTime: null },
   ],
   pets: [
     {
