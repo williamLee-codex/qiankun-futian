@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "乾坤福田 V2 Production"
+version = "1.0.0"
+id = "artifacts/qiankun-farm"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22015
+
+[services.development]
+run = "pnpm --filter @workspace/qiankun-farm run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/qiankun-farm", "run", "build" ]
+publicDir = "artifacts/qiankun-farm/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22015"
+BASE_PATH = "/"

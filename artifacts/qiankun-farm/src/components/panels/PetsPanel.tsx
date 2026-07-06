@@ -1,0 +1,81 @@
+import { useGame } from '../../game/GameContext';
+import type { Pet } from '../../game/types';
+
+const gradeColor: Record<Pet['grade'], string> = {
+  '凡品': '#a0a0a0',
+  '靈品': '#4fc3f7',
+  '仙品': '#ce93d8',
+  '神品': '#ffd700',
+};
+
+export default function PetsPanel() {
+  const { state, dispatch } = useGame();
+  const now = Date.now();
+
+  return (
+    <div className="panel-content">
+      <h2 className="panel-title">🐾 靈寵</h2>
+      <p className="panel-note">每次只能出戰一隻，更換需等待8小時冷卻，餵食維持12小時飽腹。</p>
+      <div className="pets-list">
+        {state.pets.map(pet => {
+          const inCooldown = pet.cooldownUntil && now < pet.cooldownUntil;
+          const isFed = pet.fedUntil && now < pet.fedUntil;
+          return (
+            <div key={pet.id} className={`pet-card ${pet.active ? 'pet-card--active' : ''}`}>
+              <div className="pet-header">
+                <span className="pet-name">{pet.name}</span>
+                <span className="pet-grade" style={{ color: gradeColor[pet.grade] }}>{pet.grade}</span>
+              </div>
+              <p className="pet-desc">{pet.description}</p>
+              {!pet.owned && (
+                <div className="pet-acquire">
+                  {pet.acquireType === 'shop-coins' && (
+                    <span className="pet-cost">商店購買：{pet.acquireCost} 金幣</span>
+                  )}
+                  {pet.acquireType === 'shop-crystals' && (
+                    <span className="pet-cost">商店購買：{pet.acquireCost} 水晶</span>
+                  )}
+                  {pet.acquireType === 'deposit' && (
+                    <span className="pet-cost">累積儲值 {pet.acquireDepositRequired} 水晶贈送</span>
+                  )}
+                  {(pet.acquireType === 'shop-coins' || pet.acquireType === 'shop-crystals') && (
+                    <button
+                      className="pet-btn pet-btn--buy"
+                      onClick={() => dispatch({ type: 'ACQUIRE_PET', petId: pet.id })}
+                    >
+                      購買
+                    </button>
+                  )}
+                  {pet.acquireType === 'deposit' && (
+                    <span className="pet-locked">
+                      目前儲值：{state.totalDeposit} / {pet.acquireDepositRequired}
+                    </span>
+                  )}
+                </div>
+              )}
+              {pet.owned && (
+                <div className="pet-actions">
+                  <span className={`pet-status ${pet.active ? 'pet-status--active' : ''}`}>
+                    {pet.active ? '出戰中' : '待命'}
+                  </span>
+                  {isFed && <span className="pet-fed">飽腹中</span>}
+                  {inCooldown && <span className="pet-cooldown">冷卻中</span>}
+                  {!pet.active && !inCooldown && (
+                    <button className="pet-btn pet-btn--deploy" onClick={() => dispatch({ type: 'ACTIVATE_PET', petId: pet.id })}>
+                      出戰
+                    </button>
+                  )}
+                  {pet.owned && !isFed && (
+                    <button className="pet-btn pet-btn--feed" onClick={() => dispatch({ type: 'FEED_PET', petId: pet.id })}>
+                      餵食
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
