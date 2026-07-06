@@ -39,45 +39,86 @@ body {
   justify-content: center;
   align-items: flex-start;
 
-  /* ── 仙俠深空背景（只在遊戲畫布兩側黑邊可見）── */
-  background-color: #04080f;
+  /* ══ 仙俠深空背景：#020611→#081326→#12091f ══
+     以下所有效果只在遊戲畫布（390px）兩側黑邊可見。
+     遊戲畫布本身不受影響。                         */
+  background-color: #020611;
   background-image:
-    /* 散落星點 — 小亮點 */
-    radial-gradient(circle 1px   at  8% 12%, rgba(180,205,255,.55) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 18%  5%, rgba(175,195,255,.40) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 33% 18%, rgba(195,215,255,.50) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 72%  8%, rgba(180,200,255,.45) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 88% 14%, rgba(200,215,255,.35) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 92% 25%, rgba(180,200,255,.50) 0%, transparent 1px),
-    radial-gradient(circle 1px   at  5% 35%, rgba(195,215,255,.35) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 95% 45%, rgba(180,200,255,.40) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 12% 55%, rgba(200,215,255,.30) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 80% 60%, rgba(180,200,255,.35) 0%, transparent 1px),
-    radial-gradient(circle 1px   at  6% 75%, rgba(200,215,255,.30) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 91% 72%, rgba(180,200,255,.40) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 15% 85%, rgba(200,215,255,.25) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 85% 88%, rgba(180,200,255,.30) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 50% 10%, rgba(220,230,255,.45) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 45% 90%, rgba(200,215,255,.25) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 28% 68%, rgba(190,210,255,.30) 0%, transparent 1px),
-    radial-gradient(circle 1px   at 64% 55%, rgba(200,215,255,.25) 0%, transparent 1px),
-    /* 稍大星點（提亮感） */
-    radial-gradient(circle 1.5px at 22% 30%, rgba(200,220,255,.42) 0%, transparent 2px),
-    radial-gradient(circle 1.5px at 78% 38%, rgba(210,225,255,.38) 0%, transparent 2px),
-    radial-gradient(circle 1.5px at 60% 78%, rgba(200,220,255,.32) 0%, transparent 2px),
-    radial-gradient(circle 1.5px at 40% 48%, rgba(210,225,255,.28) 0%, transparent 2px),
-    /* 雲霧/靈氣暈染 */
-    radial-gradient(ellipse 22% 18% at  4% 38%, rgba(20,45,100,.28) 0%, transparent 80%),
-    radial-gradient(ellipse 28% 22% at 96% 28%, rgba(20,45,100,.28) 0%, transparent 80%),
-    radial-gradient(ellipse 32% 20% at  6% 68%, rgba(15,35, 80,.22) 0%, transparent 80%),
-    radial-gradient(ellipse 28% 18% at 94% 72%, rgba(15,35, 80,.22) 0%, transparent 80%),
-    radial-gradient(ellipse 20% 12% at 50%  2%, rgba(20,50,110,.30) 0%, transparent 80%),
-    radial-gradient(ellipse 20% 12% at 50% 98%, rgba(15,30, 70,.22) 0%, transparent 80%),
-    /* 中心深空光暈（遊戲畫布後方） */
-    radial-gradient(ellipse 55% 75% at 50% 50%, rgba(12,25,60,.65) 0%, transparent 60%),
-    /* 整體深色基調漸層 */
-    radial-gradient(ellipse 130% 110% at 50% 0%, #0d1a30 0%, #04080f 55%);
+    /* ── 星點（肉眼可見，opacity 0.30~0.55）── */
+    radial-gradient(circle 2px   at  7% 10%, rgba(210,225,255,.52) 0%, transparent 3px),
+    radial-gradient(circle 1.5px at 17%  4%, rgba(195,215,255,.45) 0%, transparent 2px),
+    radial-gradient(circle 2.5px at 21% 28%, rgba(220,235,255,.42) 0%, transparent 4px),
+    radial-gradient(circle 1.5px at 32% 16%, rgba(200,220,255,.50) 0%, transparent 2px),
+    radial-gradient(circle 2px   at 71%  7%, rgba(195,215,255,.48) 0%, transparent 3px),
+    radial-gradient(circle 2.5px at 79% 36%, rgba(215,230,255,.42) 0%, transparent 4px),
+    radial-gradient(circle 1.5px at 87% 13%, rgba(205,220,255,.46) 0%, transparent 2px),
+    radial-gradient(circle 1.5px at 93% 24%, rgba(190,210,255,.52) 0%, transparent 2px),
+    radial-gradient(circle 2px   at  4% 33%, rgba(200,218,255,.40) 0%, transparent 3px),
+    radial-gradient(circle 1.5px at 96% 44%, rgba(190,210,255,.44) 0%, transparent 2px),
+    radial-gradient(circle 2px   at 11% 52%, rgba(205,220,255,.36) 0%, transparent 3px),
+    radial-gradient(circle 2px   at 81% 58%, rgba(192,212,255,.40) 0%, transparent 3px),
+    radial-gradient(circle 1.5px at  5% 73%, rgba(205,218,255,.34) 0%, transparent 2px),
+    radial-gradient(circle 2.5px at 61% 76%, rgba(210,225,255,.36) 0%, transparent 4px),
+    radial-gradient(circle 1.5px at 90% 70%, rgba(190,212,255,.42) 0%, transparent 2px),
+    radial-gradient(circle 2px   at 14% 83%, rgba(205,218,255,.32) 0%, transparent 3px),
+    radial-gradient(circle 2px   at 84% 86%, rgba(192,210,255,.35) 0%, transparent 3px),
+    radial-gradient(circle 3px   at 50%  9%, rgba(225,238,255,.50) 0%, transparent 5px),
+    radial-gradient(circle 1.5px at 44% 91%, rgba(205,218,255,.30) 0%, transparent 2px),
+    radial-gradient(circle 1.5px at 27% 65%, rgba(195,212,255,.36) 0%, transparent 2px),
+    radial-gradient(circle 2px   at 39% 46%, rgba(215,228,255,.30) 0%, transparent 3px),
+    radial-gradient(circle 1.5px at 63% 53%, rgba(205,218,255,.30) 0%, transparent 2px),
+    /* ── 靈氣雲霧（明顯暈染，肉眼可辨）── */
+    radial-gradient(ellipse 35% 28% at  5% 32%, rgba(20,50,140,.38) 0%, transparent 75%),
+    radial-gradient(ellipse 35% 28% at 95% 32%, rgba(20,50,140,.38) 0%, transparent 75%),
+    radial-gradient(ellipse 30% 22% at  7% 68%, rgba(15,38,110,.32) 0%, transparent 75%),
+    radial-gradient(ellipse 30% 22% at 93% 68%, rgba(15,38,110,.32) 0%, transparent 75%),
+    radial-gradient(ellipse 25% 14% at 50%  1%, rgba(22,55,150,.34) 0%, transparent 80%),
+    radial-gradient(ellipse 25% 14% at 50% 99%, rgba(16,38,100,.26) 0%, transparent 80%),
+    /* ── 金色邊框光暈（遊戲畫布左右邊緣，最明顯的裝飾）── */
+    radial-gradient(ellipse 7% 100% at calc(50% - 195px) 50%,
+      rgba(215,172,38,.70) 0%, rgba(185,145,28,.35) 55%, transparent 85%),
+    radial-gradient(ellipse 7% 100% at calc(50% + 195px) 50%,
+      rgba(215,172,38,.70) 0%, rgba(185,145,28,.35) 55%, transparent 85%),
+    /* 金色頂角收束 */
+    radial-gradient(ellipse 22% 28% at calc(50% - 195px)  0%,
+      rgba(195,155,32,.40) 0%, transparent 70%),
+    radial-gradient(ellipse 22% 28% at calc(50% + 195px)  0%,
+      rgba(195,155,32,.40) 0%, transparent 70%),
+    /* ── 整體深藍紫仙俠基調 ── */
+    linear-gradient(170deg, #020611 0%, #081326 40%, #12091f 80%, #0a0b1a 100%);
 }
+
+/* ── 金色垂直裝飾邊（::before 左邊，::after 右邊）──
+   細線 + 光暈，緊貼遊戲畫布外側。
+   game-shell 有 transform（建立新 stacking context），
+   會自然渲染在偽元素之上，不需調整 z-index。        */
+.game-viewport::before,
+.game-viewport::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 2px;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent                     0%,
+    rgba(180, 140, 25, .25)         4%,
+    rgba(215, 175, 45, .80)        12%,
+    rgba(235, 195, 55, .95)        28%,
+    rgba(245, 205, 60, 1.00)       45%,
+    rgba(235, 195, 55, .95)        62%,
+    rgba(215, 175, 45, .80)        78%,
+    rgba(185, 145, 28, .35)        92%,
+    transparent                   100%
+  );
+  box-shadow:
+    0 0  6px rgba(210, 170, 38, .55),
+    0 0 16px rgba(185, 145, 28, .30),
+    0 0 32px rgba(160, 120, 20, .18);
+}
+.game-viewport::before { left:  calc(50% - 195px - 2px); }
+.game-viewport::after  { right: calc(50% - 195px - 2px); }
 
 /* ══════════════════════════════════════════════════════════
    GAME SHELL — 390×844 唯一設計稿容器
