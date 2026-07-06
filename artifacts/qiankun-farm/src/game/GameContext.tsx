@@ -19,7 +19,12 @@ type Action =
   | { type: 'ACTIVATE_PET'; petId: number }
   | { type: 'FEED_PET'; petId: number }
   | { type: 'SELL_CROPS'; amount: number }
-  | { type: 'COMPLETE_TASK'; taskId: string };
+  | { type: 'COMPLETE_TASK'; taskId: string }
+  /**
+   * 智慧一鍵收播：扣除金幣/水晶、補足種子後立即執行 PLANT_ALL 邏輯。
+   * coinsUsed / crystalsUsed 已在 QuickActions 中計算，reducer 直接套用。
+   */
+  | { type: 'BUY_SEEDS_AND_PLANT_ALL'; coinsUsed: number; crystalsUsed: number; seedsBought: number };
 
 const GROW_TIME_MS   = 10_000;
 const HARVEST_COINS  = 10;   /* coins per seed planted */
@@ -165,6 +170,31 @@ function reducer(state: GameState, action: Action): GameState {
         return pet;
       });
       return { ...state, totalDeposit: dep, plots: newPlots, pets: newPets, farmerUnlocked: dep >= 999 };
+    }
+
+    /* ── 智慧收播：購買種子後立即播種 ── */
+    case 'BUY_SEEDS_AND_PLANT_ALL': {
+      const afterCoins    = state.coins    - action.coinsUsed;
+      const afterCrystals = state.crystals - action.crystalsUsed;
+      if (afterCoins < 0 || afterCrystals < 0) return state; // guard
+      const startSeeds = state.warehouseSeeds + action.seedsBought;
+      let seeds = startSeeds;
+      const now = Date.now();
+      const newPlots = state.plots.map(plot => {
+        if (!plot.unlocked || plot.state !== 'empty' || seeds <= 0) return plot;
+        const qty = Math.min(seeds, plot.maxSeeds);
+        seeds -= qty;
+        return { ...plot, state: 'growing' as const, plantCount: qty, growthEndTime: now + GROW_TIME_MS };
+      });
+      const tasks = state.tasks.map(t => t.id === 'plant' ? { ...t, done: true } : t);
+      return {
+        ...state,
+        coins:    afterCoins,
+        crystals: afterCrystals,
+        warehouseSeeds: seeds,
+        plots: newPlots,
+        tasks,
+      };
     }
 
     /* ── Panels ── */
