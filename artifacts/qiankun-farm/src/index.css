@@ -341,7 +341,9 @@ body {
   user-select: none;
 }
 
-/* Crop + timer wrapper */
+/* 作物錨點 — 掛在 .ph（position:absolute 的田地熱區）內
+   left:50% / top:55% / translate(-50%,-50%) 為所有作物的統一錨點
+   成熟特效、收成特效、澆水特效均掛在此錨點上，禁止使用零散 pixel 座標 */
 .ph-state {
   display: flex;
   flex-direction: column;
@@ -349,7 +351,9 @@ body {
   gap: 2px;
   pointer-events: none;
   position: absolute;
-  bottom: 10%;
+  left: 50%;
+  top: 55%;
+  transform: translate(-50%, -50%);
 }
 
 .ph-crop {
@@ -391,30 +395,68 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════
-   LAYER 4 — INFO PANEL OVERLAY
-   底圖 V2 Production：「點選功能開始操作」提示列。
-   位置：底圖資訊提示列上方，top≈72%, height≈6%。
-   Idle 狀態透明（讓底圖文字顯示）。
+   LAYER 4 — STATUS BAR OVERLAY
+   位置：乾坤福田牌匾下方、一鍵功能按鈕上方
+   top≈72.5%，高度約 8%（≈67px@844px），手機自適應寬度
+   視覺：深色半透明底 + 金色邊框 + 文字左對齊
 ══════════════════════════════════════════════════════════ */
-.ip-overlay {
+.sb-overlay {
   position: absolute;
-  left: 0; right: 0;
-  top: 72%; height: 6%;
-  z-index: 20;
+  left: 4%; right: 4%;
+  top: 72.5%;
+  height: 8%;
+  z-index: 25;
+  background: rgba(8, 5, 2, 0.84);
+  border: 1px solid rgba(200, 158, 42, 0.72);
+  border-radius: 8px;
+  box-shadow: 0 3px 14px rgba(0,0,0,.65), inset 0 1px 0 rgba(220,178,50,.1);
   display: flex;
-  align-items: center;
-  padding: 0 4%;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 5px 10px;
   pointer-events: auto;
+  overflow: hidden;
 }
 
-.ip-overlay--idle {
-  justify-content: center;
+/* 第一行：狀態訊息容器（水平 flex，自動換行）*/
+.sb-msgs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  width: 100%;
 }
-.ip-idle-hint {
-  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: clamp(10px, 2.2vmin, 15px);
-  color: rgba(0,0,0,0); /* transparent — let image text show through */
-  letter-spacing: .1em;
+
+.sb-line {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.sb-icon {
+  font-size: clamp(9px, 1.8vmin, 13px);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sb-text {
+  font-family: 'LXGW WenKai TC', 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: clamp(9px, 1.8vmin, 12px);
+  color: #f0d878;
+  text-shadow: 0 1px 3px rgba(0,0,0,.9);
+  line-height: 1.25;
+}
+.sb-text--ready { color: #78ffa0; font-weight: 700; }
+.sb-text--warn  { color: #ff9060; font-weight: 700; }
+
+/* 第二行：互動控制（播種 / 收成 / ✕）*/
+.sb-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 3%;
+  width: 100%;
 }
 
 /* Locked plot */
@@ -611,13 +653,13 @@ body {
 /* ══════════════════════════════════════════════════════════
    LAYER 5 — QUICK ACTIONS OVERLAY
    底圖 V2 Production：四格快捷按鈕框。
-   位置：top≈78%, height≈10%。
+   位置：top≈81%（StatusBar 下方），height≈9%。
    系統疊加：按鈕文字 + 鎖頭（底圖提供框與裝飾）。
 ══════════════════════════════════════════════════════════ */
 .qa-overlay {
   position: absolute;
   left: 0; right: 0;
-  top: 78%; height: 10%;
+  top: 81%; height: 9%;
   z-index: 20;
   display: flex;
   align-items: center;

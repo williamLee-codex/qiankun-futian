@@ -37,7 +37,10 @@ export default function FarmPlot({ plot, pos }: Props) {
   return (
     <button
       className={`ph${selected ? ' ph--sel' : ''}`}
-      style={pos as React.CSSProperties}
+      style={{
+        ...(pos as React.CSSProperties),
+        position: 'absolute',  /* 相對 hotspot-layer 定位 */
+      }}
       onClick={e => {
         e.stopPropagation();
         dispatch({ type: 'SELECT_PLOT', id: plot.id });
@@ -46,6 +49,8 @@ export default function FarmPlot({ plot, pos }: Props) {
     >
       {/* 鎖頭由 FarmScene 統一渲染，此處不再顯示 */}
 
+      {/* 作物錨點：left 50% / top 55% / translate(-50%,-50%)
+          所有作物狀態都掛在此 anchor 上，不使用絕對 pixel 座標 */}
       {plot.unlocked && plot.state === 'growing' && (
         <span className="ph-state">
           <span className="ph-crop ph-crop--sway">🌾</span>

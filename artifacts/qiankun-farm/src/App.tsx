@@ -22,7 +22,7 @@ import { GameProvider, useGame } from './game/GameContext';
 import GameHeader       from './components/HUD';
 import FarmScene        from './components/FarmScene';
 import HarvestAnimation from './components/HarvestAnimation';
-import InfoPanel        from './components/InfoPanel';
+import StatusBar        from './components/StatusBar';
 import QuickActions     from './components/QuickActions';
 import BottomMenu       from './components/BottomMenu';
 import PanelOverlay     from './components/PanelOverlay';
@@ -63,7 +63,7 @@ function Game() {
 
         {/* z:20 遊戲 Overlay */}
         <HarvestAnimation />
-        <InfoPanel />
+        <StatusBar />
         <QuickActions />
         <BottomMenu />
 
