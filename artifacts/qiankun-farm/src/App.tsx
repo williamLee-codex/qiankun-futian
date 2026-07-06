@@ -13,10 +13,10 @@
  *   0   .gc-bg          — 底圖（390×844，object-fit:fill）
  *   10  hotspot-layer   — 建築 / 農田 Hotspot
  *   20  overlays        — InfoPanel / QuickActions / BottomMenu
- *   50  .game-header    — HUD（覆蓋底圖頂部黑金留白區）
+ *   50  .game-header    — HUD（覆蓋底圖頂部留白區）
  *   200 PanelOverlay    — 全畫布 Modal
  */
-import bgImage from '@assets/file_00000000a0cc72079e8a41dc508698fd_1783314944406.png';
+import bgImage from '@assets/file_00000000bd7c720998a29498f36f2661_1783327501649.png';
 import { useEffect } from 'react';
 import { GameProvider, useGame } from './game/GameContext';
 import GameHeader       from './components/HUD';
@@ -50,10 +50,7 @@ function Game() {
   useScaleViewport();
 
   return (
-    /* ── 外層：全螢幕置中容器，不縮放 ── */
     <div className="game-viewport">
-
-      {/* ── 設計稿：390×844，所有 UI 在此坐標系，只縮放一次 ── */}
       <div
         className="game-shell"
         onClick={() => dispatch({ type: 'DESELECT_PLOT' })}
@@ -70,13 +67,12 @@ function Game() {
         <QuickActions />
         <BottomMenu />
 
-        {/* z:50 HUD：疊在底圖頂部黑金留白區 */}
+        {/* z:50 HUD：疊在底圖頂部留白區 */}
         <GameHeader />
 
         {/* z:200 全畫布 Panel Modal */}
         <PanelOverlay />
       </div>
-
     </div>
   );
 }

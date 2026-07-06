@@ -138,64 +138,53 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════
-   HEADER — absolute Overlay，疊在底圖頂部黑金留白區
-   高度 90px，單列四格，z-index: 50
-   不推開底圖，不額外遮住風景
+   HEADER — absolute Overlay，疊在底圖頂部 HUD 列
+   底圖已提供框與 icon；系統只疊加 Label + Value 文字。
+   高度 60px（對齊底圖 HUD 列），背景透明不遮底圖。
+   每格：icon 已在底圖左側 → 系統文字靠右顯示。
 ══════════════════════════════════════════════════════════ */
 .game-header {
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 90px;
-  background: linear-gradient(180deg, rgba(5,10,4,0.96) 0%, rgba(8,14,6,0.94) 60%, rgba(10,16,8,0.80) 100%);
-  border-bottom: 1px solid rgba(80,120,30,.20);
+  height: 60px;
+  background: transparent;
   display: flex;
   flex-direction: row;
   align-items: stretch;
   z-index: 50;
 }
 
-/* ── HUD 四格統計：Icon / Label / Value ── */
+/* ── HUD 四格：每格靠右顯示 Label + Value ── */
 .hud-cell {
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  gap: 2px;
-  padding: 0 2px;
-  border-right: 1px solid rgba(80,120,30,.14);
-}
-.hud-cell:last-child { border-right: none; }
-
-/* Icon（天氣 emoji 等） */
-.hud-icon {
-  font-size: 14px;
-  line-height: 1;
-  flex-shrink: 0;
+  gap: 1px;
+  padding: 0 10px 0 0;
 }
 
-/* 名稱 Label：12px 標楷體 */
-.hud-label {
-  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: 12px;
-  font-weight: 400;
-  color: #9aaf68;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-/* 數值 Value：20px Bold 白色 */
+/* 數值 Value：16px Bold 白色，標楷體，中等不過大 */
 .hud-val {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   color: #ffffff;
   line-height: 1;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  text-align: center;
+  text-shadow: 0 1px 4px rgba(0,0,0,.9);
+}
+
+/* 名稱 Label：10px 細體，金色，標楷體 */
+.hud-label {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 10px;
+  font-weight: 400;
+  color: #d4b860;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0,0,0,.8);
 }
 
 /* 底圖：精確填滿 390×844 設計稿
@@ -241,18 +230,18 @@ body {
   background: rgba(240, 200, 60, 0.07);
 }
 
-/* Left building: 氣運倉庫  (1023×1537 calibration: left≈0, top≈8%, w≈28%, h≈35%) */
+/* Left building: 氣運倉庫（底圖 V2 Production 校正） */
 .bh-left {
-  left: 0%; top: 8%;
-  width: 28%; height: 35%;
-  clip-path: polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%);
+  left: 0%; top: 7%;
+  width: 30%; height: 36%;
+  clip-path: polygon(6% 0%, 94% 0%, 100% 100%, 0% 100%);
 }
 
 /* Right building: 天道商店 */
 .bh-right {
-  right: 0%; top: 8%;
-  width: 28%; height: 35%;
-  clip-path: polygon(0% 0%, 92% 0%, 100% 100%, 0% 100%);
+  right: 0%; top: 7%;
+  width: 30%; height: 36%;
+  clip-path: polygon(0% 0%, 94% 0%, 100% 100%, 6% 100%);
 }
 
 /* ── Farm plot hotspots ── */
@@ -346,14 +335,14 @@ body {
 
 /* ══════════════════════════════════════════════════════════
    LAYER 4 — INFO PANEL OVERLAY
-   Positioned over the parchment info text area in the PNG.
-   Calibrated: 1023×1537 image — top≈73%, height≈7%.
-   Idle state: transparent (image's "點選土地開始耕作" shows through).
+   底圖 V2 Production：「點選功能開始操作」提示列。
+   位置：底圖資訊提示列上方，top≈72%, height≈6%。
+   Idle 狀態透明（讓底圖文字顯示）。
 ══════════════════════════════════════════════════════════ */
 .ip-overlay {
   position: absolute;
   left: 0; right: 0;
-  top: 73%; height: 7%;
+  top: 72%; height: 6%;
   z-index: 20;
   display: flex;
   align-items: center;
@@ -564,27 +553,27 @@ body {
 
 /* ══════════════════════════════════════════════════════════
    LAYER 5 — QUICK ACTIONS OVERLAY
-   Covers the 3 button frames drawn in the background image.
-   Calibrated: 1023×1537 image — top≈80%, height≈8%.
-   Buttons show text/icon labels over the image frames.
+   底圖 V2 Production：四格快捷按鈕框。
+   位置：top≈78%, height≈10%。
+   系統疊加：按鈕文字 + 鎖頭（底圖提供框與裝飾）。
 ══════════════════════════════════════════════════════════ */
 .qa-overlay {
   position: absolute;
   left: 0; right: 0;
-  top: 80%; height: 8%;
+  top: 78%; height: 10%;
   z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 0 3%;
-  gap: 2%;
+  padding: 0 2%;
+  gap: 1%;
   pointer-events: auto;
 }
 
-/* Each qa-btn sits over one button frame */
+/* 每格 qa-btn 疊在一個按鈕框上 */
 .qa-btn {
   flex: 1;
-  height: 82%;
+  height: 84%;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -592,27 +581,20 @@ body {
   transition: background 0.15s;
   pointer-events: auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  padding: 0 2%;
+  padding: 0 1%;
 }
 .qa-btn:hover  { background: rgba(255,255,255,.07); }
 .qa-btn:active { background: rgba(255,220,80,.12); }
 
-.qa-btn-icon {
-  font-size: clamp(12px, 2.5vh, 20px);
-  line-height: 1;
-  flex-shrink: 0;
-}
+/* 底圖 V2 已包含快捷按鈕標籤文字，系統 label 隱藏，
+   僅在鎖定彈窗的標題中保留，不在按鈕上重複顯示。 */
 .qa-btn-label {
-  font-size: clamp(9px, 1.8vh, 15px);
-  color: #f0dfa0;
-  font-weight: 700;
-  text-shadow: 0 1px 4px rgba(0,0,0,.9);
-  white-space: nowrap;
-  letter-spacing: .04em;
+  display: none;
 }
 .qa-btn--disabled {
   opacity: 0.45;
@@ -620,16 +602,16 @@ body {
   pointer-events: none;
 }
 .qa-btn--locked {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: pointer;
   pointer-events: auto;
 }
 .qa-btn--locked .qa-btn-label { color: #a090c0; }
 .qa-btn--locked:hover { background: rgba(100,80,200,.08); }
 
-/* 快捷按鈕鎖頭：顯示在文字下方，置中 */
+/* 鎖頭：顯示在文字下方，置中 */
 .qa-btn-lock {
-  font-size: clamp(10px, 2vh, 16px);
+  font-size: clamp(9px, 1.7vh, 14px);
   line-height: 1;
   display: block;
   text-align: center;
@@ -697,7 +679,7 @@ body {
 .nav-overlay {
   position: absolute;
   left: 0; right: 0;
-  bottom: 0; height: 12%;
+  bottom: 0; height: 14%;
   z-index: 20;
   display: flex;
   background: transparent;
