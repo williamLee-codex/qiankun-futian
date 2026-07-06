@@ -24,9 +24,7 @@ const HARVEST_CROPS = 5;
 function reducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'SELECT_PLOT': {
-      const plot = state.plots.find(p => p.id === action.id);
-      if (!plot?.unlocked) return state;
-      return { ...state, selectedPlotId: action.id, plantQuantity: 1 };
+      return { ...state, selectedPlotId: action.id, plantQuantity: 1, openPanel: null };
     }
     case 'SET_PLANT_QUANTITY':
       return { ...state, plantQuantity: Math.max(1, Math.min(20, action.qty)) };

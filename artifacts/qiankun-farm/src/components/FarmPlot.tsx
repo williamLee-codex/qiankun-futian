@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGame } from '../game/GameContext';
 import type { Plot } from '../game/types';
 
-interface Props {
-  plot: Plot;
-}
+interface Props { plot: Plot; }
 
 function formatCountdown(ms: number) {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -14,13 +12,14 @@ function formatCountdown(ms: number) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
-const SOIL_COLORS: Record<number, { base: string; dark: string; glow: string }> = {
-  0: { base: '#c8a830', dark: '#a07820', glow: 'rgba(220,180,50,0.6)' },
-  1: { base: '#2a7ab8', dark: '#1a5888', glow: 'rgba(60,140,220,0.6)' },
-  2: { base: '#8a2820', dark: '#601810', glow: 'rgba(160,60,50,0.5)' },
-  3: { base: '#6a3090', dark: '#4a1a6a', glow: 'rgba(130,60,180,0.5)' },
-  4: { base: '#2a7a3a', dark: '#1a5228', glow: 'rgba(60,160,80,0.5)' },
-  5: { base: '#1a1410', dark: '#0e0c08', glow: 'rgba(80,60,20,0.4)' },
+/* Soil layers: base + mid + highlight colours */
+const SOIL: Record<number, { base: string; mid: string; hi: string }> = {
+  0: { base: '#7a5800', mid: '#c8a020', hi: '#e8c840' },   // 微芒凡土 golden
+  1: { base: '#0a3060', mid: '#1a60b0', hi: '#4090e0' },   // 幽熒沃土 blue
+  2: { base: '#4a0a00', mid: '#8a2010', hi: '#c03020' },   // 朱砂烈土 red
+  3: { base: '#28004a', mid: '#5a1a80', hi: '#8040b0' },   // 曜紫靈土 purple
+  4: { base: '#0a2a08', mid: '#1a5a14', hi: '#3a8a30' },   // 翡翠聖土 green
+  5: { base: '#0c0a04', mid: '#1e1a0c', hi: '#302a14' },   // 黑金晶土 dark
 };
 
 export default function FarmPlot({ plot }: Props) {
@@ -37,52 +36,44 @@ export default function FarmPlot({ plot }: Props) {
 
   const isSelected = state.selectedPlotId === plot.id;
   const remaining = plot.growthEndTime ? plot.growthEndTime - now : 0;
-  const soil = SOIL_COLORS[plot.id] ?? SOIL_COLORS[0];
+  const soil = SOIL[plot.id] ?? SOIL[0];
 
-  function handleClick() {
-    if (!plot.unlocked) return;
-    dispatch({ type: 'SELECT_PLOT', id: plot.id });
-  }
-
-  const soilStyle = plot.unlocked
-    ? { background: `radial-gradient(ellipse at 40% 35%, ${soil.base}, ${soil.dark})` }
-    : { background: 'radial-gradient(ellipse at 40% 35%, #2a2010, #161008)' };
+  const soilBg = plot.unlocked
+    ? [
+        `repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px)`,
+        `repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(0,0,0,0.06) 5px, rgba(0,0,0,0.06) 6px)`,
+        `radial-gradient(ellipse 120% 100% at 35% 30%, ${soil.hi} 0%, ${soil.mid} 40%, ${soil.base} 100%)`,
+      ].join(', ')
+    : 'linear-gradient(135deg, #141008, #0c0a04)';
 
   return (
     <div
-      className={`farm-plot ${isSelected ? 'farm-plot--selected' : ''} ${!plot.unlocked ? 'farm-plot--locked' : ''}`}
-      onClick={handleClick}
-      style={plot.unlocked && isSelected ? { boxShadow: `0 0 0 2px #f0c84a, 0 0 20px ${soil.glow}` } : {}}
+      className={`farm-plot${isSelected ? ' farm-plot--selected' : ''}${!plot.unlocked ? ' farm-plot--locked' : ''}`}
+      onClick={() => dispatch({ type: 'SELECT_PLOT', id: plot.id })}
     >
-      {/* Stone border frame */}
-      <div className="plot-stone-frame">
+      {/* Outer stone frame */}
+      <div className="plot-frame">
         {/* Corner posts */}
-        <div className="plot-post plot-post--tl" />
-        <div className="plot-post plot-post--tr" />
-        <div className="plot-post plot-post--bl" />
-        <div className="plot-post plot-post--br" />
+        <span className="plot-post tl" /><span className="plot-post tr" />
+        <span className="plot-post bl" /><span className="plot-post br" />
 
-        {/* Soil area */}
-        <div className="plot-soil" style={soilStyle}>
+        {/* Soil */}
+        <div className="plot-soil" style={{ background: soilBg }}>
           {!plot.unlocked ? (
-            <div className="plot-lock">
-              <span className="lock-icon">🔒</span>
-              <span className="lock-cost">{plot.unlockCrystals}💎</span>
-            </div>
-          ) : plot.state === 'empty' ? (
-            <div className="plot-content plot-content--empty">
-              <span className="plot-name">{plot.name}</span>
-            </div>
+            <span className="plot-lock-icon">🔒</span>
           ) : plot.state === 'growing' ? (
-            <div className="plot-content">
-              <span className="plot-crop-icon growing-anim">🌾</span>
+            <div className="plot-crop-wrap">
+              <span className="plot-crop sway">🌾</span>
               <span className="plot-timer">{formatCountdown(remaining)}</span>
             </div>
-          ) : (
-            <div className="plot-content ready-anim">
-              <span className="plot-crop-icon">✨</span>
-              <span className="plot-ready-text">收成！</span>
+          ) : plot.state === 'ready' ? (
+            <div className="plot-crop-wrap ready-bounce">
+              <span className="plot-crop">✨</span>
+              <span className="plot-ready-badge">收成！</span>
             </div>
+          ) : (
+            /* empty soil – no text */
+            null
           )}
         </div>
       </div>
