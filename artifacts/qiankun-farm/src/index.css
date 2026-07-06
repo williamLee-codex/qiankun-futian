@@ -24,31 +24,38 @@ body {
   overflow: hidden;
 }
 
-/* ── Viewport wrapper: 固定全螢幕，不參與 layout ── */
-.gw {
+/* ══════════════════════════════════════════════════════════
+   VIEWPORT — 全螢幕外層，僅負責置中，不縮放
+   使用 flex + align-items:flex-start，讓 game-shell 從頂部展開
+   只允許黑邊出現在外層，不允許裁切內容
+══════════════════════════════════════════════════════════ */
+.game-viewport {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100dvh;
   overflow: hidden;
   background: #050505;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 /* ══════════════════════════════════════════════════════════
-   GAME CANVAS — 390×844 唯一設計稿容器
-   • 所有 UI 都在此 390×844 坐標系內（absolute 定位）
-   • transform: translateX(-50%) scale(s) 置中並縮放
-   • transform-origin: top center → 從頂部展開，不留上方黑邊
-   • --gc-scale 由 App.tsx useScaleViewport() 動態計算
+   GAME SHELL — 390×844 唯一設計稿容器
+   • 所有 UI 都在此座標系內（position:relative 子元素）
+   • 只允許一次 scale，transform-origin: top center
+   • --game-scale 由 App.tsx 動態計算
+   • 不使用 translateX / 多層縮放 / width:100vw / zoom
 ══════════════════════════════════════════════════════════ */
-.gc {
-  position: absolute;
-  top: 0;
-  left: 50%;
+.game-shell {
+  position: relative;
   width: 390px;
   height: 844px;
-  transform: translateX(-50%) scale(var(--gc-scale, 1));
-  transform-origin: top center;
-  background: #06070d;
   overflow: hidden;
+  flex-shrink: 0;
+  transform: scale(var(--game-scale, 1));
+  transform-origin: top center;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -112,16 +119,17 @@ body {
   text-align: center;
 }
 
-/* 底圖：填滿 390×844 設計稿，object-fit:cover
-   pointer-events:none → 所有點擊穿透到 hotspot-layer
-   z-index:0 → 最底層，所有 overlay 在其上 */
+/* 底圖：精確填滿 390×844 設計稿
+   • object-fit:fill → 拉伸至精確 390×844，不裁切，不留黑邊
+   • position:absolute; inset:0 → 與 game-shell 完全重疊
+   • pointer-events:none → 點擊穿透到上層 hotspot-layer
+   • z-index:0 → 最底層 */
 .gc-bg {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
+  width: 390px;
+  height: 844px;
+  object-fit: fill;
   pointer-events: none;
   z-index: 0;
   display: block;
