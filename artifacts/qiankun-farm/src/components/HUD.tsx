@@ -1,10 +1,12 @@
 import { useGame } from '../game/GameContext';
 
 /**
- * HUD – overlays numbers on top of the artwork's drawn HUD frames.
- * No boxes/borders are drawn here – the background image provides those.
- * The 4 value spans are absolutely positioned to match the image's
- * dark display strips inside each frame.
+ * HUD – four slot-divs overlaid on the artwork's HUD frames.
+ * Each slot is absolutely positioned to match its image frame,
+ * with flex centering so the value sits in the middle of the
+ * dark display strip regardless of font size.
+ *
+ * Positions to adjust: .hud-slot-N left/width in index.css.
  */
 export default function HUD() {
   const { state, dispatch } = useGame();
@@ -12,13 +14,23 @@ export default function HUD() {
   return (
     <div className="hud-layer" aria-label="HUD">
 
-      {/* ── 4 value number overlays ── */}
-      <span className="hv hv-0">{state.coins}</span>
-      <span className="hv hv-1">{state.crystals}</span>
-      <span className="hv hv-2">{state.totalDeposit}</span>
-      <span className="hv hv-3">{state.weather}</span>
+      <div className="hud-slot hud-slot-0">
+        <span className="hud-val">{state.coins}</span>
+      </div>
 
-      {/* ── Transparent hotspot over the 天道律法 button in the image ── */}
+      <div className="hud-slot hud-slot-1">
+        <span className="hud-val">{state.crystals}</span>
+      </div>
+
+      <div className="hud-slot hud-slot-2">
+        <span className="hud-val">{state.totalDeposit}</span>
+      </div>
+
+      <div className="hud-slot hud-slot-3">
+        <span className="hud-val">{state.weather}</span>
+      </div>
+
+      {/* Transparent hotspot over the law book button */}
       <button
         className="law-hot"
         onClick={() => dispatch({ type: 'OPEN_PANEL', panel: 'law' })}

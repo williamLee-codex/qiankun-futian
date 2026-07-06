@@ -13,9 +13,9 @@ function fmt(ms: number) {
 }
 
 /**
- * FarmPlot – a TRANSPARENT interactive hotspot overlaid on the artwork.
- * No colour fills, no fake soil, no SVG drawing.
- * Only: gold ring on select, lock icon if locked, crop+timer if growing.
+ * FarmPlot – transparent hotspot only.
+ * No visual frame on selection. Feedback = info panel appearing.
+ * Click feedback = brief :active highlight via CSS, no permanent border.
  */
 export default function FarmPlot({ plot, pos }: Props) {
   const { state, dispatch } = useGame();
@@ -34,17 +34,17 @@ export default function FarmPlot({ plot, pos }: Props) {
 
   return (
     <button
-      className={`ph${selected ? ' ph--sel' : ''}${!plot.unlocked ? ' ph--locked' : ''}`}
+      className={`ph${selected ? ' ph--sel' : ''}`}
       style={pos}
       onClick={() => dispatch({ type: 'SELECT_PLOT', id: plot.id })}
       aria-label={plot.name}
     >
-      {/* Lock icon – only for locked plots */}
+      {/* Lock icon – locked plots only */}
       {!plot.unlocked && (
         <span className="ph-lock">🔒</span>
       )}
 
-      {/* Growing state – crop + countdown */}
+      {/* Growing */}
       {plot.unlocked && plot.state === 'growing' && (
         <span className="ph-state">
           <span className="ph-crop ph-crop--sway">🌾</span>
@@ -52,7 +52,7 @@ export default function FarmPlot({ plot, pos }: Props) {
         </span>
       )}
 
-      {/* Ready state – sparkle prompt */}
+      {/* Ready */}
       {plot.unlocked && plot.state === 'ready' && (
         <span className="ph-state">
           <span className="ph-crop ph-crop--bounce">✨</span>
