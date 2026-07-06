@@ -1,0 +1,1 @@
+- [SVG soil tile architecture](svg-soil-tile.md) — plots must use inline SVG (not CSS gradients) to look like game assets; SVG fills require url(#id) gradients, not CSS gradient strings.

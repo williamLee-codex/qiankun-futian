@@ -1,4 +1,4 @@
-import bgImage from '@assets/file_00000000a6ec72098c772094f2ee675f_1783304767762.png';
+import bgImage from '@assets/file_00000000a6ec72098c772094f2ee675f_1783305419891.png';
 import { useGame } from '../game/GameContext';
 import FarmPlot from './FarmPlot';
 
