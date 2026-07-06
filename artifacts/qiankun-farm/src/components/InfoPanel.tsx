@@ -7,10 +7,13 @@ export default function InfoPanel() {
     ? state.plots.find(p => p.id === state.selectedPlotId)
     : null;
 
+  const stopProp = (e: React.MouseEvent) => e.stopPropagation();
+
   /* ── Locked plot ── */
   if (plot && !plot.unlocked) {
+    const pct = Math.min(100, (state.totalDeposit / (plot.unlockCrystals ?? 1)) * 100);
     return (
-      <div className="info-panel info-panel--visible info-panel--locked">
+      <div className="info-panel info-panel--visible info-panel--locked" onClick={stopProp}>
         <div className="locked-header">
           <span className="locked-icon">🔒</span>
           <div>
@@ -28,33 +31,21 @@ export default function InfoPanel() {
             <span className="lr-val">{state.totalDeposit} 💎</span>
           </div>
           <div className="locked-progress">
-            <div
-              className="locked-fill"
-              style={{ width: `${Math.min(100, (state.totalDeposit / (plot.unlockCrystals ?? 1)) * 100)}%` }}
-            />
+            <div className="locked-fill" style={{ width: `${pct}%` }} />
           </div>
         </div>
-        <button
-          className="test-deposit-btn"
-          onClick={() => dispatch({ type: 'TEST_DEPOSIT' })}
-        >＋ 測試儲值 +100</button>
+        <div className="ip-side-btns">
+          <button className="test-deposit-btn" onClick={() => dispatch({ type: 'TEST_DEPOSIT' })}>＋ 測試儲值 +100</button>
+          <button className="ip-cancel-btn" onClick={() => dispatch({ type: 'DESELECT_PLOT' })}>✕ 關閉</button>
+        </div>
       </div>
     );
   }
 
-  /* ── Active (unlocked) plot ── */
+  /* ── Unlocked plot ── */
   if (plot && plot.unlocked) {
-    function handlePlant() {
-      if (plot?.state !== 'empty') return;
-      dispatch({ type: 'PLANT', plotId: plot.id, quantity: state.plantQuantity });
-    }
-    function handleHarvest() {
-      if (plot?.state !== 'ready') return;
-      dispatch({ type: 'HARVEST', plotId: plot.id });
-    }
-
     return (
-      <div className="info-panel info-panel--visible info-panel--active">
+      <div className="info-panel info-panel--visible info-panel--active" onClick={stopProp}>
         <div className="ip-title-row">
           <span className="ip-plot-name">{plot.name}</span>
           <span className="ip-seed-name">曜金種子</span>
@@ -87,7 +78,7 @@ export default function InfoPanel() {
 
         <div className="ip-actions">
           {plot.state === 'empty' && (
-            <button className="ip-btn ip-btn--plant" onClick={handlePlant}
+            <button className="ip-btn ip-btn--plant" onClick={() => dispatch({ type: 'PLANT', plotId: plot.id, quantity: state.plantQuantity })}
               disabled={state.warehouseSeeds < state.plantQuantity}>
               播種
             </button>
@@ -96,13 +87,13 @@ export default function InfoPanel() {
             <button className="ip-btn ip-btn--growing" disabled>生長中…</button>
           )}
           {plot.state === 'ready' && (
-            <button className="ip-btn ip-btn--harvest" onClick={handleHarvest}>✨ 收成</button>
+            <button className="ip-btn ip-btn--harvest" onClick={() => dispatch({ type: 'HARVEST', plotId: plot.id })}>✨ 收成</button>
           )}
+          <button className="ip-cancel-btn" onClick={() => dispatch({ type: 'DESELECT_PLOT' })}>✕</button>
         </div>
       </div>
     );
   }
 
-  /* ── Idle: no plot selected – panel hidden ── */
   return <div className="info-panel info-panel--hidden" />;
 }

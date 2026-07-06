@@ -1,36 +1,35 @@
 import { useGame } from '../game/GameContext';
 
 /**
- * HUD – four slot-divs overlaid on the artwork's HUD frames.
- * Each slot is absolutely positioned to match its image frame,
- * with flex centering so the value sits in the middle of the
- * dark display strip regardless of font size.
+ * HUD overlay – four item-divs cover each frame in the artwork.
+ * Each item aligns content to the bottom (where the dark value strip is).
+ * A semi-transparent .hud-valbox ensures readability regardless of exact
+ * image alignment.
  *
- * Positions to adjust: .hud-slot-N left/width in index.css.
+ * To adjust positions: change .hud-item-N left/width in index.css.
+ * To adjust vertical position: change .hud-item top/height.
  */
 export default function HUD() {
   const { state, dispatch } = useGame();
 
+  const slots = [
+    { cls: 'hud-item-0', val: String(state.coins)        },
+    { cls: 'hud-item-1', val: String(state.crystals)     },
+    { cls: 'hud-item-2', val: String(state.totalDeposit) },
+    { cls: 'hud-item-3', val: state.weather              },
+  ];
+
   return (
     <div className="hud-layer" aria-label="HUD">
+      {slots.map(({ cls, val }) => (
+        <div key={cls} className={`hud-item ${cls}`}>
+          <div className="hud-valbox">
+            <span className="hud-val">{val}</span>
+          </div>
+        </div>
+      ))}
 
-      <div className="hud-slot hud-slot-0">
-        <span className="hud-val">{state.coins}</span>
-      </div>
-
-      <div className="hud-slot hud-slot-1">
-        <span className="hud-val">{state.crystals}</span>
-      </div>
-
-      <div className="hud-slot hud-slot-2">
-        <span className="hud-val">{state.totalDeposit}</span>
-      </div>
-
-      <div className="hud-slot hud-slot-3">
-        <span className="hud-val">{state.weather}</span>
-      </div>
-
-      {/* Transparent hotspot over the law book button */}
+      {/* Transparent clickable overlay over the law book button */}
       <button
         className="law-hot"
         onClick={() => dispatch({ type: 'OPEN_PANEL', panel: 'law' })}

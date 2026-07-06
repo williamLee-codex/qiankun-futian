@@ -4,6 +4,7 @@ import { initialState } from './initialState';
 
 type Action =
   | { type: 'SELECT_PLOT'; id: number }
+  | { type: 'DESELECT_PLOT' }
   | { type: 'SET_PLANT_QUANTITY'; qty: number }
   | { type: 'PLANT'; plotId: number; quantity: number }
   | { type: 'HARVEST'; plotId: number }
@@ -25,6 +26,9 @@ function reducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'SELECT_PLOT': {
       return { ...state, selectedPlotId: action.id, plantQuantity: 1, openPanel: null };
+    }
+    case 'DESELECT_PLOT': {
+      return { ...state, selectedPlotId: null };
     }
     case 'SET_PLANT_QUANTITY':
       return { ...state, plantQuantity: Math.max(1, Math.min(20, action.qty)) };

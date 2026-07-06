@@ -15,14 +15,19 @@ export default function BottomMenu() {
   const { state, dispatch } = useGame();
 
   return (
-    <nav className="bottom-menu">
+    <nav className="bottom-menu" onClick={e => e.stopPropagation()}>
       {MENU_ITEMS.map(item => (
         <button
           key={item.label}
           className={`bottom-menu-item ${state.openPanel === item.panel && item.panel !== null ? 'bottom-menu-item--active' : ''}`}
           onClick={() => {
-            if (item.panel === null) dispatch({ type: 'CLOSE_PANEL' });
-            else dispatch({ type: 'OPEN_PANEL', panel: item.panel });
+            if (item.panel === null) {
+              /* 福田首頁: close all panels AND clear plot selection */
+              dispatch({ type: 'CLOSE_PANEL' });
+              dispatch({ type: 'DESELECT_PLOT' });
+            } else {
+              dispatch({ type: 'OPEN_PANEL', panel: item.panel });
+            }
           }}
         >
           <span className="menu-emoji">{item.emoji}</span>

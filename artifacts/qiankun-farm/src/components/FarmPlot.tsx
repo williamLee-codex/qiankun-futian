@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGame } from '../game/GameContext';
 import type { Plot } from '../game/types';
 
-interface Pos {
-  left: string; top: string; width: string; height: string;
-}
+interface Pos { left: string; top: string; width: string; height: string; }
 interface Props { plot: Plot; pos: Pos; }
 
 function fmt(ms: number) {
@@ -12,11 +10,6 @@ function fmt(ms: number) {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
-/**
- * FarmPlot – transparent hotspot only.
- * No visual frame on selection. Feedback = info panel appearing.
- * Click feedback = brief :active highlight via CSS, no permanent border.
- */
 export default function FarmPlot({ plot, pos }: Props) {
   const { state, dispatch } = useGame();
   const [now, setNow] = useState(Date.now());
@@ -36,15 +29,14 @@ export default function FarmPlot({ plot, pos }: Props) {
     <button
       className={`ph${selected ? ' ph--sel' : ''}`}
       style={pos}
-      onClick={() => dispatch({ type: 'SELECT_PLOT', id: plot.id })}
+      onClick={e => {
+        e.stopPropagation(); /* prevent bubbling to gc background */
+        dispatch({ type: 'SELECT_PLOT', id: plot.id });
+      }}
       aria-label={plot.name}
     >
-      {/* Lock icon – locked plots only */}
-      {!plot.unlocked && (
-        <span className="ph-lock">🔒</span>
-      )}
+      {!plot.unlocked && <span className="ph-lock">🔒</span>}
 
-      {/* Growing */}
       {plot.unlocked && plot.state === 'growing' && (
         <span className="ph-state">
           <span className="ph-crop ph-crop--sway">🌾</span>
@@ -52,7 +44,6 @@ export default function FarmPlot({ plot, pos }: Props) {
         </span>
       )}
 
-      {/* Ready */}
       {plot.unlocked && plot.state === 'ready' && (
         <span className="ph-state">
           <span className="ph-crop ph-crop--bounce">✨</span>
