@@ -139,8 +139,8 @@ body {
 
 /* ══════════════════════════════════════════════════════════
    RESOURCE HUD — 頂部四格資源 Overlay
-   底圖提供框線與 icon；系統只疊加 Value + Label 文字。
-   Grid 精確四等分，每格 34px icon 佔位 + 1fr 文字區。
+   底圖只提供外框；icon / 數字 / 名稱全部由系統生成。
+   四欄 grid，每欄內 flex：[icon] [value\nlabel]
    高度 58px（對齊底圖資源框，可微調 52–62px）。
 ══════════════════════════════════════════════════════════ */
 .resource-hud {
@@ -156,25 +156,34 @@ body {
   background: transparent;
 }
 
-/* 每格：34px icon 佔位 | auto 文字區（緊貼 icon）| 1fr 剩餘空間 */
+/* 每格：flex，icon 靠左，文字緊靠 icon 右側 */
 .resource-cell {
-  display: grid;
-  grid-template-columns: 34px auto 1fr;
+  display: flex;
   align-items: center;
+  justify-content: flex-start;
+  padding-left: 10px;
+  gap: 4px;
   height: 100%;
-  padding: 0 6px;
+  overflow: hidden;
 }
 
-/* 文字區：grid 第 2 欄，靠左對齊緊貼 icon 右側 */
+/* 系統生成 icon（emoji），固定 22×22 佔位 */
+.resource-icon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  font-size: 18px;
+  line-height: 22px;
+  text-align: center;
+}
+
+/* 文字區：flex-column，靠左對齊 */
 .resource-text {
-  grid-column: 2;
-  justify-self: start;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
   line-height: 1;
-  margin-left: 2px;
   overflow: hidden;
 }
 
@@ -186,6 +195,7 @@ body {
   color: #fff7d0;
   text-shadow: 0 1px 2px #000;
   white-space: nowrap;
+  line-height: 1.1;
 }
 
 /* Label：10px，金色，標楷體 */
