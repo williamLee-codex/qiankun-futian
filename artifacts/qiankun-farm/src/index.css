@@ -140,61 +140,59 @@ body {
 /* ══════════════════════════════════════════════════════════
    RESOURCE HUD — 頂部四格資源 Overlay
    底圖提供框線與 icon；系統只疊加 Value + Label 文字。
-   Grid 精確四等分，每格再分 38% icon 留白 | 62% 文字區。
-   高度 52px（對齊底圖資源框，如偏差可微調至 48–56px）。
+   Grid 精確四等分，每格 34px icon 佔位 + 1fr 文字區。
+   高度 58px（對齊底圖資源框，可微調 52–62px）。
 ══════════════════════════════════════════════════════════ */
 .resource-hud {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 52px;
+  height: 58px;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   z-index: 30;
-  pointer-events: auto;
+  pointer-events: none;
   background: transparent;
 }
 
-/* 每格：38% 留給底圖 icon，62% 放文字 */
+/* 每格：固定 34px icon 佔位 + 1fr 文字區，左右 padding 8px */
 .resource-cell {
-  position: relative;
   display: grid;
-  grid-template-columns: 38% 62%;
+  grid-template-columns: 34px 1fr;
   align-items: center;
   height: 100%;
+  padding: 0 8px;
 }
 
-/* 文字區：在 grid 第 2 欄，縱向置中 */
+/* 文字區：flex-column，value + label 縱向置中 */
 .resource-text {
-  grid-column: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
-  gap: 1px;
+  line-height: 1;
+  transform: translateY(0);
   overflow: hidden;
 }
 
-/* Value：粗體白色，17px 標楷體 */
-.resource-val {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
-  font-size: 17px;
-  line-height: 1.05;
+/* Value：18px 粗體，標楷體 */
+.resource-value {
+  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif !important;
+  font-size: 18px;
   font-weight: 700;
-  color: #fff8d6;
-  text-shadow: 0 1px 3px #000;
+  color: #fff7d0;
+  text-shadow: 0 1px 2px #000;
   white-space: nowrap;
 }
 
-/* Label：細體金色，10px 標楷體 */
+/* Label：10px，金色，標楷體 */
 .resource-label {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif !important;
   font-size: 10px;
-  line-height: 1;
-  color: #d9bf72;
+  color: #d8b86a;
   text-shadow: 0 1px 2px #000;
+  margin-top: 2px;
   white-space: nowrap;
 }
 
