@@ -6,18 +6,19 @@ export const initialState: GameState = {
   totalDeposit: 0,
   weather: '晴',
   selectedPlotId: null,
-  plantQuantity: 1,
+  plantQuantity: 20,
   warehouseCrops: 0,
-  warehouseSeeds: 20,
+  warehouseSeeds: 50,
   farmerUnlocked: false,
   openPanel: null,
+  harvestAnimations: [],
   plots: [
-    { id: 0, name: '微芒凡土', unlocked: true, unlockCrystals: null, state: 'empty', plantCount: 0, growthEndTime: null },
-    { id: 1, name: '幽熒沃土', unlocked: true, unlockCrystals: null, state: 'empty', plantCount: 0, growthEndTime: null },
-    { id: 2, name: '朱砂烈土', unlocked: true, unlockCrystals: null, state: 'empty', plantCount: 0, growthEndTime: null },
-    { id: 3, name: '曜紫靈土', unlocked: false, unlockCrystals: 100, state: 'empty', plantCount: 0, growthEndTime: null },
-    { id: 4, name: '翡翠聖土', unlocked: false, unlockCrystals: 300, state: 'empty', plantCount: 0, growthEndTime: null },
-    { id: 5, name: '黑金晶土', unlocked: false, unlockCrystals: 600, state: 'empty', plantCount: 0, growthEndTime: null },
+    { id: 0, name: '微芒凡土', maxSeeds: 20, unlocked: true,  unlockCrystals: null, state: 'empty', plantCount: 0, growthEndTime: null },
+    { id: 1, name: '幽熒沃土', maxSeeds: 15, unlocked: true,  unlockCrystals: null, state: 'empty', plantCount: 0, growthEndTime: null },
+    { id: 2, name: '朱砂烈土', maxSeeds: 10, unlocked: true,  unlockCrystals: null, state: 'empty', plantCount: 0, growthEndTime: null },
+    { id: 3, name: '曜紫靈土', maxSeeds:  6, unlocked: false, unlockCrystals: 100,  state: 'empty', plantCount: 0, growthEndTime: null },
+    { id: 4, name: '翡翠聖土', maxSeeds:  4, unlocked: false, unlockCrystals: 300,  state: 'empty', plantCount: 0, growthEndTime: null },
+    { id: 5, name: '黑金晶土', maxSeeds:  2, unlocked: false, unlockCrystals: 600,  state: 'empty', plantCount: 0, growthEndTime: null },
   ],
   pets: [
     {
@@ -42,8 +43,8 @@ export const initialState: GameState = {
     },
   ],
   tasks: [
-    { id: 'login', name: '每日登入', done: true },
-    { id: 'plant', name: '完成一次播種', done: false },
+    { id: 'login',   name: '每日登入',   done: true  },
+    { id: 'plant',   name: '完成一次播種', done: false },
     { id: 'harvest', name: '完成一次收成', done: false },
   ],
 };

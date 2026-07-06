@@ -8,6 +8,7 @@ export interface Plot {
   state: PlotState;
   plantCount: number;
   growthEndTime: number | null;
+  maxSeeds: number;
 }
 
 export interface Pet {
@@ -31,6 +32,13 @@ export interface Task {
   done: boolean;
 }
 
+export interface HarvestAnim {
+  id: number;
+  plotIndex: number;
+  plantCount: number;
+  delay: number;
+}
+
 export interface GameState {
   coins: number;
   crystals: number;
@@ -45,4 +53,5 @@ export interface GameState {
   tasks: Task[];
   openPanel: 'warehouse' | 'seeds' | 'pets' | 'farmer' | 'tasks' | 'market' | 'law' | 'warehouseBuilding' | 'shopBuilding' | null;
   farmerUnlocked: boolean;
+  harvestAnimations: HarvestAnim[];
 }

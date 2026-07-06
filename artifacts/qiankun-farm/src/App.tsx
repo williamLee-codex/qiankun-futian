@@ -5,13 +5,13 @@ import FarmScene from './components/FarmScene';
 import InfoPanel from './components/InfoPanel';
 import BottomMenu from './components/BottomMenu';
 import PanelOverlay from './components/PanelOverlay';
+import HarvestAnimation from './components/HarvestAnimation';
 
 function Game() {
   const { dispatch } = useGame();
 
   return (
     <div className="gw">
-      {/* Clicking the canvas background (outside any hotspot) deselects the current plot */}
       <div
         className="gc"
         style={{ backgroundImage: `url(${bgImage})` }}
@@ -19,6 +19,7 @@ function Game() {
       >
         <HUD />
         <FarmScene />
+        <HarvestAnimation />
         <InfoPanel />
         <BottomMenu />
         <PanelOverlay />

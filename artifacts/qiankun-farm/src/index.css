@@ -274,7 +274,17 @@ body {
   pointer-events: auto;
 }
 
-/* Completely hidden (no plot selected) */
+/* Global action bar — always visible, no plot selected */
+.info-panel--global {
+  transform: translateY(0);
+  pointer-events: auto;
+  height: 9%;
+  gap: 3%;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Completely hidden (legacy) */
 .info-panel--hidden {
   height: 0;
   padding: 0;
@@ -436,7 +446,29 @@ body {
   background: rgba(0,0,0,.45);
 }
 
-.ip-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+/* ip-plot-meta: max seeds line */
+.ip-plot-meta { font-size: clamp(6px, 1.2vmin, 9px); color: #d8c28a; margin-top: 2px; }
+
+/* ready-state value highlight */
+.ip-stat-val--ready { color: #ffd76a; animation: harvest-glow .9s ease-in-out infinite alternate; }
+
+/* ip-hint (global bar) */
+.ip-hint { font-size: clamp(8px, 1.6vmin, 11px); color: #d8c28a; white-space: nowrap; flex-shrink: 0; }
+
+/* Max btn inside qty row */
+.qty-btn--max {
+  background: rgba(180,130,20,.35) !important;
+  color: #ffd76a !important;
+  font-size: clamp(9px, 1.7vmin, 12px) !important;
+  padding: 1px 5px !important;
+  border-left: 1px solid rgba(180,130,20,.5) !important;
+  font-weight: 700;
+}
+.qty-btn--max:hover { background: rgba(200,150,20,.55) !important; }
+
+.ip-actions { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+/* Horizontal row variant for global bar */
+.ip-actions--row { flex-direction: row; gap: 3%; }
 
 .ip-btn {
   font-family: inherit;
@@ -471,6 +503,64 @@ body {
   from { box-shadow: 0 0 4px rgba(220,180,40,.25), inset 0 1px 0 rgba(220,180,40,.2); }
   to   { box-shadow: 0 0 16px rgba(220,180,40,.75), inset 0 1px 0 rgba(220,180,40,.2); }
 }
+/* ── One-click plant ── */
+.ip-btn--plant-all {
+  background: linear-gradient(180deg, #0a1e08, #061204);
+  border: 1px solid #2a6020;
+  color: #60d050;
+  font-size: clamp(8px, 1.7vmin, 12px) !important;
+}
+.ip-btn--plant-all:hover:not(:disabled) {
+  background: linear-gradient(180deg, #122a10, #0a1e08);
+  border-color: #48901c;
+  box-shadow: 0 0 8px rgba(70,180,50,.45);
+}
+
+/* ── One-click harvest ── */
+.ip-btn--harvest-all {
+  background: linear-gradient(180deg, #1e1402, #120e02);
+  border: 1px solid #a07818;
+  color: #e0b830;
+  font-size: clamp(8px, 1.7vmin, 12px) !important;
+  animation: harvest-glow .9s ease-in-out infinite alternate;
+}
+.ip-btn--harvest-all:disabled { animation: none; }
+.ip-btn--harvest-all:hover:not(:disabled) {
+  background: linear-gradient(180deg, #261c04, #1a1202);
+  border-color: #c89828;
+  box-shadow: 0 0 10px rgba(220,180,40,.5);
+}
+
+/* ── VIP harvest+plant ── */
+.ip-btn--vip {
+  background: linear-gradient(180deg, #0a0a20, #060612);
+  border: 1px solid #6050b0;
+  color: #b090f0;
+  font-size: clamp(8px, 1.7vmin, 12px) !important;
+}
+.ip-btn--vip:hover:not(:disabled) {
+  background: linear-gradient(180deg, #14142c, #0a0a20);
+  border-color: #8070d0;
+  box-shadow: 0 0 10px rgba(140,100,220,.5);
+}
+.ip-btn--vip-locked {
+  background: linear-gradient(180deg, #0e0e0e, #080808);
+  border: 1px solid #404040;
+  color: #808080;
+}
+.ip-btn--vip-locked:hover {
+  background: linear-gradient(180deg, #141414, #0e0e0e);
+  border-color: #585858;
+  cursor: pointer;
+}
+
+/* ── Thin divider between single + global actions ── */
+.ip-btn-divider {
+  height: 1px;
+  background: rgba(180,140,40,.2);
+  margin: 1px 0;
+}
+
 .ip-btn--growing {
   background: linear-gradient(180deg, #161206, #0c0e04);
   border: 1px solid #5a5020;
@@ -719,3 +809,97 @@ body {
 }
 .complete-task-btn:hover { background: #102e10; }
 .complete-task-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ════════════════════════════════════════════
+   HARVEST ANIMATION
+════════════════════════════════════════════ */
+
+/* Warehouse glow ring — briefly appears at the 氣運倉庫 when crops arrive */
+.warehouse-glow-ring {
+  position: absolute;
+  left:   0%;
+  top:    15%;
+  width:  22%;
+  height: 50%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 499;
+  background: radial-gradient(ellipse at center,
+    rgba(255,220,60,.35) 0%,
+    rgba(220,180,40,.15) 40%,
+    transparent 70%
+  );
+  animation: warehouse-pulse 0.65s ease-out forwards;
+}
+
+@keyframes warehouse-pulse {
+  0%   { opacity: 0; transform: scale(0.7); }
+  30%  { opacity: 1; transform: scale(1.1); }
+  60%  { opacity: 0.85; transform: scale(1.0); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+
+/* ════════════════════════════════════════════
+   VIP PROMPT (one-click harvest+plant unlock)
+════════════════════════════════════════════ */
+.vip-prompt {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(2px);
+}
+
+.vip-prompt-box {
+  background: linear-gradient(155deg, #141828, #0c1020);
+  border: 1px solid #6050b0;
+  border-radius: 8px;
+  padding: 6% 7%;
+  max-width: 80%;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,.9),
+    0 0 20px rgba(120,80,220,.25),
+    inset 0 1px 0 rgba(160,120,255,.2);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 3%;
+}
+
+.vip-prompt-msg {
+  font-size: clamp(10px, 2vmin, 14px);
+  color: #f7e6b0;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.vip-prompt-progress {
+  font-size: clamp(9px, 1.7vmin, 12px);
+  color: #b090f0;
+  font-weight: 700;
+  margin: 0;
+}
+
+.vip-prompt-close {
+  font-family: inherit;
+  font-size: clamp(10px, 1.9vmin, 13px);
+  background: linear-gradient(180deg, #2a1e50, #1a1230);
+  border: 1px solid #7060c0;
+  color: #c0a0f0;
+  padding: 3% 10%;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 3%;
+  transition: background .2s, border-color .2s;
+}
+.vip-prompt-close:hover {
+  background: linear-gradient(180deg, #3c2870, #2a1e50);
+  border-color: #9070d8;
+}
+
+/* farmer locked desc was too dark — brighten it */
+.farmer-lock-desc  { color: #d8c28a !important; }
+.farmer-progress-text { color: #d8c28a !important; }
