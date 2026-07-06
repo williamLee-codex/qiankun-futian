@@ -1,27 +1,24 @@
 /**
- * HarvestAnimation Component — Game Scene Layer 3
- *
- * Flying crop animations: plot → 氣運倉庫.
- * All coordinates are % of the 9:16 gc canvas.
- * Calibrated to the new background image (941×1672).
+ * HarvestAnimation — Game Scene Layer 3
+ * All coordinates are % of the gc canvas (1023×1537 image, ≈ 2:3).
+ * PLOT_CENTERS = left + width/2, top + height/2 per PLOT_POS.
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useGame } from '../game/GameContext';
 import type { HarvestAnim } from '../game/types';
 
-/* Plot centers (% of 9:16 canvas). center = left + width/2, top + height/2 */
 const PLOT_CENTERS: { x: number; y: number }[] = [
-  { x: 8    + 24   / 2, y: 44 + 13 / 2 },  // 微芒凡土
-  { x: 34.5 + 27   / 2, y: 44 + 13 / 2 },  // 幽熒沃土
-  { x: 64   + 28   / 2, y: 44 + 13 / 2 },  // 朱砂烈土
-  { x: 5    + 28   / 2, y: 58 + 14 / 2 },  // 曜紫靈土
-  { x: 36   + 25   / 2, y: 58 + 14 / 2 },  // 翡翠聖土
-  { x: 64   + 31   / 2, y: 58 + 14 / 2 },  // 黑金晶土
+  { x: 4  + 28/2, y: 41 + 13/2 },  // 微芒凡土  → (18, 47.5)
+  { x: 35 + 28/2, y: 41 + 13/2 },  // 幽熒沃土  → (49, 47.5)
+  { x: 66 + 28/2, y: 41 + 13/2 },  // 朱砂烈土  → (80, 47.5)
+  { x: 3  + 30/2, y: 55 + 15/2 },  // 曜紫靈土  → (18, 62.5)
+  { x: 35 + 29/2, y: 55 + 15/2 },  // 翡翠聖土  → (49.5, 62.5)
+  { x: 66 + 30/2, y: 55 + 15/2 },  // 黑金晶土  → (81, 62.5)
 ];
 
-/* Target: center of 氣運倉庫 on the left (% of 9:16 canvas) */
-const WAREHOUSE = { x: 11.5, y: 27 };
-const ANIM_DURATION = 750;
+/* Target: center of 氣運倉庫 building on the left */
+const WAREHOUSE = { x: 13, y: 22 };
+const ANIM_DURATION = 500;
 
 export default function HarvestAnimation() {
   const { state, dispatch } = useGame();
@@ -49,10 +46,8 @@ export default function HarvestAnimation() {
           <FlyingCrop
             key={anim.id}
             anim={anim}
-            startX={start.x}
-            startY={start.y}
-            endX={WAREHOUSE.x}
-            endY={WAREHOUSE.y}
+            startX={start.x} startY={start.y}
+            endX={WAREHOUSE.x} endY={WAREHOUSE.y}
             onDone={handleDone}
           />
         );
@@ -64,7 +59,7 @@ export default function HarvestAnimation() {
 interface FlyingCropProps {
   anim: HarvestAnim;
   startX: number; startY: number;
-  endX: number;   endY: number;
+  endX: number; endY: number;
   onDone: (id: number) => void;
 }
 
@@ -83,17 +78,17 @@ function FlyingCrop({ anim, startX, startY, endX, endY, onDone }: FlyingCropProp
       const elapsed = ts - t0 - anim.delay;
       if (elapsed < 0) { el.style.opacity = '0'; raf = requestAnimationFrame(tick); return; }
       const p = Math.min(elapsed / ANIM_DURATION, 1);
-      const e = 1 - (1 - p) * (1 - p); // ease-out quadratic
+      const e = 1 - (1 - p) * (1 - p);
       const cx = startX + (endX - startX) * e;
-      const arcH = Math.abs(startY - endY) * 0.6 + 15;
+      const arcH = Math.abs(startY - endY) * 0.5 + 10;
       const arcY = arcH * 4 * p * (1 - p);
       const cy = startY + (endY - startY) * e - arcY;
-      const scale   = 1.2 - p * 0.9;
+      const scale = 1.2 - p * 0.9;
       const opacity = p < 0.75 ? 1 : 1 - (p - 0.75) / 0.25;
-      el.style.left      = `${cx}%`;
-      el.style.top       = `${cy}%`;
+      el.style.left = `${cx}%`;
+      el.style.top = `${cy}%`;
       el.style.transform = `translate(-50%,-50%) scale(${scale})`;
-      el.style.opacity   = String(opacity);
+      el.style.opacity = String(opacity);
       if (p < 1) {
         raf = requestAnimationFrame(tick);
       } else if (!fired.current) {
@@ -114,7 +109,7 @@ function FlyingCrop({ anim, startX, startY, endX, endY, onDone }: FlyingCropProp
         left: `${startX}%`, top: `${startY}%`,
         transform: 'translate(-50%,-50%)',
         opacity: 0,
-        fontSize: 'clamp(18px, 3.5vmin, 28px)',
+        fontSize: 'clamp(16px, 4vmin, 26px)',
         zIndex: 500,
         pointerEvents: 'none',
         userSelect: 'none',

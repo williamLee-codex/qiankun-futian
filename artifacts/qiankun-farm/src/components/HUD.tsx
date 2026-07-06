@@ -1,9 +1,10 @@
 /**
  * HUD Component — Game Scene Layer 1
  *
- * Overlaid on the black strip reserved at the top of the background image.
- * Uses flex layout (no absolute positioning for individual values).
- * All values rendered dynamically by React — the image provides no numbers.
+ * Overlaid on the black HUD strip reserved at the top of the background image.
+ * Flex layout — NO absolute positioning of individual values.
+ * No background. No box. Text directly on the strip.
+ * Label: 16–18 px  |  Value: 32–40 px Bold
  */
 import { useGame } from '../game/GameContext';
 
