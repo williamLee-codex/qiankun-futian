@@ -1,3 +1,4 @@
+import bgImage from '@assets/file_00000000a6ec72098c772094f2ee675f_1783303369645.png';
 import { useGame } from '../game/GameContext';
 import FarmPlot from './FarmPlot';
 
@@ -5,49 +6,33 @@ export default function FarmScene() {
   const { state, dispatch } = useGame();
 
   return (
-    <div className="farm-scene">
-      {/* Sky & mountains background */}
-      <div className="scene-bg" />
+    <div className="farm-scene" style={{ backgroundImage: `url(${bgImage})` }}>
 
-      {/* Buildings row */}
-      <div className="buildings-row">
-        <button
-          className="building building--warehouse"
-          onClick={() => dispatch({ type: 'OPEN_PANEL', panel: 'warehouseBuilding' })}
-          title="氣運倉庫"
-        >
-          <span className="building-emoji">🏯</span>
-          <span className="building-label">氣運倉庫</span>
-        </button>
+      {/* Left building clickable overlay */}
+      <button
+        className="building-overlay building-overlay--left"
+        onClick={() => dispatch({ type: 'OPEN_PANEL', panel: 'warehouseBuilding' })}
+        title="氣運倉庫"
+      />
 
-        <div className="buildings-center" />
+      {/* Right building clickable overlay */}
+      <button
+        className="building-overlay building-overlay--right"
+        onClick={() => dispatch({ type: 'OPEN_PANEL', panel: 'shopBuilding' })}
+        title="天道商店"
+      />
 
-        <button
-          className="building building--shop"
-          onClick={() => dispatch({ type: 'OPEN_PANEL', panel: 'shopBuilding' })}
-          title="天道商店"
-        >
-          <span className="building-emoji">🏛</span>
-          <span className="building-label">天道商店</span>
-        </button>
+      {/* Farm grid overlay – lower portion of scene */}
+      <div className="farm-grid-overlay">
+        <div className="farm-grid">
+          {state.plots.map(plot => (
+            <FarmPlot key={plot.id} plot={plot} />
+          ))}
+        </div>
       </div>
 
-      {/* Farm grid 2×3 */}
-      <div className="farm-grid">
-        {state.plots.map(plot => (
-          <FarmPlot key={plot.id} plot={plot} />
-        ))}
-      </div>
-
-      {/* Test deposit button */}
-      <div className="test-row">
-        <button
-          className="test-deposit-btn"
-          onClick={() => dispatch({ type: 'TEST_DEPOSIT' })}
-        >
-          測試儲值 +100
-        </button>
-      </div>
+      {/* Title plaque */}
+      <div className="farm-title-plaque">乾　坤　福　田</div>
     </div>
   );
 }

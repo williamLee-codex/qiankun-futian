@@ -15,7 +15,7 @@ export default function BottomMenu() {
   const { state, dispatch } = useGame();
 
   return (
-    <div className="bottom-menu">
+    <nav className="bottom-menu">
       {MENU_ITEMS.map(item => (
         <button
           key={item.label}
@@ -29,6 +29,6 @@ export default function BottomMenu() {
           <span className="menu-label">{item.label}</span>
         </button>
       ))}
-    </div>
+    </nav>
   );
 }
