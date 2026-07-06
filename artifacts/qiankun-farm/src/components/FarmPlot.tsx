@@ -1,3 +1,12 @@
+/**
+ * FarmPlot — 農田點擊熱區 + 作物狀態顯示
+ *
+ * 不再負責渲染鎖頭（已移至 FarmScene.LOCK_POS 獨立渲染）。
+ * 只負責：
+ *   1. 點擊 → SELECT_PLOT
+ *   2. Growing 狀態：顯示作物 Icon + 倒計時
+ *   3. Ready 狀態：顯示收成 Icon + 文字
+ */
 import { useEffect, useState } from 'react';
 import { useGame } from '../game/GameContext';
 import type { Plot } from '../game/types';
@@ -30,12 +39,12 @@ export default function FarmPlot({ plot, pos }: Props) {
       className={`ph${selected ? ' ph--sel' : ''}`}
       style={pos as React.CSSProperties}
       onClick={e => {
-        e.stopPropagation(); /* prevent bubbling to gc background */
+        e.stopPropagation();
         dispatch({ type: 'SELECT_PLOT', id: plot.id });
       }}
       aria-label={plot.name}
     >
-      {!plot.unlocked && <span className="ph-lock">🔒</span>}
+      {/* 鎖頭由 FarmScene 統一渲染，此處不再顯示 */}
 
       {plot.unlocked && plot.state === 'growing' && (
         <span className="ph-state">

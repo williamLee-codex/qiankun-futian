@@ -52,70 +52,56 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════
-   HEADER — absolute 覆蓋在底圖頂部（不推動底圖）
-   Row 1 (60px): 數值統計列
-   Row 2 (50px): 留白（預留 Banner / 公告 / 限時活動）
-   總高 110px，z-index 100
+   HEADER — absolute Overlay，疊在底圖頂部黑金留白區
+   高度 90px，單列四格，z-index: 50
+   不推開底圖，不額外遮住風景
 ══════════════════════════════════════════════════════════ */
 .game-header {
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 110px;
-  background: linear-gradient(180deg, #050a04 0%, #0a1008 70%, rgba(10,16,8,0.92) 100%);
-  border-bottom: 1px solid rgba(80,120,30,.25);
+  height: 90px;
+  background: linear-gradient(180deg, rgba(5,10,4,0.96) 0%, rgba(8,14,6,0.94) 60%, rgba(10,16,8,0.80) 100%);
+  border-bottom: 1px solid rgba(80,120,30,.20);
   display: flex;
-  flex-direction: column;
-  z-index: 100;
-}
-
-/* Row 1 — 資源統計（60px） */
-.game-header-stats {
-  height: 60px;
-  display: flex;
+  flex-direction: row;
   align-items: stretch;
-  border-bottom: 1px solid rgba(60,100,20,.18);
+  z-index: 50;
 }
 
-/* Row 2 — 留白（50px） */
-.game-header-blank {
-  height: 50px;
-  /* 刻意留空 — 未來放置活動 Banner / 公告列 */
-}
-
-/* ── Header 統計格子：Icon / Label / Value ── */
+/* ── HUD 四格統計：Icon / Label / Value ── */
 .hud-cell {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
   padding: 0 2px;
   border-right: 1px solid rgba(80,120,30,.14);
 }
 .hud-cell:last-child { border-right: none; }
 
-/* Icon */
+/* Icon（天氣 emoji 等） */
 .hud-icon {
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
   flex-shrink: 0;
 }
 
-/* 名稱 Label：14px 標楷體 */
+/* 名稱 Label：12px 標楷體 */
 .hud-label {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 400;
   color: #9aaf68;
   line-height: 1;
   white-space: nowrap;
 }
 
-/* 數值 Value：22px Bold 白色 */
+/* 數值 Value：20px Bold 白色 */
 .hud-val {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: #ffffff;
   line-height: 1;
@@ -126,18 +112,19 @@ body {
   text-align: center;
 }
 
-/* 背景圖容器：1023:1537 ≈ 2:3，390px 寬 → 高度 586px
-   absolute 定位從 top:0 開始（與 .gc 共用左上角原點）
-   所有遊戲 Overlay（農田、Nav、InfoPanel、QuickActions）位於此層內 */
-.game-image-wrap {
+/* 底圖：填滿 390×844 設計稿，object-fit:cover
+   pointer-events:none → 所有點擊穿透到 hotspot-layer
+   z-index:0 → 最底層，所有 overlay 在其上 */
+.gc-bg {
   position: absolute;
-  top: 0; left: 0;
-  width: 390px;
-  height: 586px;
-  background-size: cover;
-  background-position: top center;
-  background-repeat: no-repeat;
-  overflow: hidden;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  pointer-events: none;
+  z-index: 0;
+  display: block;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -208,12 +195,17 @@ body {
 /* No persistent selection highlight — info panel is the only feedback */
 .ph--sel { background: transparent; }
 
-/* Lock icon */
-.ph-lock {
-  font-size: clamp(14px, 3.5vmin, 24px);
-  opacity: 0.7;
-  filter: drop-shadow(0 1px 4px rgba(0,0,0,.9));
+/* ── 農田鎖頭：由 FarmScene 獨立渲染，位置來自 LOCK_POS 座標表 ── */
+.plot-lock-icon {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  line-height: 1;
   pointer-events: none;
+  z-index: 15;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.95));
+  opacity: 0.88;
+  user-select: none;
 }
 
 /* Crop + timer wrapper */
@@ -547,6 +539,16 @@ body {
 }
 .qa-btn--locked .qa-btn-label { color: #a090c0; }
 .qa-btn--locked:hover { background: rgba(100,80,200,.08); }
+
+/* 快捷按鈕鎖頭：顯示在文字下方，置中 */
+.qa-btn-lock {
+  font-size: clamp(10px, 2vh, 16px);
+  line-height: 1;
+  display: block;
+  text-align: center;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,.8));
+}
 
 /* VIP prompt — fixed overlay covering the gc */
 .vip-prompt {

@@ -1,19 +1,19 @@
 /**
- * 乾坤福田 V2 — Game Scene Architecture
+ * 乾坤福田 V2 — 遊戲架構
  *
- * 設計稿：390 × 844 px（iPhone 14 標準）
+ * 設計稿：390 × 844 px（單一容器）
  *
- * 縮放規則：
- *   scale = min(vw / 390, vh / 844)
- *   .gc 使用 transform: translateX(-50%) scale(s)
- *   transform-origin: top center → 從頂部展開，不留上方黑邊
+ * 縮放：
+ *   scale = min(vw/390, vh/844)
+ *   transform: translateX(-50%) scale(s)
+ *   transform-origin: top center → 從頂部展開
  *
- * 層次結構（所有元件都在 390×844 坐標系內）：
- *   .gc (390×844, absolute, 唯一設計稿容器)
- *     .game-image-wrap (390×586, absolute top:0)  ← 底圖 + 所有遊戲 Overlay
- *       FarmScene / HarvestAnimation / InfoPanel / QuickActions / BottomMenu
- *     .game-header (absolute top:0, 110px, z:100)  ← 不透明覆蓋底圖頂部
- *     PanelOverlay (absolute inset:0, z:200)
+ * 層次（所有元件在同一個 390×844 坐標系）：
+ *   .gc-bg     (z:0)   — 底圖 <img object-fit:cover>，填滿 390×844
+ *   hotspot    (z:10)  — 建築 / 農田 Hotspot
+ *   overlay    (z:20)  — InfoPanel / QuickActions / BottomMenu
+ *   .game-header (z:50) — HUD，absolute 覆蓋底圖頂部黑金留白區
+ *   panel      (z:200) — 全畫布 Modal
  */
 import bgImage from '@assets/file_00000000a0cc72079e8a41dc508698fd_1783314944406.png';
 import { useEffect } from 'react';
@@ -50,23 +50,25 @@ function Game() {
 
   return (
     <div className="gc" onClick={() => dispatch({ type: 'DESELECT_PLOT' })}>
-      {/* ── 底圖 + 所有遊戲 Overlay（390×586，absolute top:0） ── */}
-      <div
-        className="game-image-wrap"
-        style={{ backgroundImage: `url(${bgImage})` }}
-      >
-        <FarmScene />
-        <HarvestAnimation />
-        <InfoPanel />
-        <QuickActions />
-        <BottomMenu />
-      </div>
 
-      {/* ── Header：不透明覆蓋底圖頂部，不推動底圖（absolute top:0, z:100） ── */}
+      {/* ── z:0  底圖：填滿 390×844，object-fit:cover ── */}
+      <img className="gc-bg" src={bgImage} alt="" />
+
+      {/* ── z:10 農田 / 建築 Hotspot（不含鎖頭）── */}
+      <FarmScene />
+
+      {/* ── z:20 遊戲 Overlay ── */}
+      <HarvestAnimation />
+      <InfoPanel />
+      <QuickActions />
+      <BottomMenu />
+
+      {/* ── z:50 HUD：覆蓋底圖頂部黑金留白區 ── */}
       <GameHeader />
 
-      {/* ── 全畫布 Panel（倉庫 / 律法 / 種子 …，z:200） ── */}
+      {/* ── z:200 全畫布 Panel Modal ── */}
       <PanelOverlay />
+
     </div>
   );
 }

@@ -156,20 +156,23 @@ export default function QuickActions() {
 
       {/* 🌱 一鍵播種 */}
       <button className={plantClass()} onClick={handlePlant} aria-label="一鍵播種">
-        <span className="qa-btn-icon">{plantUnlocked ? '🌱' : '🔒'}</span>
-        <span className="qa-btn-label">{plantUnlocked ? '一鍵播種' : '一鍵播種'}</span>
+        {plantUnlocked
+          ? <><span className="qa-btn-icon">🌱</span><span className="qa-btn-label">一鍵播種</span></>
+          : <><span className="qa-btn-label">一鍵播種</span><span className="qa-btn-lock">🔒</span></>}
       </button>
 
       {/* 🌾 一鍵收成 */}
       <button className={harvestClass()} onClick={handleHarvest} aria-label="一鍵收成">
-        <span className="qa-btn-icon">{harvestUnlocked ? '🌾' : '🔒'}</span>
-        <span className="qa-btn-label">一鍵收成</span>
+        {harvestUnlocked
+          ? <><span className="qa-btn-icon">🌾</span><span className="qa-btn-label">一鍵收成</span></>
+          : <><span className="qa-btn-label">一鍵收成</span><span className="qa-btn-lock">🔒</span></>}
       </button>
 
       {/* 🔄 一鍵收播 / ✨ 智慧收播 */}
       <button className={rightClass()} onClick={handleRight} aria-label={rightLabel}>
-        <span className="qa-btn-icon">{rightIcon}</span>
-        <span className="qa-btn-label">{rightLabel}</span>
+        {harvestPlantUnlocked
+          ? <><span className="qa-btn-icon">{rightIcon}</span><span className="qa-btn-label">{rightLabel}</span></>
+          : <><span className="qa-btn-label">{rightLabel}</span><span className="qa-btn-lock">🔒</span></>}
       </button>
 
       {/* ── Locked unlock-info modal ── */}
