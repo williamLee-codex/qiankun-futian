@@ -84,41 +84,73 @@ body {
       rgba(195,155,32,.40) 0%, transparent 70%),
     radial-gradient(ellipse 22% 28% at calc(50% + 195px)  0%,
       rgba(195,155,32,.40) 0%, transparent 70%),
-    /* ── 整體深藍紫仙俠基調 ── */
-    linear-gradient(170deg, #020611 0%, #081326 40%, #12091f 80%, #0a0b1a 100%);
+    /* ── 整體深藍紫仙俠基調 + 強化藍紫靈氣球 ── */
+    radial-gradient(circle at 10% 35%, rgba(80, 90, 255, 0.32), transparent 22%),
+    radial-gradient(circle at 90% 65%, rgba(170, 80, 255, 0.30), transparent 24%),
+    linear-gradient(170deg, #05040d 0%, #0d1035 40%, #12091f 80%, #0a0b1a 100%);
 }
 
-/* ── 金色垂直裝飾邊（::before 左邊，::after 右邊）──
-   細線 + 光暈，緊貼遊戲畫布外側。
-   game-shell 有 transform（建立新 stacking context），
-   會自然渲染在偽元素之上，不需調整 z-index。        */
+/* ── 仙氣邊光：左右安全區完整填滿 ──────────────────────────
+   • 填滿整個安全區（從視口邊緣到遊戲畫布邊緣），而非細線
+   • 藍紫流光 + 星點粒子動畫（6s 緩慢漂浮）
+   • 右/左側各一條暗金色細邊線貼著遊戲畫布
+   • pointer-events: none，完全不影響點擊
+   • game-shell 有 transform → 自然在偽元素之上，不需調 z-index
+──────────────────────────────────────────────────────────── */
 .game-viewport::before,
 .game-viewport::after {
   content: '';
   position: absolute;
   top: 0;
-  height: 100%;
-  width: 2px;
+  bottom: 0;
+  /* 寬度 = 安全區（視口寬度-390px）/ 2 */
+  width: calc(50% - 195px);
   pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    transparent                     0%,
-    rgba(180, 140, 25, .25)         4%,
-    rgba(215, 175, 45, .80)        12%,
-    rgba(235, 195, 55, .95)        28%,
-    rgba(245, 205, 60, 1.00)       45%,
-    rgba(235, 195, 55, .95)        62%,
-    rgba(215, 175, 45, .80)        78%,
-    rgba(185, 145, 28, .35)        92%,
-    transparent                   100%
-  );
-  box-shadow:
-    0 0  6px rgba(210, 170, 38, .55),
-    0 0 16px rgba(185, 145, 28, .30),
-    0 0 32px rgba(160, 120, 20, .18);
+  z-index: 1;
+  opacity: 0.92;
+  background:
+    /* 藍紫流光（上下漂浮） */
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(100, 110, 255, 0.48) 25%,
+      rgba(150,  80, 255, 0.42) 55%,
+      rgba(80,  100, 255, 0.40) 80%,
+      transparent 100%
+    ),
+    /* 星點粒子（固定背景大小，隨位移閃爍） */
+    radial-gradient(circle, rgba(255, 225, 130, 0.90) 0px 1px, transparent 2px),
+    radial-gradient(circle, rgba(200, 200, 255, 0.70) 0px 1px, transparent 2px);
+  background-size:
+    100% 180%,   /* 流光：比容器高讓動畫有空間滾動 */
+    16px 28px,   /* 金星點 */
+    22px 40px;   /* 藍星點（錯開尺寸，避免棋盤感）*/
+  animation: sideAuraFlow 6s ease-in-out infinite alternate;
 }
-.game-viewport::before { left:  calc(50% - 195px - 2px); }
-.game-viewport::after  { right: calc(50% - 195px - 2px); }
+
+/* 左側安全區：右側緊貼遊戲畫布，加暗金細線 */
+.game-viewport::before {
+  left: 0;
+  border-right: 1px solid rgba(218, 169, 72, 0.60);
+}
+
+/* 右側安全區：左側緊貼遊戲畫布，加暗金細線；動畫錯相 3s */
+.game-viewport::after {
+  right: 0;
+  border-left: 1px solid rgba(218, 169, 72, 0.60);
+  animation-delay: -3s;
+}
+
+@keyframes sideAuraFlow {
+  from {
+    background-position: 0 0,   0 0,   0 0;
+    filter: brightness(1.00);
+  }
+  to {
+    background-position: 0 90px, 0 52px, 0 34px;
+    filter: brightness(1.40);
+  }
+}
 
 /* ══════════════════════════════════════════════════════════
    GAME SHELL — 390×844 唯一設計稿容器
