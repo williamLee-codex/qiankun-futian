@@ -1,16 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useGame } from '../game/GameContext';
 import type { Plot } from '../game/types';
-import SoilTile from './SoilTile';
 
-interface Props { plot: Plot; }
+interface Pos {
+  left: string; top: string; width: string; height: string;
+}
+interface Props { plot: Plot; pos: Pos; }
 
 function fmt(ms: number) {
   const s = Math.max(0, Math.ceil(ms / 1000));
-  return `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor(s%3600/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
-export default function FarmPlot({ plot }: Props) {
+/**
+ * FarmPlot – a TRANSPARENT interactive hotspot overlaid on the artwork.
+ * No colour fills, no fake soil, no SVG drawing.
+ * Only: gold ring on select, lock icon if locked, crop+timer if growing.
+ */
+export default function FarmPlot({ plot, pos }: Props) {
   const { state, dispatch } = useGame();
   const [now, setNow] = useState(Date.now());
 
@@ -26,38 +33,32 @@ export default function FarmPlot({ plot }: Props) {
   const remaining = plot.growthEndTime ? plot.growthEndTime - now : 0;
 
   return (
-    <div
-      className={`fp${selected ? ' fp--sel' : ''}${!plot.unlocked ? ' fp--locked' : ''}`}
+    <button
+      className={`ph${selected ? ' ph--sel' : ''}${!plot.unlocked ? ' ph--locked' : ''}`}
+      style={pos}
       onClick={() => dispatch({ type: 'SELECT_PLOT', id: plot.id })}
+      aria-label={plot.name}
     >
-      {/* ── Visual layer: SVG soil tile ── */}
-      <div className="fp-tile">
-        <SoilTile plotId={plot.id} locked={!plot.unlocked} />
-      </div>
-
-      {/* ── Selected glow ring ── */}
-      {selected && <div className="fp-glow" />}
-
-      {/* ── State overlays ── */}
+      {/* Lock icon – only for locked plots */}
       {!plot.unlocked && (
-        <div className="fp-overlay fp-overlay--lock">
-          <span className="fp-lock">🔒</span>
-        </div>
+        <span className="ph-lock">🔒</span>
       )}
 
+      {/* Growing state – crop + countdown */}
       {plot.unlocked && plot.state === 'growing' && (
-        <div className="fp-overlay fp-overlay--grow">
-          <span className="fp-crop fp-crop--sway">🌾</span>
-          <span className="fp-timer">{fmt(remaining)}</span>
-        </div>
+        <span className="ph-state">
+          <span className="ph-crop ph-crop--sway">🌾</span>
+          <span className="ph-timer">{fmt(remaining)}</span>
+        </span>
       )}
 
+      {/* Ready state – sparkle prompt */}
       {plot.unlocked && plot.state === 'ready' && (
-        <div className="fp-overlay fp-overlay--ready">
-          <span className="fp-crop fp-crop--bounce">✨</span>
-          <span className="fp-ready">收成！</span>
-        </div>
+        <span className="ph-state">
+          <span className="ph-crop ph-crop--bounce">✨</span>
+          <span className="ph-ready">收成！</span>
+        </span>
       )}
-    </div>
+    </button>
   );
 }

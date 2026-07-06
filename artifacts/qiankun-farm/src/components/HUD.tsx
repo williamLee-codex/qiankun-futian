@@ -1,48 +1,29 @@
 import { useGame } from '../game/GameContext';
 
+/**
+ * HUD – overlays numbers on top of the artwork's drawn HUD frames.
+ * No boxes/borders are drawn here – the background image provides those.
+ * The 4 value spans are absolutely positioned to match the image's
+ * dark display strips inside each frame.
+ */
 export default function HUD() {
   const { state, dispatch } = useGame();
 
   return (
-    <div className="hud-bar">
-      <div className="hud-stats">
-        <div className="hud-stat">
-          <div className="hud-stat-icon">🪙</div>
-          <div className="hud-stat-body">
-            <span className="hud-stat-label">金幣</span>
-            <span className="hud-stat-value">{state.coins}</span>
-          </div>
-        </div>
-        <div className="hud-stat">
-          <div className="hud-stat-icon hud-icon-crystal">💎</div>
-          <div className="hud-stat-body">
-            <span className="hud-stat-label">水晶</span>
-            <span className="hud-stat-value">{state.crystals}</span>
-          </div>
-        </div>
-        <div className="hud-stat">
-          <div className="hud-stat-icon">🎁</div>
-          <div className="hud-stat-body">
-            <span className="hud-stat-label">累積儲值</span>
-            <span className="hud-stat-value">{state.totalDeposit}</span>
-          </div>
-        </div>
-        <div className="hud-stat">
-          <div className="hud-stat-icon">☀️</div>
-          <div className="hud-stat-body">
-            <span className="hud-stat-label">天氣</span>
-            <span className="hud-stat-value">{state.weather}</span>
-          </div>
-        </div>
-      </div>
+    <div className="hud-layer" aria-label="HUD">
+
+      {/* ── 4 value number overlays ── */}
+      <span className="hv hv-0">{state.coins}</span>
+      <span className="hv hv-1">{state.crystals}</span>
+      <span className="hv hv-2">{state.totalDeposit}</span>
+      <span className="hv hv-3">{state.weather}</span>
+
+      {/* ── Transparent hotspot over the 天道律法 button in the image ── */}
       <button
-        className="law-btn"
+        className="law-hot"
         onClick={() => dispatch({ type: 'OPEN_PANEL', panel: 'law' })}
-        title="天道律法"
-      >
-        <span className="law-icon">📖</span>
-        <span className="law-label">天道律法</span>
-      </button>
+        aria-label="天道律法"
+      />
     </div>
   );
 }
