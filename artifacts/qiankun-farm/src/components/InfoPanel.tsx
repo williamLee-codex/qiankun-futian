@@ -37,15 +37,16 @@ export default function InfoPanel() {
           <div className="ip-locked-row">
             <span className="ip-locked-icon">🔒</span>
             <div className="ip-locked-info">
-              <span className="ip-name">{plot.name}</span>
-              <span className="ip-locked-sub">解鎖費用：{plot.unlockCoins} 🪙 金幣</span>
+              <span className="ip-name">{plot.name}｜尚未解鎖</span>
+              <span className="ip-locked-sub">需要 <span className="ip-locked-sub--coins">{plot.unlockCoins} 🪙</span> 金幣解鎖</span>
+              <span className="ip-locked-sub">目前金幣：<span className="ip-locked-sub--coins">{state.coins}</span></span>
             </div>
             <button
               className={`ip-unlock-btn${canAfford ? '' : ' ip-unlock-btn--poor'}`}
               disabled={!canAfford}
               onClick={() => dispatch({ type: 'UNLOCK_PLOT', plotId: plot.id })}
             >
-              {canAfford ? '✨ 解鎖' : '金幣不足'}
+              {canAfford ? '購買土地' : '金幣不足'}
             </button>
           </div>
         </div>

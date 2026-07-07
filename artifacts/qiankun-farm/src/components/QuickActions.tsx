@@ -163,36 +163,69 @@ export default function QuickActions() {
     },
   ];
 
+  const stopAll = (e: React.MouseEvent | React.PointerEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
   return (
-    <div className="qa-overlay" onClick={e => e.stopPropagation()}>
+    <>
+      <div className="qa-overlay" onClick={e => e.stopPropagation()}>
+        {buttons.map(({ label, unlocked, active, onClick }) => (
+          <button
+            key={label}
+            className={btnClass(unlocked, active)}
+            onClick={onClick}
+            aria-label={label}
+          >
+            <span className="qa-btn-label">{label}</span>
+            {!unlocked && <span className="qa-btn-lock">🔒</span>}
+          </button>
+        ))}
+      </div>
 
-      {buttons.map(({ label, unlocked, active, onClick }) => (
-        <button
-          key={label}
-          className={btnClass(unlocked, active)}
-          onClick={onClick}
-          aria-label={label}
-        >
-          <span className="qa-btn-label">{label}</span>
-          {!unlocked && <span className="qa-btn-lock">🔒</span>}
-        </button>
-      ))}
-
-      {/* ── 鎖定提示 Modal ── */}
+      {/* ── 鎖定提示 Modal — 在 qa-overlay 之外，相對 game-shell 定位，覆蓋全畫面 ── */}
       {lockedInfo && (
-        <div className="qa-modal-backdrop" onClick={() => setLockedInfo(null)}>
-          <div className="qa-modal-box" onClick={e => e.stopPropagation()}>
+        <div
+          className="qa-modal-backdrop"
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); setLockedInfo(null); }}
+          onPointerDown={stopAll}
+          onTouchStart={stopAll}
+        >
+          <div
+            className="qa-modal-box"
+            onClick={e => e.stopPropagation()}
+            onPointerDown={e => e.stopPropagation()}
+            onTouchStart={e => e.stopPropagation()}
+          >
             <p className="qa-modal-title">🔒 {lockedInfo.title}</p>
             <p className="qa-modal-body">{lockedInfo.hint}</p>
-            <button className="qa-modal-close" onClick={() => setLockedInfo(null)}>知道了</button>
+            <button
+              className="qa-modal-close"
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); setLockedInfo(null); }}
+              onPointerDown={e => e.stopPropagation()}
+              onTouchStart={e => e.stopPropagation()}
+            >
+              知道了
+            </button>
           </div>
         </div>
       )}
 
-      {/* ── 智慧收播：種子不足確認 ── */}
+      {/* ── 智慧收播：種子不足確認 — 同樣在 qa-overlay 之外 ── */}
       {smartModal && (
-        <div className="qa-modal-backdrop" onClick={handleSmartCancel}>
-          <div className="qa-modal-box qa-modal-box--smart" onClick={e => e.stopPropagation()}>
+        <div
+          className="qa-modal-backdrop"
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleSmartCancel(); }}
+          onPointerDown={stopAll}
+          onTouchStart={stopAll}
+        >
+          <div
+            className="qa-modal-box qa-modal-box--smart"
+            onClick={e => e.stopPropagation()}
+            onPointerDown={e => e.stopPropagation()}
+            onTouchStart={e => e.stopPropagation()}
+          >
             <p className="qa-modal-title">🌱 種子不足</p>
             <p className="qa-modal-body">是否花費資源補足種子後立即播種？</p>
 
@@ -217,12 +250,19 @@ export default function QuickActions() {
             </div>
 
             <div className="qa-modal-btns">
-              <button className="qa-modal-btn qa-modal-btn--cancel" onClick={handleSmartCancel}>
+              <button
+                className="qa-modal-btn qa-modal-btn--cancel"
+                onClick={(e) => { e.stopPropagation(); handleSmartCancel(); }}
+                onPointerDown={e => e.stopPropagation()}
+                onTouchStart={e => e.stopPropagation()}
+              >
                 取消
               </button>
               <button
                 className="qa-modal-btn qa-modal-btn--confirm"
-                onClick={handleSmartConfirm}
+                onClick={(e) => { e.stopPropagation(); handleSmartConfirm(); }}
+                onPointerDown={e => e.stopPropagation()}
+                onTouchStart={e => e.stopPropagation()}
                 disabled={
                   smartModal.coinsUsed > state.coins ||
                   smartModal.crystalsUsed > state.crystals
@@ -234,7 +274,6 @@ export default function QuickActions() {
           </div>
         </div>
       )}
-
-    </div>
+    </>
   );
 }
