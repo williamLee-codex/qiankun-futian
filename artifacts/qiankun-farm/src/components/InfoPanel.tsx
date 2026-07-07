@@ -1,12 +1,6 @@
 /**
- * InfoPanel Component — Game Scene Layer 4
- *
- * 土地解鎖規則：
- *   第2塊（幽熒沃土）：花費 88  金幣直接解鎖
- *   第3塊（朱砂烈土）：花費 888 金幣直接解鎖
- *   第4塊（曜紫靈土）：累積儲值 100 水晶解鎖
- *   第5塊（翡翠聖土）：累積儲值 300 水晶解鎖
- *   第6塊（黑金晶土）：累積儲值 600 水晶解鎖
+ * InfoPanel — 農田資訊列
+ * 依每塊田的 cropName / seedName / harvestCount / growthHours 顯示正確資訊
  */
 import { useGame } from '../game/GameContext';
 
@@ -54,19 +48,20 @@ export default function InfoPanel() {
     }
 
     /* 累積儲值水晶解鎖（第4、5、6塊） */
-    const pct = Math.min(100, (state.totalDeposit / (plot.unlockCrystals ?? 1)) * 100);
+    const needed = plot.unlockCrystals ?? 1;
+    const pct = Math.min(100, (state.totalDeposit / needed) * 100);
     return (
       <div className="ip-overlay ip-overlay--locked" onClick={stopProp}>
         <div className="ip-locked-row">
           <span className="ip-locked-icon">🔒</span>
           <div className="ip-locked-info">
-            <span className="ip-name">{plot.name}</span>
-            <span className="ip-locked-sub">需累積儲值 {plot.unlockCrystals} 💎 解鎖</span>
+            <span className="ip-name">{plot.name}｜尚未解鎖</span>
+            <span className="ip-locked-sub">需累積儲值 <span className="ip-locked-sub--coins">{needed} 💎</span> 水晶解鎖</span>
             <div className="ip-progress-bar">
               <div className="ip-progress-fill" style={{ width: `${pct}%` }} />
             </div>
           </div>
-          <span className="ip-progress-text">{state.totalDeposit} / {plot.unlockCrystals}</span>
+          <span className="ip-progress-text">{state.totalDeposit} / {needed}</span>
         </div>
       </div>
     );
@@ -74,24 +69,30 @@ export default function InfoPanel() {
 
   /* ── Active (unlocked) plot ── */
   const maxQty = Math.min(state.warehouseSeeds, plot.maxSeeds);
+  const growLabel = plot.growthHours >= 1
+    ? `${plot.growthHours} 小時`
+    : `${Math.round(plot.growthHours * 60)} 分鐘`;
 
   return (
     <div className="ip-overlay ip-overlay--active" onClick={stopProp}>
-      {/* Plot name + seeds */}
+      {/* 土地名稱 + 作物資訊 */}
       <div className="ip-meta">
         <span className="ip-name">{plot.name}</span>
         <span className="ip-meta-divider">｜</span>
-        <span className="ip-meta-item">種子庫存 <strong>{state.warehouseSeeds}</strong></span>
+        <span className="ip-meta-item">{plot.cropEmoji} {plot.cropName}</span>
         <span className="ip-meta-divider">｜</span>
-        <span className="ip-meta-item">上限 <strong>{plot.maxSeeds}</strong></span>
+        <span className="ip-meta-item">收 <strong>{plot.harvestCount}</strong> 株</span>
         <span className="ip-meta-divider">｜</span>
-        <span className="ip-meta-item">成熟 <strong>10秒</strong></span>
+        <span className="ip-meta-item">成熟 <strong>{growLabel}</strong></span>
       </div>
 
-      {/* Action row */}
+      {/* 動作列 */}
       <div className="ip-action-row">
         {plot.state === 'empty' && (
           <>
+            <span className="ip-meta-item" style={{ flexShrink: 0 }}>
+              {plot.seedName} <strong>{state.warehouseSeeds}</strong> 顆
+            </span>
             <div className="ip-qty">
               <button className="ip-qty-btn" onClick={() => dispatch({ type: 'SET_PLANT_QUANTITY', qty: state.plantQuantity - 1 })}>－</button>
               <span className="ip-qty-num">{state.plantQuantity}</span>
@@ -109,12 +110,14 @@ export default function InfoPanel() {
         )}
 
         {plot.state === 'growing' && (
-          <span className="ip-state-text ip-state--growing">🌿 生長中…</span>
+          <span className="ip-state-text ip-state--growing">🌿 {plot.cropName} 生長中…</span>
         )}
 
         {plot.state === 'ready' && (
           <>
-            <span className="ip-state-text ip-state--ready">🌾 可收成（{plot.plantCount}）</span>
+            <span className="ip-state-text ip-state--ready">
+              {plot.cropEmoji} 可收成 {plot.harvestCount} 株{plot.cropName}
+            </span>
             <button
               className="ip-act-btn ip-act-btn--harvest"
               onClick={() => dispatch({ type: 'HARVEST', plotId: plot.id })}

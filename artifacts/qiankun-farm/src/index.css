@@ -1533,3 +1533,167 @@ body {
   60%  { opacity: 0.85; transform: scale(1.0); }
   100% { opacity: 0; transform: scale(1.3); }
 }
+
+/* ══════════════════════════════════════════════════════════
+   V1.0 新增：種子背包 / 市場 / 倉庫 / 分隔線
+══════════════════════════════════════════════════════════ */
+
+/* ── 分隔線 ──────────────────────────────────────── */
+.panel-separator {
+  width: 100%;
+  height: 1px;
+  background: rgba(180,140,40,.25);
+  margin: 8px 0;
+}
+
+/* ── 種子背包表格 ─────────────────────────────────── */
+.seeds-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.seed-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(140,100,20,.2);
+}
+.seed-row--locked {
+  opacity: .5;
+}
+.seed-emoji {
+  font-size: 26px;
+  flex-shrink: 0;
+  width: 32px;
+  text-align: center;
+}
+.seed-info-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.seed-info-name {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 18px;
+  color: #f0d060;
+  font-weight: 700;
+}
+.seed-info-desc {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 15px;
+  color: #c8a870;
+  line-height: 1.5;
+}
+.seed-locked-tag { color: #a08050; font-size: 14px; }
+.seed-time-tag {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 16px;
+  color: #90c890;
+  background: rgba(40,80,30,.4);
+  border: 1px solid rgba(80,140,60,.35);
+  border-radius: 4px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── 市場兌換表格 ─────────────────────────────────── */
+.market-table {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+.market-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(140,100,20,.2);
+}
+.market-row--locked { opacity: .45; }
+.market-row--crystal { border-color: rgba(80,160,220,.3); }
+.market-crop-emoji { font-size: 22px; flex-shrink: 0; width: 28px; text-align: center; }
+.market-crop-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.market-crop-name {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 17px;
+  color: #f0d060;
+  font-weight: 700;
+}
+.market-crop-sub {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 13px;
+  color: #9a8050;
+}
+.market-rate {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 15px;
+  color: #ffd76a;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.market-rate--crystal { color: #70c8f0; }
+.market-locked-tag { font-size: 14px; color: #806040; flex-shrink: 0; }
+
+.market-sell-section, .market-feed-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.market-sell-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.market-sell-title {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 20px;
+  color: #f0d060;
+  font-weight: 700;
+}
+.market-sell-stock {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 18px;
+  color: #ffd76a;
+}
+.market-feed-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(140,100,20,.15);
+}
+.market-feed-name {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 18px;
+  color: #f0d878;
+}
+.market-feed-price {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 17px;
+  color: #d8c28a;
+}
+
+/* ── 倉庫作物列表 ─────────────────────────────────── */
+.warehouse-crop-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 17px;
+  color: #f0d878;
+  padding: 5px 4px;
+  border-bottom: 1px solid rgba(120,96,16,.12);
+}

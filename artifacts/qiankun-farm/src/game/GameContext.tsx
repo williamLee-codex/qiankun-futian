@@ -20,25 +20,36 @@ type Action =
   | { type: 'FEED_PET'; petId: number }
   | { type: 'SELL_CROPS'; amount: number }
   | { type: 'COMPLETE_TASK'; taskId: string }
-  /**
-   * 智慧一鍵收播：扣除金幣/水晶、補足種子後立即執行 PLANT_ALL 邏輯。
-   */
   | { type: 'BUY_SEEDS_AND_PLANT_ALL'; coinsUsed: number; crystalsUsed: number; seedsBought: number }
-  /**
-   * 花費金幣直接解鎖土地（第2、3塊）。
-   */
   | { type: 'UNLOCK_PLOT'; plotId: number };
 
-const GROW_TIME_MS   = 10_000;
-const HARVEST_COINS  = 10;   /* coins per seed planted */
-const HARVEST_CROPS  = 1;    /* crops per seed planted (1:1) */
-const ANIM_STAGGER   = 130;  /* ms between each harvest animation */
+/* ── 測試用成長時間（正式版由 growthHours 顯示）── */
+const GROW_TIME_MS = 10_000;
+
+/* ── 收成動畫間距 ── */
+const ANIM_STAGGER = 130;
 
 let _animCounter = 0;
 function nextAnimId() { return ++_animCounter; }
 
 function plotMaxQty(plot: Plot, seeds: number) {
   return Math.max(0, Math.min(seeds, plot.maxSeeds));
+}
+
+/* ── per-plot 收成計算 ─────────────────────────────────
+   coins:   Math.floor(harvestCount / exchangeRate)
+   crystal: yieldCrystal ? 1 : 0
+   crops:   harvestCount（第6塊不入倉）
+─────────────────────────────────────────────────── */
+function calcHarvest(plot: Plot) {
+  if (plot.yieldCrystal) {
+    return { coins: 0, crystals: 1, crops: 0 };
+  }
+  return {
+    coins: Math.floor(plot.harvestCount / plot.exchangeRate),
+    crystals: 0,
+    crops: plot.harvestCount,
+  };
 }
 
 function reducer(state: GameState, action: Action): GameState {
@@ -77,7 +88,7 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, plots: newPlots, warehouseSeeds: state.warehouseSeeds - qty, tasks };
     }
 
-    /* ── Plant ALL unlocked empty plots in order ── */
+    /* ── Plant ALL unlocked empty plots ── */
     case 'PLANT_ALL': {
       let seeds = state.warehouseSeeds;
       const now  = Date.now();
@@ -91,39 +102,45 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, plots: newPlots, warehouseSeeds: seeds, tasks };
     }
 
-    /* ── Harvest single (with animation) ── */
+    /* ── Harvest single ── */
     case 'HARVEST': {
       const plotIndex = state.plots.findIndex(p => p.id === action.plotId);
       const plot = state.plots[plotIndex];
       if (!plot || plot.state !== 'ready') return state;
+
+      const { coins, crystals, crops } = calcHarvest(plot);
       const newPlots = state.plots.map(p =>
         p.id === action.plotId
           ? { ...p, state: 'empty' as const, plantCount: 0, growthEndTime: null }
           : p
       );
       const tasks = state.tasks.map(t => t.id === 'harvest' ? { ...t, done: true } : t);
-      const anim: HarvestAnim = { id: nextAnimId(), plotIndex, plantCount: plot.plantCount, delay: 0 };
+      const anim: HarvestAnim = { id: nextAnimId(), plotIndex, plantCount: plot.harvestCount, delay: 0 };
       return {
         ...state,
         plots: newPlots,
-        coins: state.coins + plot.plantCount * HARVEST_COINS,
-        warehouseCrops: state.warehouseCrops + plot.plantCount * HARVEST_CROPS,
+        coins: state.coins + coins,
+        crystals: state.crystals + crystals,
+        warehouseCrops: state.warehouseCrops + crops,
         tasks,
         harvestAnimations: [...state.harvestAnimations, anim],
       };
     }
 
-    /* ── Harvest ALL ready plots (with staggered animations) ── */
+    /* ── Harvest ALL ready plots ── */
     case 'HARVEST_ALL': {
       let earnedCoins = 0;
+      let earnedCrystals = 0;
       let earnedCrops = 0;
       const newAnims: HarvestAnim[] = [];
       let wave = 0;
       const newPlots = state.plots.map((plot, idx) => {
         if (plot.state !== 'ready') return plot;
-        earnedCoins += plot.plantCount * HARVEST_COINS;
-        earnedCrops += plot.plantCount * HARVEST_CROPS;
-        newAnims.push({ id: nextAnimId(), plotIndex: idx, plantCount: plot.plantCount, delay: wave++ * ANIM_STAGGER });
+        const { coins, crystals, crops } = calcHarvest(plot);
+        earnedCoins    += coins;
+        earnedCrystals += crystals;
+        earnedCrops    += crops;
+        newAnims.push({ id: nextAnimId(), plotIndex: idx, plantCount: plot.harvestCount, delay: wave++ * ANIM_STAGGER });
         return { ...plot, state: 'empty' as const, plantCount: 0, growthEndTime: null };
       });
       if (!newAnims.length) return state;
@@ -132,13 +149,14 @@ function reducer(state: GameState, action: Action): GameState {
         ...state,
         plots: newPlots,
         coins: state.coins + earnedCoins,
+        crystals: state.crystals + earnedCrystals,
         warehouseCrops: state.warehouseCrops + earnedCrops,
         tasks,
         harvestAnimations: [...state.harvestAnimations, ...newAnims],
       };
     }
 
-    /* ── Clear finished animations ── */
+    /* ── Clear animations ── */
     case 'CLEAR_HARVEST_ANIM':
       return {
         ...state,
@@ -189,11 +207,11 @@ function reducer(state: GameState, action: Action): GameState {
       };
     }
 
-    /* ── 智慧收播：購買種子後立即播種 ── */
+    /* ── 智慧收播：購買種子後播種 ── */
     case 'BUY_SEEDS_AND_PLANT_ALL': {
       const afterCoins    = state.coins    - action.coinsUsed;
       const afterCrystals = state.crystals - action.crystalsUsed;
-      if (afterCoins < 0 || afterCrystals < 0) return state; // guard
+      if (afterCoins < 0 || afterCrystals < 0) return state;
       const startSeeds = state.warehouseSeeds + action.seedsBought;
       let seeds = startSeeds;
       const now = Date.now();
@@ -252,10 +270,13 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, pets: state.pets.map(p => p.id === action.petId ? { ...p, fed: true, fedUntil: now + 12 * 3600_000 } : p) };
     }
 
-    /* ── Market ── */
-    case 'SELL_CROPS':
+    /* ── Market — 以 plot 1 曜金粟基礎比例出售庫存作物 ── */
+    case 'SELL_CROPS': {
       if (state.warehouseCrops < action.amount) return state;
-      return { ...state, warehouseCrops: state.warehouseCrops - action.amount, coins: state.coins + action.amount * 8 };
+      /* 20株曜金粟 = 1金幣，出售按最保守比例（1株=0.05金幣，取整） */
+      const gained = Math.floor(action.amount / 20);
+      return { ...state, warehouseCrops: state.warehouseCrops - action.amount, coins: state.coins + gained };
+    }
 
     /* ── Tasks ── */
     case 'COMPLETE_TASK':

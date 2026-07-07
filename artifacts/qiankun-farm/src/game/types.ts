@@ -12,6 +12,16 @@ export interface Plot {
   plantCount: number;
   growthEndTime: number | null;
   maxSeeds: number;
+
+  /* ── 作物 / 種子 正式規則 ── */
+  cropName: string;       // 作物名稱，e.g. 曜金粟
+  seedName: string;       // 種子名稱，e.g. 曜金種子
+  cropEmoji: string;      // 顯示 emoji
+  harvestCount: number;   // 每次固定收成株數
+  exchangeRate: number;   // 兌換比：N 株 = 1 金幣（or 1 水晶）
+  seedBuyRate: string;    // 種子購買說明，e.g. "1金幣=20顆"
+  growthHours: number;    // 正式成熟時間（小時，顯示用）
+  yieldCrystal: boolean;  // true = 第6塊，收成給水晶而非金幣
 }
 
 export interface Pet {
