@@ -222,7 +222,7 @@ body {
 
 /* Value：18px 粗體，楷書 web font 優先，系統字型次之 */
 .resource-value {
-  font-family: 'LXGW WenKai TC', 'cwTeXKai', 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', 'Noto Serif TC', serif !important;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif !important;
   font-size: 18px;
   font-weight: 700;
   color: #fff7d0;
@@ -233,7 +233,7 @@ body {
 
 /* Label：10px，金色，楷書 web font 優先，系統字型次之 */
 .resource-label {
-  font-family: 'LXGW WenKai TC', 'cwTeXKai', 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', 'Noto Serif TC', serif !important;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif !important;
   font-size: 10px;
   color: #d8b86a;
   text-shadow: 0 1px 2px #000;
@@ -442,7 +442,7 @@ body {
 }
 
 .sb-text {
-  font-family: 'LXGW WenKai TC', 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: clamp(9px, 1.8vmin, 12px);
   color: #f0d878;
   text-shadow: 0 1px 3px rgba(0,0,0,.9);
@@ -464,23 +464,23 @@ body {
   position: absolute;
   left: 2%; right: 2%;
   top: 43%;
-  min-height: 9%;
+  min-height: 6%;
   z-index: 30;
   background: rgba(10, 6, 2, 0.92);
   border: 1px solid rgba(160, 120, 30, 0.60);
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 4px 10px;
   display: flex;
   align-items: center;
   box-sizing: border-box;
   pointer-events: auto;
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
 }
 .ip-overlay--idle { justify-content: center; }
 
 /* 待機提示文字 */
 .ip-idle-hint {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #c8aa70;
   text-shadow: 0 1px 4px rgba(0,0,0,.8);
@@ -496,9 +496,9 @@ body {
   width: 100%;
 }
 .ip-locked-icon { font-size: 24px; flex-shrink: 0; }
-.ip-locked-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.ip-locked-info { flex: 1; display: flex; flex-direction: column; gap: 1px; }
 .ip-name {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 26px;
   color: #f0d060;
   font-weight: 700;
@@ -506,7 +506,7 @@ body {
   text-shadow: 0 1px 4px rgba(0,0,0,.8);
 }
 .ip-locked-sub {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #d8c28a;
   line-height: 1.6;
@@ -531,7 +531,7 @@ body {
   transition: width .5s;
 }
 .ip-progress-text {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #d8c28a;
   flex-shrink: 0;
@@ -541,7 +541,7 @@ body {
 
 /* ── 金幣解鎖按鈕（第2、3塊土地）── */
 .ip-unlock-btn {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   font-weight: 700;
   background: linear-gradient(180deg, #2a5010, #183408);
@@ -565,7 +565,7 @@ body {
 }
 
 /* Active plot */
-.ip-overlay--active { flex-direction: column; justify-content: center; gap: 5px; }
+.ip-overlay--active { flex-direction: column; justify-content: center; gap: 3px; }
 
 .ip-meta {
   display: flex;
@@ -576,7 +576,7 @@ body {
 }
 .ip-meta-divider { color: rgba(200,160,60,.5); font-size: 16px; }
 .ip-meta-item {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #c8aa70;
   text-shadow: 0 1px 3px rgba(0,0,0,.8);
@@ -607,7 +607,7 @@ body {
   font-size: 20px;
   padding: 4px 10px;
   cursor: pointer;
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   line-height: 1;
   transition: background .15s;
   min-height: 44px;
@@ -623,7 +623,7 @@ body {
   min-height: 44px !important;
 }
 .ip-qty-num {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   font-weight: 700;
   color: #ffd76a;
@@ -635,7 +635,7 @@ body {
 }
 
 .ip-state-text {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   flex: 1;
   text-shadow: 0 1px 4px rgba(0,0,0,.9);
@@ -650,7 +650,7 @@ body {
 }
 
 .ip-act-btn {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: .04em;
@@ -688,7 +688,7 @@ body {
 }
 
 .ip-close-btn {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   background: rgba(30,10,5,.75);
   border: 1px solid rgba(180,80,40,.5);
@@ -908,7 +908,7 @@ body {
 .qa-modal-box--smart { gap: 16px; }
 
 .qa-modal-title {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 28px;
   font-weight: 700;
   color: #d4f0a0;
@@ -917,7 +917,7 @@ body {
 }
 
 .qa-modal-body {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   color: #c8d890;
   margin: 0;
@@ -943,14 +943,14 @@ body {
 }
 
 .qa-cost-label {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #b0c880;
   line-height: 1.6;
 }
 
 .qa-cost-val {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   font-weight: 700;
   color: #f0e060;
@@ -958,7 +958,7 @@ body {
 }
 
 .qa-cost-warn {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #f09040;
   margin: 4px 0 0;
@@ -974,7 +974,7 @@ body {
 
 .qa-modal-btn {
   flex: 1;
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   font-weight: 700;
   border-radius: 8px;
@@ -1002,7 +1002,7 @@ body {
 }
 
 .qa-modal-close {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   font-weight: 700;
   background: linear-gradient(180deg, #1e2810, #131a0b);
@@ -1031,7 +1031,7 @@ body {
   justify-content: center;
   z-index: 200;
   backdrop-filter: blur(3px);
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
 }
 
 .panel-modal {
@@ -1047,7 +1047,7 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #6a5010 transparent;
   box-shadow: 0 10px 40px rgba(0,0,0,.95), inset 0 1px 0 rgba(180,140,40,.3), 0 0 0 1px rgba(50,40,8,.5);
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
 }
 
 .panel-close {
@@ -1075,7 +1075,7 @@ body {
 .panel-content { padding-top: 8px; }
 
 .panel-title {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 32px;
   font-weight: 700;
   color: #ffd76a;
@@ -1089,14 +1089,14 @@ body {
 }
 
 .panel-desc  {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 18px;
   color: #f7e6b0;
   margin-bottom: 20px;
   line-height: 1.7;
 }
 .panel-note  {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 18px;
   color: #d8c28a;
   margin-top: 20px;
@@ -1104,7 +1104,7 @@ body {
   line-height: 1.7;
 }
 .panel-empty {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   color: #d8c28a;
   font-size: 18px;
   text-align: center;
@@ -1123,13 +1123,13 @@ body {
   gap: 8px;
 }
 .panel-item-name {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   color: #f7e6b0;
   line-height: 1.5;
 }
 .panel-item-qty {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 24px;
   font-weight: 700;
   color: #ffd76a;
@@ -1140,7 +1140,7 @@ body {
 .seed-icon { font-size: 32px; flex-shrink: 0; }
 .seed-info  { flex: 1; padding: 0 12px; }
 .seed-desc  {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 18px;
   color: #d8c28a;
   margin-top: 4px;
@@ -1160,14 +1160,14 @@ body {
 .pet-card--active { border-color: #c89030 !important; box-shadow: 0 0 10px rgba(200,160,40,.3); }
 .pet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .pet-name   {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   color: #f0d060;
   font-weight: 700;
 }
 .pet-grade  { font-size: 18px; font-weight: 700; }
 .pet-desc   {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 18px;
   color: #d8c28a;
   line-height: 1.6;
@@ -1175,19 +1175,19 @@ body {
 }
 .pet-acquire, .pet-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
 .pet-cost    {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #ffd76a;
   font-weight: 700;
 }
 .pet-locked  {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 18px;
   color: #d8c28a;
   line-height: 1.5;
 }
 .pet-status  {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 18px;
   color: #d8c28a;
   background: rgba(255,255,255,.06);
@@ -1198,7 +1198,7 @@ body {
 .pet-fed     { font-size: 16px; color: #60b0d8; }
 .pet-cooldown{ font-size: 16px; color: #b06060; }
 .pet-btn {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   font-weight: 700;
   min-height: 56px;
@@ -1219,13 +1219,13 @@ body {
 .farmer-locked       { text-align: center; padding: 16px 0; }
 .farmer-lock-icon    { font-size: 48px; margin-bottom: 16px; }
 .farmer-lock-title   {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 24px;
   color: #f0d060;
   margin-bottom: 10px;
 }
 .farmer-lock-desc    {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #d8c28a;
   margin-bottom: 20px;
@@ -1234,14 +1234,14 @@ body {
 .farmer-progress-bar { background: rgba(255,255,255,.04); border: 1px solid rgba(140,100,20,.4); border-radius: 6px; height: 10px; width: 80%; margin: 0 auto 10px; overflow: hidden; }
 .farmer-progress-fill{ background: linear-gradient(90deg, #6a4a10, #c89030); height: 100%; transition: width .5s; }
 .farmer-progress-text{
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 18px;
   color: #d8c28a;
 }
 .farmer-unlocked     { padding: 8px 0; }
 .farmer-active-icon  { font-size: 48px; text-align: center; margin-bottom: 10px; }
 .farmer-active-title {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 24px;
   color: #70d060;
   text-align: center;
@@ -1251,19 +1251,19 @@ body {
 .farmer-ability      { display: flex; gap: 16px; align-items: flex-start; padding: 16px; background: rgba(255,255,255,.03); border-radius: 6px; border: 1px solid rgba(140,100,20,.15); margin-bottom: 0; }
 .ability-icon  { font-size: 26px; flex-shrink: 0; padding-top: 2px; }
 .ability-name  {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   color: #d4a830;
   margin-bottom: 4px;
 }
 .ability-desc  {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 18px;
   color: #d8c28a;
   line-height: 1.6;
 }
 .farmer-note   {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 18px;
   color: #d8c28a;
   margin-top: 20px;
@@ -1286,14 +1286,14 @@ body {
 .task-row--done { border-color: rgba(60,160,60,.25); }
 .task-check { font-size: 22px; flex-shrink: 0; }
 .task-name  {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   flex: 1;
   font-size: 22px;
   color: #c0a850;
   line-height: 1.5;
 }
 .task-reward{
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #ffd76a;
   font-weight: 700;
@@ -1313,18 +1313,18 @@ body {
 }
 .market-item-info { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .market-item-name {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   color: #f0d060;
   font-weight: 700;
 }
 .market-item-price{
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #d8c28a;
 }
 .market-item-stock{
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #ffd76a;
   font-weight: 700;
@@ -1347,7 +1347,7 @@ body {
   width: 44px;
   height: 48px;
   cursor: pointer;
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1355,7 +1355,7 @@ body {
 }
 .qty-btn:hover { background: rgba(100,70,15,.85); }
 .qty-num {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   color: #f0d060;
   min-width: 48px;
@@ -1366,7 +1366,7 @@ body {
 }
 
 .action-btn--sell {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   font-weight: 700;
   min-height: 56px;
@@ -1387,7 +1387,7 @@ body {
 /* ── 天道律法 ─────────────────────────────────── */
 .law-section  { margin-bottom: 24px; }
 .law-subtitle {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 24px;
   font-weight: 600;
   color: #d4a830;
@@ -1397,7 +1397,7 @@ body {
 }
 .law-list     { list-style: none; display: flex; flex-direction: column; gap: 10px; }
 .law-list li  {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #f7e6b0;
   line-height: 1.8;
@@ -1418,12 +1418,12 @@ body {
   border: 1px solid rgba(140,100,20,.15);
 }
 .building-stat-label {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 22px;
   color: #d8c28a;
 }
 .building-stat-value {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 24px;
   color: #ffd76a;
   font-weight: 700;
@@ -1432,7 +1432,7 @@ body {
 /* ── 天道商店 ─────────────────────────────────── */
 .shop-section        { margin-bottom: 24px; }
 .shop-section-title  {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 24px;
   font-weight: 600;
   color: #d4a830;
@@ -1454,32 +1454,32 @@ body {
 }
 .shop-item-info { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
 .shop-item-name {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 24px;
   color: #f0d060;
   font-weight: 700;
 }
 .shop-item-grade{
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #ffd76a;
   font-weight: 700;
   white-space: nowrap;
 }
 .shop-item-desc {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 18px;
   color: #d8c28a;
   line-height: 1.6;
 }
 .shop-owned     {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   color: #60e860;
   font-weight: 700;
 }
 .shop-locked    {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 18px;
   color: #d8c28a;
   line-height: 1.6;
@@ -1487,7 +1487,7 @@ body {
 
 /* ── 任務完成按鈕 ─────────────────────────────── */
 .complete-task-btn {
-  font-family: 'DFKai-SB', '標楷體', 'KaiTi', 'KaiTi TC', serif;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 20px;
   font-weight: 700;
   min-height: 48px;

@@ -10,7 +10,7 @@ export default function TasksPanel() {
           <div key={task.id} className={`task-row ${task.done ? 'task-row--done' : ''}`}>
             <span className="task-check">{task.done ? '✅' : '⬜'}</span>
             <span className="task-name">{task.name}</span>
-            <span className="task-reward">+50 金幣</span>
+            <span className="task-reward">+5 金幣</span>
           </div>
         ))}
       </div>
