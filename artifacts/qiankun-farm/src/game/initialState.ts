@@ -2,8 +2,8 @@ import type { GameState } from './types';
 import { EMPTY_INVENTORY } from './types';
 
 export const initialState: GameState = {
-  coins: 100,
-  crystals: 10,
+  coins: 99999,
+  crystals: 9999,
   totalDeposit: 0,
   weather: '晴',
   selectedPlotId: null,
