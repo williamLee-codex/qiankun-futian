@@ -16,7 +16,7 @@
  *   50  .game-header    — HUD（覆蓋底圖頂部留白區）
  *   200 PanelOverlay    — 全畫布 Modal
  */
-import bgImage from '@assets/file_00000000f9907209ab2f9ee35f0ffde2_1783391671031.png';
+import bgImage from '@assets/file_00000000da7c72069fe84c6e70a7a665_1783570442759.png';
 import { useEffect } from 'react';
 import { GameProvider, useGame } from './game/GameContext';
 import GameHeader       from './components/HUD';
