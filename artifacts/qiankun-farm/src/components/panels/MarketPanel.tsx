@@ -1,18 +1,90 @@
 import { useState } from 'react';
 import { useGame } from '../../game/GameContext';
+import { CROP_IDS, CROP_DATA } from '../../game/types';
+import type { CropId } from '../../game/types';
+
+/** 每個作物的出售區塊 */
+function CropSellRow({ cropId }: { cropId: CropId }) {
+  const { state, dispatch } = useGame();
+  const data  = CROP_DATA[cropId];
+  const inv   = state.cropInventory[cropId];
+  const plot  = state.plots.find(p => p.cropId === cropId);
+  const isUnlocked = plot?.unlocked ?? false;
+
+  /* 可出售批數（向下取整） */
+  const maxBatches = Math.floor(inv / data.sellQty);
+  const [batches, setBatches] = useState(1);
+  const curBatches = Math.min(batches, maxBatches);
+  const sellAmount = curBatches * data.sellQty;
+  const earnCoins  = curBatches * data.sellCoins;
+  const earnCryst  = curBatches * data.sellCrystals;
+
+  const rateLabel = data.sellCrystals > 0
+    ? `${data.sellQty} 株 = ${data.sellCrystals} 💎 水晶`
+    : `${data.sellQty} 株 = ${data.sellCoins} 🪙 金幣`;
+
+  const gainLabel = data.sellCrystals > 0
+    ? `+${earnCryst} 💎`
+    : `+${earnCoins} 🪙`;
+
+  function doSell() {
+    if (sellAmount <= 0) return;
+    dispatch({ type: 'SELL_CROPS', cropId, amount: sellAmount });
+    setBatches(1);
+  }
+
+  return (
+    <div className={`market-sell-crop${!isUnlocked ? ' market-sell-crop--locked' : ''}`}>
+      <div className="market-sell-crop-header">
+        <span className="market-sell-crop-name">
+          {data.emoji} {data.name}
+          {!isUnlocked && <span className="market-locked-tag"> 🔒</span>}
+        </span>
+        <span className="market-sell-crop-inv">庫存 {inv} 株</span>
+      </div>
+      <div className="market-sell-crop-rate">{rateLabel}</div>
+      {isUnlocked && (
+        <div className="market-sell-crop-actions">
+          <div className="qty-row">
+            <button
+              className="qty-btn"
+              onClick={() => setBatches(b => Math.max(1, b - 1))}
+              disabled={curBatches <= 1}
+            >－</button>
+            <span className="qty-num">{curBatches} 批</span>
+            <button
+              className="qty-btn"
+              onClick={() => setBatches(b => Math.min(maxBatches, b + 1))}
+              disabled={curBatches >= maxBatches}
+            >＋</button>
+            <button
+              className="qty-btn"
+              onClick={() => setBatches(maxBatches)}
+              disabled={maxBatches <= 0}
+            >全部</button>
+          </div>
+          <button
+            className="action-btn--sell"
+            disabled={maxBatches <= 0 || sellAmount <= 0}
+            onClick={doSell}
+          >
+            出售 {sellAmount} 株（{gainLabel}）
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function MarketPanel() {
-  const { state, dispatch } = useGame();
-  const [sellAmt, setSellAmt] = useState(20);
-
-  const totalCrops = state.warehouseCrops;
+  const { state } = useGame();
 
   return (
     <div className="panel-content">
       <h2 className="panel-title">🏪 大道商市</h2>
 
-      {/* 各作物兌換比例表 */}
-      <p className="panel-note" style={{ marginBottom: 8 }}>各田作物官方兌換比例（V1.0 基準值，±10% 浮動）</p>
+      {/* 兌換比例總覽 */}
+      <p className="panel-note" style={{ marginBottom: 8 }}>各田作物官方兌換比例</p>
       <div className="market-table">
         {state.plots.filter(p => !p.yieldCrystal).map(plot => (
           <div key={plot.id} className={`market-row${plot.unlocked ? '' : ' market-row--locked'}`}>
@@ -22,7 +94,7 @@ export default function MarketPanel() {
               <span className="market-crop-sub">{plot.name}</span>
             </div>
             <span className="market-rate">
-              {plot.exchangeRate} 株 = 1 🪙
+              {CROP_DATA[plot.cropId].sellQty} 株 = {CROP_DATA[plot.cropId].sellCoins} 🪙
             </span>
             {!plot.unlocked && <span className="market-locked-tag">🔒</span>}
           </div>
@@ -45,33 +117,12 @@ export default function MarketPanel() {
 
       <div className="panel-separator" style={{ margin: '10px 0' }} />
 
-      {/* 出售倉庫曜金粟作物 */}
-      <div className="market-sell-section">
-        <div className="market-sell-header">
-          <span className="market-sell-title">🌾 倉庫作物出售</span>
-          <span className="market-sell-stock">庫存 {totalCrops} 株</span>
-        </div>
-        <p className="panel-note" style={{ marginBottom: 8 }}>
-          以曜金粟比例出售（20株=1金幣）
-        </p>
-        <div className="market-sell-row">
-          <div className="qty-row">
-            <button className="qty-btn" onClick={() => setSellAmt(a => Math.max(20, a - 20))}>－</button>
-            <span className="qty-num">{sellAmt}</span>
-            <button className="qty-btn" onClick={() => setSellAmt(a => Math.min(Math.max(20, totalCrops), a + 20))}>＋</button>
-            <button className="qty-btn" onClick={() => setSellAmt(Math.max(20, Math.floor(totalCrops / 20) * 20))}>全部</button>
-          </div>
-          <button
-            className="action-btn--sell"
-            disabled={totalCrops < 20}
-            onClick={() => {
-              const actual = Math.min(sellAmt, Math.floor(totalCrops / 20) * 20);
-              if (actual >= 20) { dispatch({ type: 'SELL_CROPS', amount: actual }); setSellAmt(20); }
-            }}
-          >
-            出售（+{Math.floor(sellAmt / 20)} 金幣）
-          </button>
-        </div>
+      {/* 分作物出售區 */}
+      <p className="panel-note" style={{ marginBottom: 8, fontWeight: 'bold' }}>
+        倉庫作物出售（各作物獨立計算）
+      </p>
+      <div className="market-sell-list">
+        {CROP_IDS.map(id => <CropSellRow key={id} cropId={id} />)}
       </div>
 
       <div className="panel-separator" style={{ margin: '10px 0' }} />

@@ -1717,11 +1717,61 @@ body {
 /* ── 倉庫作物列表 ─────────────────────────────────── */
 .warehouse-crop-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   font-size: 17px;
   color: #f0d878;
-  padding: 5px 4px;
+  padding: 6px 4px;
   border-bottom: 1px solid rgba(120,96,16,.12);
+}
+.warehouse-crop-row--locked { opacity: .5; }
+.warehouse-crop-name { flex: 1; }
+.warehouse-crop-qty  { color: #ffd76a; font-weight: 700; white-space: nowrap; min-width: 54px; text-align: right; }
+.warehouse-crop-rate { color: #a89050; font-size: 14px; white-space: nowrap; min-width: 80px; text-align: right; }
+.warehouse-locked-tag { font-size: 14px; }
+
+/* ── 市場分作物出售 ─────────────────────────────────── */
+.market-sell-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.market-sell-crop {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(140,100,20,.25);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.market-sell-crop--locked { opacity: .55; }
+.market-sell-crop-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.market-sell-crop-name {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 18px;
+  color: #f0d060;
+  font-weight: 700;
+}
+.market-sell-crop-inv {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 16px;
+  color: #c8aa70;
+}
+.market-sell-crop-rate {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 15px;
+  color: #a89050;
+}
+.market-sell-crop-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
 }

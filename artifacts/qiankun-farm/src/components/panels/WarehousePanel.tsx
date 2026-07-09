@@ -1,4 +1,5 @@
 import { useGame } from '../../game/GameContext';
+import { CROP_IDS, CROP_DATA } from '../../game/types';
 
 export default function WarehousePanel() {
   const { state } = useGame();
@@ -15,35 +16,31 @@ export default function WarehousePanel() {
 
       <div className="panel-separator" />
 
-      {/* 作物庫存（各田已解鎖的列出） */}
-      <p className="panel-note" style={{ margin: '8px 0 6px' }}>收穫作物（1～5號田混合計）</p>
-      <div className="panel-row">
-        <span className="panel-item-name">
-          🌾 各類作物
-        </span>
-        <span className="panel-item-qty">{state.warehouseCrops} 株</span>
-      </div>
+      {/* 作物庫存（分作物顯示） */}
+      <p className="panel-note" style={{ margin: '8px 0 6px' }}>收穫作物庫存</p>
 
-      {/* 各田作物說明（已解鎖） */}
-      <div style={{ marginTop: 8 }}>
-        {state.plots.filter(p => p.unlocked && !p.yieldCrystal).map(plot => (
-          <div key={plot.id} className="warehouse-crop-row">
-            <span>{plot.cropEmoji} {plot.cropName}</span>
-            <span style={{ color: '#bdb16a', fontSize: 14 }}>
-              {plot.exchangeRate === 1
-                ? `1株 = 1金幣`
-                : `${plot.exchangeRate}株 = 1金幣`}
+      {CROP_IDS.map(cropId => {
+        const data = CROP_DATA[cropId];
+        const plot = state.plots.find(p => p.cropId === cropId);
+        const qty  = state.cropInventory[cropId];
+        const isUnlocked = plot?.unlocked ?? false;
+        const rateLabel = data.sellCrystals > 0
+          ? `${data.sellQty}株 = ${data.sellCrystals}💎`
+          : `${data.sellQty}株 = ${data.sellCoins}🪙`;
+        return (
+          <div
+            key={cropId}
+            className={`warehouse-crop-row${!isUnlocked ? ' warehouse-crop-row--locked' : ''}`}
+          >
+            <span className="warehouse-crop-name">
+              {data.emoji} {data.name}
+              {!isUnlocked && <span className="warehouse-locked-tag"> 🔒</span>}
             </span>
+            <span className="warehouse-crop-qty">{qty} 株</span>
+            <span className="warehouse-crop-rate">{rateLabel}</span>
           </div>
-        ))}
-        {/* 第6塊 */}
-        {state.plots[5]?.unlocked && (
-          <div className="warehouse-crop-row">
-            <span>💎 混沌晶華</span>
-            <span style={{ color: '#bdb16a', fontSize: 14 }}>每株 = 1水晶（自動兌換）</span>
-          </div>
-        )}
-      </div>
+        );
+      })}
     </div>
   );
 }

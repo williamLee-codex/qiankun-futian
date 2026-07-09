@@ -1,4 +1,5 @@
 import type { GameState } from './types';
+import { EMPTY_INVENTORY } from './types';
 
 export const initialState: GameState = {
   coins: 100,
@@ -7,7 +8,7 @@ export const initialState: GameState = {
   weather: '晴',
   selectedPlotId: null,
   plantQuantity: 20,
-  warehouseCrops: 0,
+  cropInventory: { ...EMPTY_INVENTORY },
   warehouseSeeds: 50,
   farmerUnlocked: false,
   openPanel: null,
@@ -19,8 +20,9 @@ export const initialState: GameState = {
       id: 0, name: '微芒凡土', maxSeeds: 20,
       unlocked: true, unlockCoins: null, unlockCrystals: null,
       state: 'empty', plantCount: 0, growthEndTime: null,
+      cropId: 'yaojin',
       cropName: '曜金粟', seedName: '曜金種子', cropEmoji: '🌾',
-      harvestCount: 60, exchangeRate: 20,
+      harvestCount: 20,
       seedBuyRate: '1金幣=20顆', growthHours: 4, yieldCrystal: false,
     },
     /* ── 第2塊：幽熒沃土（88金幣解鎖）── */
@@ -28,8 +30,9 @@ export const initialState: GameState = {
       id: 1, name: '幽熒沃土', maxSeeds: 15,
       unlocked: false, unlockCoins: 88, unlockCrystals: null,
       state: 'empty', plantCount: 0, growthEndTime: null,
+      cropId: 'youying',
       cropName: '月海曇', seedName: '幽熒種子', cropEmoji: '🌙',
-      harvestCount: 36, exchangeRate: 8,
+      harvestCount: 15,
       seedBuyRate: '1金幣=10顆', growthHours: 6, yieldCrystal: false,
     },
     /* ── 第3塊：朱砂烈土（888金幣解鎖）── */
@@ -37,8 +40,9 @@ export const initialState: GameState = {
       id: 2, name: '朱砂烈土', maxSeeds: 10,
       unlocked: false, unlockCoins: 888, unlockCrystals: null,
       state: 'empty', plantCount: 0, growthEndTime: null,
+      cropId: 'zhusha',
       cropName: '赤血參', seedName: '朱砂種子', cropEmoji: '🌺',
-      harvestCount: 21, exchangeRate: 3,
+      harvestCount: 10,
       seedBuyRate: '1金幣=4顆', growthHours: 8, yieldCrystal: false,
     },
     /* ── 第4塊：曜紫靈土（累積儲值100水晶解鎖）── */
@@ -46,8 +50,9 @@ export const initialState: GameState = {
       id: 3, name: '曜紫靈土', maxSeeds: 6,
       unlocked: false, unlockCoins: null, unlockCrystals: 100,
       state: 'empty', plantCount: 0, growthEndTime: null,
+      cropId: 'yaozi',
       cropName: '天樞蔓', seedName: '曜紫種子', cropEmoji: '🌿',
-      harvestCount: 20, exchangeRate: 2,
+      harvestCount: 6,
       seedBuyRate: '2金幣=3顆', growthHours: 10, yieldCrystal: false,
     },
     /* ── 第5塊：翡翠聖土（累積儲值300水晶解鎖）── */
@@ -55,17 +60,19 @@ export const initialState: GameState = {
       id: 4, name: '翡翠聖土', maxSeeds: 4,
       unlocked: false, unlockCoins: null, unlockCrystals: 300,
       state: 'empty', plantCount: 0, growthEndTime: null,
+      cropId: 'feicui',
       cropName: '太微蓮', seedName: '翡翠種子', cropEmoji: '🪷',
-      harvestCount: 12, exchangeRate: 1,
+      harvestCount: 4,
       seedBuyRate: '1金幣=1顆', growthHours: 12, yieldCrystal: false,
     },
     /* ── 第6塊：黑金晶土（累積儲值600水晶解鎖）── */
     {
-      id: 5, name: '黑金晶土', maxSeeds: 1,
+      id: 5, name: '黑金晶土', maxSeeds: 2,
       unlocked: false, unlockCoins: null, unlockCrystals: 600,
       state: 'empty', plantCount: 0, growthEndTime: null,
+      cropId: 'heijin',
       cropName: '混沌晶華', seedName: '混沌種子', cropEmoji: '💎',
-      harvestCount: 1, exchangeRate: 1,
+      harvestCount: 2,
       seedBuyRate: '每日免費補給1顆', growthHours: 24, yieldCrystal: true,
     },
   ],

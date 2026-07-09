@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer } from 'react';
-import type { GameState, Plot, HarvestAnim } from './types';
+import type { GameState, Plot, HarvestAnim, CropId, CropInventory } from './types';
+import { CROP_DATA, EMPTY_INVENTORY } from './types';
 import { initialState } from './initialState';
 
 type Action =
@@ -18,7 +19,7 @@ type Action =
   | { type: 'ACQUIRE_PET'; petId: number }
   | { type: 'ACTIVATE_PET'; petId: number }
   | { type: 'FEED_PET'; petId: number }
-  | { type: 'SELL_CROPS'; amount: number }
+  | { type: 'SELL_CROPS'; cropId: CropId; amount: number }
   | { type: 'COMPLETE_TASK'; taskId: string }
   | { type: 'BUY_SEEDS_AND_PLANT_ALL'; coinsUsed: number; crystalsUsed: number; seedsBought: number }
   | { type: 'UNLOCK_PLOT'; plotId: number }
@@ -37,20 +38,9 @@ function plotMaxQty(plot: Plot, seeds: number) {
   return Math.max(0, Math.min(seeds, plot.maxSeeds));
 }
 
-/* ── per-plot 收成計算 ─────────────────────────────────
-   coins:   Math.floor(harvestCount / exchangeRate)
-   crystal: yieldCrystal ? 1 : 0
-   crops:   harvestCount（第6塊不入倉）
-─────────────────────────────────────────────────── */
-function calcHarvest(plot: Plot) {
-  if (plot.yieldCrystal) {
-    return { coins: 0, crystals: 1, crops: 0 };
-  }
-  return {
-    coins: Math.floor(plot.harvestCount / plot.exchangeRate),
-    crystals: 0,
-    crops: plot.harvestCount,
-  };
+/** 收成：作物進倉庫，不給金幣/水晶 */
+function addHarvestToInventory(inv: CropInventory, plot: Plot): CropInventory {
+  return { ...inv, [plot.cropId]: inv[plot.cropId] + plot.harvestCount };
 }
 
 function reducer(state: GameState, action: Action): GameState {
@@ -103,13 +93,15 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, plots: newPlots, warehouseSeeds: seeds, tasks };
     }
 
-    /* ── Harvest single ── */
+    /* ── Harvest single ──────────────────────────────────────────
+       收成時：只增加 cropInventory，絕對不增加金幣或水晶
+       混沌晶華（heijin）也先進倉庫，出售時才換水晶
+    ────────────────────────────────────────────────────────────── */
     case 'HARVEST': {
       const plotIndex = state.plots.findIndex(p => p.id === action.plotId);
       const plot = state.plots[plotIndex];
       if (!plot || plot.state !== 'ready') return state;
 
-      const { coins, crystals, crops } = calcHarvest(plot);
       const newPlots = state.plots.map(p =>
         p.id === action.plotId
           ? { ...p, state: 'empty' as const, plantCount: 0, growthEndTime: null }
@@ -120,9 +112,7 @@ function reducer(state: GameState, action: Action): GameState {
       return {
         ...state,
         plots: newPlots,
-        coins: state.coins + coins,
-        crystals: state.crystals + crystals,
-        warehouseCrops: state.warehouseCrops + crops,
+        cropInventory: addHarvestToInventory(state.cropInventory, plot),
         tasks,
         harvestAnimations: [...state.harvestAnimations, anim],
       };
@@ -130,17 +120,12 @@ function reducer(state: GameState, action: Action): GameState {
 
     /* ── Harvest ALL ready plots ── */
     case 'HARVEST_ALL': {
-      let earnedCoins = 0;
-      let earnedCrystals = 0;
-      let earnedCrops = 0;
       const newAnims: HarvestAnim[] = [];
+      let newInventory = { ...state.cropInventory };
       let wave = 0;
       const newPlots = state.plots.map((plot, idx) => {
         if (plot.state !== 'ready') return plot;
-        const { coins, crystals, crops } = calcHarvest(plot);
-        earnedCoins    += coins;
-        earnedCrystals += crystals;
-        earnedCrops    += crops;
+        newInventory = addHarvestToInventory(newInventory, plot);
         newAnims.push({ id: nextAnimId(), plotIndex: idx, plantCount: plot.harvestCount, delay: wave++ * ANIM_STAGGER });
         return { ...plot, state: 'empty' as const, plantCount: 0, growthEndTime: null };
       });
@@ -149,9 +134,7 @@ function reducer(state: GameState, action: Action): GameState {
       return {
         ...state,
         plots: newPlots,
-        coins: state.coins + earnedCoins,
-        crystals: state.crystals + earnedCrystals,
-        warehouseCrops: state.warehouseCrops + earnedCrops,
+        cropInventory: newInventory,
         tasks,
         harvestAnimations: [...state.harvestAnimations, ...newAnims],
       };
@@ -271,12 +254,26 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, pets: state.pets.map(p => p.id === action.petId ? { ...p, fed: true, fedUntil: now + 12 * 3600_000 } : p) };
     }
 
-    /* ── Market — 以 plot 1 曜金粟基礎比例出售庫存作物 ── */
+    /* ── 出售作物 ────────────────────────────────────────────────
+       依 cropId 查 CROP_DATA 計算售價
+       amount = 株數（向下取整至 sellQty 的倍數）
+       金幣作物 → 增加 coins；heijin → 增加 crystals
+    ────────────────────────────────────────────────────────────── */
     case 'SELL_CROPS': {
-      if (state.warehouseCrops < action.amount) return state;
-      /* 20株曜金粟 = 1金幣，出售按最保守比例（1株=0.05金幣，取整） */
-      const gained = Math.floor(action.amount / 20);
-      return { ...state, warehouseCrops: state.warehouseCrops - action.amount, coins: state.coins + gained };
+      const { cropId, amount } = action;
+      const data = CROP_DATA[cropId];
+      const inv  = state.cropInventory[cropId];
+      if (inv <= 0 || amount <= 0) return state;
+      const sellable = Math.min(amount, inv);
+      const batches  = Math.floor(sellable / data.sellQty);
+      if (batches <= 0) return state;
+      const actualAmount = batches * data.sellQty;
+      return {
+        ...state,
+        cropInventory: { ...state.cropInventory, [cropId]: inv - actualAmount },
+        coins:    state.coins    + batches * data.sellCoins,
+        crystals: state.crystals + batches * data.sellCrystals,
+      };
     }
 
     /* ── Tasks ── */
@@ -313,3 +310,6 @@ export function useGame() {
   if (!ctx) throw new Error('useGame must be used within GameProvider');
   return ctx;
 }
+
+export type { CropInventory };
+export { EMPTY_INVENTORY };

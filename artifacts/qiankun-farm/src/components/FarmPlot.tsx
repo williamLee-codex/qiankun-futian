@@ -1,11 +1,11 @@
 /**
  * FarmPlot — 農田點擊熱區 + 作物狀態顯示
  *
- * 不再負責渲染鎖頭（已移至 FarmScene.LOCK_POS 獨立渲染）。
- * 只負責：
- *   1. 點擊 → SELECT_PLOT
- *   2. Growing 狀態：顯示作物 Icon + 倒計時
- *   3. Ready 狀態：顯示收成 Icon + 文字
+ * 點擊規則：
+ *   - 成熟（ready）農田 → 立即收成，不跳確認
+ *   - 空地（empty）/ 生長中（growing） → 開啟 InfoPanel 選擇播種
+ * 作物圖示：使用 plot.cropEmoji 而非硬編碼 🌾
+ * 對齊：ph-state 以 left:50% / top:55% / translate(-50%,-50%) 置中
  */
 import { useEffect, useState } from 'react';
 import { useGame } from '../game/GameContext';
@@ -34,33 +34,46 @@ export default function FarmPlot({ plot, pos }: Props) {
   const selected  = state.selectedPlotId === plot.id;
   const remaining = plot.growthEndTime ? plot.growthEndTime - now : 0;
 
+  function handleClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!plot.unlocked) {
+      /* 鎖定農田：開啟 InfoPanel 顯示解鎖資訊 */
+      dispatch({ type: 'SELECT_PLOT', id: plot.id });
+      return;
+    }
+    if (plot.state === 'ready') {
+      /* 成熟：立即收成，不跳確認彈窗 */
+      dispatch({ type: 'HARVEST', plotId: plot.id });
+    } else {
+      /* 空地 / 生長中：開啟 InfoPanel */
+      dispatch({ type: 'SELECT_PLOT', id: plot.id });
+    }
+  }
+
   return (
     <button
       className={`ph${selected ? ' ph--sel' : ''}`}
       style={{
         ...(pos as React.CSSProperties),
-        position: 'absolute',  /* 相對 hotspot-layer 定位 */
+        position: 'absolute',
       }}
-      onClick={e => {
-        e.stopPropagation();
-        dispatch({ type: 'SELECT_PLOT', id: plot.id });
-      }}
+      onClick={handleClick}
       aria-label={plot.name}
     >
-      {/* 鎖頭由 FarmScene 統一渲染，此處不再顯示 */}
+      {/* 鎖頭由 FarmScene 統一渲染，此處不顯示 */}
 
-      {/* 作物錨點：left 50% / top 55% / translate(-50%,-50%)
-          所有作物狀態都掛在此 anchor 上，不使用絕對 pixel 座標 */}
+      {/* 生長中：顯示各田正確 cropEmoji + 倒計時 */}
       {plot.unlocked && plot.state === 'growing' && (
         <span className="ph-state">
-          <span className="ph-crop ph-crop--sway">🌾</span>
+          <span className="ph-crop ph-crop--sway">{plot.cropEmoji}</span>
           <span className="ph-timer">{fmt(remaining)}</span>
         </span>
       )}
 
+      {/* 成熟：顯示各田正確 cropEmoji + 收成提示 */}
       {plot.unlocked && plot.state === 'ready' && (
         <span className="ph-state">
-          <span className="ph-crop ph-crop--bounce">✨</span>
+          <span className="ph-crop ph-crop--bounce">{plot.cropEmoji}</span>
           <span className="ph-ready">收成！</span>
         </span>
       )}

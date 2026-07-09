@@ -1,5 +1,38 @@
 export type PlotState = 'empty' | 'growing' | 'ready';
 
+export type CropId = 'yaojin' | 'youying' | 'zhusha' | 'yaozi' | 'feicui' | 'heijin';
+
+export interface CropInventory {
+  yaojin: number;
+  youying: number;
+  zhusha: number;
+  yaozi: number;
+  feicui: number;
+  heijin: number;
+}
+
+export const CROP_IDS: CropId[] = ['yaojin', 'youying', 'zhusha', 'yaozi', 'feicui', 'heijin'];
+
+/** 作物出售規則：sellQty株 → sellCoins金幣 / sellCrystals水晶 */
+export const CROP_DATA: Record<CropId, {
+  name: string;
+  emoji: string;
+  sellQty: number;
+  sellCoins: number;
+  sellCrystals: number;
+}> = {
+  yaojin:  { name: '曜金粟', emoji: '🌾', sellQty: 20, sellCoins: 1,  sellCrystals: 0 },
+  youying: { name: '月海曇', emoji: '🌙', sellQty: 15, sellCoins: 7,  sellCrystals: 0 },
+  zhusha:  { name: '赤血參', emoji: '🌺', sellQty: 10, sellCoins: 9,  sellCrystals: 0 },
+  yaozi:   { name: '天樞蔓', emoji: '🌿', sellQty: 6,  sellCoins: 12, sellCrystals: 0 },
+  feicui:  { name: '太微蓮', emoji: '🪷', sellQty: 4,  sellCoins: 13, sellCrystals: 0 },
+  heijin:  { name: '混沌晶華', emoji: '💎', sellQty: 1,  sellCoins: 0,  sellCrystals: 1 },
+};
+
+export const EMPTY_INVENTORY: CropInventory = {
+  yaojin: 0, youying: 0, zhusha: 0, yaozi: 0, feicui: 0, heijin: 0,
+};
+
 export interface Plot {
   id: number;
   name: string;
@@ -13,15 +46,19 @@ export interface Plot {
   growthEndTime: number | null;
   maxSeeds: number;
 
-  /* ── 作物 / 種子 正式規則 ── */
-  cropName: string;       // 作物名稱，e.g. 曜金粟
-  seedName: string;       // 種子名稱，e.g. 曜金種子
-  cropEmoji: string;      // 顯示 emoji
-  harvestCount: number;   // 每次固定收成株數
-  exchangeRate: number;   // 兌換比：N 株 = 1 金幣（or 1 水晶）
-  seedBuyRate: string;    // 種子購買說明，e.g. "1金幣=20顆"
-  growthHours: number;    // 正式成熟時間（小時，顯示用）
-  yieldCrystal: boolean;  // true = 第6塊，收成給水晶而非金幣
+  /** 作物 ID，對應 CROP_DATA */
+  cropId: CropId;
+  cropName: string;
+  seedName: string;
+  cropEmoji: string;
+  /** 每次固定收成株數（= maxSeeds） */
+  harvestCount: number;
+  /** 顯示用：種子購買說明 */
+  seedBuyRate: string;
+  /** 正式成熟時間（小時，顯示用）*/
+  growthHours: number;
+  /** true = 第6塊，出售給水晶而非金幣 */
+  yieldCrystal: boolean;
 }
 
 export interface Pet {
@@ -62,7 +99,8 @@ export interface GameState {
   plots: Plot[];
   selectedPlotId: number | null;
   plantQuantity: number;
-  warehouseCrops: number;
+  /** 各作物庫存（分作物儲存） */
+  cropInventory: CropInventory;
   warehouseSeeds: number;
   pets: Pet[];
   tasks: Task[];
