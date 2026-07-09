@@ -104,8 +104,8 @@ body {
   position: absolute;
   top: 0;
   bottom: 0;
-  /* 寬度 = 安全區（視口寬度-390px）/ 2 */
-  width: calc(50% - 195px);
+  /* 安全區寬度：viewport 寬 < 390px 時為 0，不出現負值 */
+  width: max(0px, calc(50% - 195px));
   pointer-events: none;
   z-index: 1;
   opacity: 0.92;
@@ -154,20 +154,21 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════
-   GAME SHELL — 390×844 唯一設計稿容器
-   • 所有 UI 都在此座標系內（position:relative 子元素）
-   • 只允許一次 scale，transform-origin: top center
-   • --game-scale 由 App.tsx 動態計算
-   • 不使用 translateX / 多層縮放 / width:100vw / zoom
+   GAME SHELL — 390×843 唯一設計稿容器
+   • 所有 UI 都在此座標系內（position:absolute 子元素）
+   • transform 由 App.tsx 透過 React inline style 直接套用（不用 CSS variable）
+   • transform-origin: top center → 從頂部展開，flex 置中正確
+   • 禁止：多層 scale / translateX(-50%) / width:100vw / zoom
+   • overflow:hidden → 裁掉超出設計框的子元素
 ══════════════════════════════════════════════════════════ */
 .game-shell {
   position: relative;
   width: 390px;
-  height: 844px;
+  height: 843px;
   overflow: hidden;
   flex-shrink: 0;
-  transform: scale(var(--game-scale, 1));
   transform-origin: top center;
+  /* transform 由 React style prop 注入，此處不重複宣告 */
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -244,16 +245,18 @@ body {
 /* ── 舊 game-header 保留以防其他地方引用，但不再使用 ── */
 .game-header { display: none; }
 
-/* 底圖：精確填滿 390×844 設計稿
-   • object-fit:fill → 拉伸至精確 390×844，不裁切，不留黑邊
-   • position:absolute; inset:0 → 與 game-shell 完全重疊
+/* 底圖：精確填滿 game-shell（390×843 設計稿）
+   • width/height 100% → 與 game-shell 完全重疊，無多餘計算
+   • object-fit:fill → 拉伸底圖至 100%×100%，不留黑邊，不裁切
    • pointer-events:none → 點擊穿透到上層 hotspot-layer
-   • z-index:0 → 最底層 */
+   • z-index:0 → 最底層，bg 與所有 overlay 受同一個 transform 縮放
+   ⛔ 禁止：object-fit:contain / cover / inset:0+固定px 混用 */
 .gc-bg {
   position: absolute;
-  inset: 0;
-  width: 390px;
-  height: 844px;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   object-fit: fill;
   pointer-events: none;
   z-index: 0;
@@ -357,7 +360,7 @@ body {
 }
 
 .ph-crop {
-  font-size: clamp(18px, 4.5vmin, 36px);
+  font-size: 24px;
   filter: drop-shadow(0 2px 6px rgba(0,0,0,.85));
   display: block;
   line-height: 1;
@@ -375,7 +378,7 @@ body {
 }
 
 .ph-timer {
-  font-size: clamp(8px, 1.7vmin, 12px);
+  font-size: 10px;
   color: #ffe060;
   font-weight: 700;
   background: rgba(0,0,0,.78);
@@ -387,7 +390,7 @@ body {
 }
 
 .ph-ready {
-  font-size: clamp(9px, 2vmin, 13px);
+  font-size: 11px;
   color: #78ff90;
   font-weight: 700;
   text-shadow: 0 0 14px rgba(80,255,120,1);
@@ -436,14 +439,14 @@ body {
 }
 
 .sb-icon {
-  font-size: clamp(9px, 1.8vmin, 13px);
+  font-size: 11px;
   line-height: 1;
   flex-shrink: 0;
 }
 
 .sb-text {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: clamp(9px, 1.8vmin, 12px);
+  font-size: 11px;
   color: #f0d878;
   text-shadow: 0 1px 3px rgba(0,0,0,.9);
   line-height: 1.25;
@@ -765,7 +768,7 @@ body {
 
 /* 鎖頭：顯示在文字下方，置中 */
 .qa-btn-lock {
-  font-size: clamp(9px, 1.7vh, 14px);
+  font-size: 12px;
   line-height: 1;
   display: block;
   text-align: center;
@@ -799,20 +802,20 @@ body {
 }
 .vip-prompt-msg {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: clamp(10px, 2vmin, 14px);
+  font-size: 12px;
   color: #f7e6b0;
   line-height: 1.6;
   margin: 0;
 }
 .vip-prompt-progress {
-  font-size: clamp(9px, 1.7vmin, 12px);
+  font-size: 11px;
   color: #b090f0;
   font-weight: 700;
   margin: 0;
 }
 .vip-prompt-close {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: clamp(9px, 1.8vmin, 12px);
+  font-size: 11px;
   background: linear-gradient(180deg, #2a1e50, #1a1230);
   border: 1px solid #7060c0;
   color: #c0a0f0;
