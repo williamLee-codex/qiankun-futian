@@ -43,6 +43,8 @@ export interface Task {
   id: string;
   name: string;
   done: boolean;
+  claimed: boolean;
+  reward: { coins: number; crystals: number };
 }
 
 export interface HarvestAnim {

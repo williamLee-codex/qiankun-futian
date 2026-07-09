@@ -98,8 +98,8 @@ export const initialState: GameState = {
   ],
 
   tasks: [
-    { id: 'login',   name: '每日登入',    done: true  },
-    { id: 'plant',   name: '完成一次播種', done: false },
-    { id: 'harvest', name: '完成一次收成', done: false },
+    { id: 'login',   name: '每日登入',    done: true,  claimed: false, reward: { coins: 5, crystals: 0 } },
+    { id: 'plant',   name: '完成一次播種', done: false, claimed: false, reward: { coins: 5, crystals: 0 } },
+    { id: 'harvest', name: '完成一次收成', done: false, claimed: false, reward: { coins: 5, crystals: 0 } },
   ],
 };

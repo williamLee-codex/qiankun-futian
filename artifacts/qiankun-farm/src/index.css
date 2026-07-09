@@ -499,7 +499,7 @@ body {
 .ip-locked-info { flex: 1; display: flex; flex-direction: column; gap: 1px; }
 .ip-name {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: 26px;
+  font-size: 24px;
   color: #f0d060;
   font-weight: 700;
   line-height: 1.4;
@@ -507,13 +507,13 @@ body {
 }
 .ip-locked-sub {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: 20px;
+  font-size: 18px;
   color: #d8c28a;
   line-height: 1.6;
   text-shadow: 0 1px 3px rgba(0,0,0,.7);
 }
 .ip-locked-sub--coins {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: #ffd76a;
 }
@@ -532,7 +532,7 @@ body {
 }
 .ip-progress-text {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: 20px;
+  font-size: 18px;
   color: #d8c28a;
   flex-shrink: 0;
   text-shadow: 0 1px 3px rgba(0,0,0,.8);
@@ -542,13 +542,13 @@ body {
 /* ── 金幣解鎖按鈕（第2、3塊土地）── */
 .ip-unlock-btn {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   background: linear-gradient(180deg, #2a5010, #183408);
   border: 1px solid #5a9030;
   color: #c8f080;
-  padding: 0 14px;
-  min-height: 56px;
+  padding: 0 12px;
+  min-height: 44px;
   border-radius: 6px;
   cursor: pointer;
   flex-shrink: 0;
@@ -577,18 +577,19 @@ body {
 .ip-meta-divider { color: rgba(200,160,60,.5); font-size: 16px; }
 .ip-meta-item {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: 20px;
+  font-size: 18px;
   color: #c8aa70;
   text-shadow: 0 1px 3px rgba(0,0,0,.8);
-  line-height: 1.6;
+  line-height: 1.5;
 }
-.ip-meta-item strong { color: #ffd76a; font-weight: 700; font-size: 22px; }
+.ip-meta-item strong { color: #ffd76a; font-weight: 700; font-size: 18px; }
 
 .ip-action-row {
   display: flex;
   align-items: center;
   gap: 2.5%;
   width: 100%;
+  flex-wrap: wrap;
 }
 
 .ip-qty {
@@ -598,48 +599,48 @@ body {
   border-radius: 5px;
   overflow: hidden;
   flex-shrink: 0;
-  min-height: 44px;
+  min-height: 38px;
 }
 .ip-qty-btn {
   background: rgba(60,40,10,.7);
   border: none;
   color: #f0d060;
-  font-size: 20px;
-  padding: 4px 10px;
+  font-size: 18px;
+  padding: 4px 9px;
   cursor: pointer;
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
   line-height: 1;
   transition: background .15s;
-  min-height: 44px;
+  min-height: 38px;
 }
 .ip-qty-btn:hover { background: rgba(100,70,15,.8); }
 .ip-qty-btn--max {
   background: rgba(100,75,15,.75) !important;
   color: #ffd76a !important;
-  font-size: 18px !important;
-  padding: 4px 8px !important;
+  font-size: 16px !important;
+  padding: 4px 7px !important;
   border-left: 1px solid rgba(180,130,20,.4) !important;
   font-weight: 700;
-  min-height: 44px !important;
+  min-height: 38px !important;
 }
 .ip-qty-num {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: #ffd76a;
-  min-width: 28px;
+  min-width: 26px;
   text-align: center;
   padding: 0 4px;
   background: rgba(0,0,0,.5);
-  line-height: 44px;
+  line-height: 38px;
 }
 
 .ip-state-text {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: 22px;
+  font-size: 18px;
   flex: 1;
   text-shadow: 0 1px 4px rgba(0,0,0,.9);
-  line-height: 1.6;
+  line-height: 1.5;
 }
 .ip-state--growing { color: #90b860; }
 .ip-state--ready   { color: #ffd76a; font-weight: 700; animation: harvest-glow .9s ease-in-out infinite alternate; }
@@ -651,11 +652,11 @@ body {
 
 .ip-act-btn {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: .04em;
-  padding: 0 16px;
-  min-height: 44px;
+  letter-spacing: .03em;
+  padding: 0 14px;
+  min-height: 38px;
   border-radius: 6px;
   cursor: pointer;
   white-space: nowrap;
@@ -689,12 +690,12 @@ body {
 
 .ip-close-btn {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
-  font-size: 20px;
+  font-size: 18px;
   background: rgba(30,10,5,.75);
   border: 1px solid rgba(180,80,40,.5);
   color: #ffa070;
-  padding: 0 12px;
-  min-height: 44px;
+  padding: 0 10px;
+  min-height: 38px;
   border-radius: 5px;
   cursor: pointer;
   transition: all .2s;
@@ -1283,7 +1284,8 @@ body {
   border-radius: 6px;
   border: 1px solid rgba(140,100,20,.15);
 }
-.task-row--done { border-color: rgba(60,160,60,.25); }
+.task-row--done    { border-color: rgba(60,160,60,.25); }
+.task-row--claimed { border-color: rgba(100,100,100,.2); opacity: .7; }
 .task-check { font-size: 22px; flex-shrink: 0; }
 .task-name  {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
@@ -1298,6 +1300,32 @@ body {
   color: #ffd76a;
   font-weight: 700;
   white-space: nowrap;
+}
+.task-claim-btn {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 20px;
+  font-weight: 700;
+  background: linear-gradient(180deg, #2a5010, #183408);
+  border: 1px solid #5a9030;
+  color: #c8f080;
+  padding: 0 16px;
+  min-height: 48px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: filter .15s;
+}
+.task-claim-btn:hover { filter: brightness(1.25); }
+.task-claimed-tag {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 18px;
+  color: #808060;
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 4px 10px;
+  border: 1px solid rgba(100,100,80,.25);
+  border-radius: 4px;
 }
 
 /* ── 市場 ─────────────────────────────────────── */

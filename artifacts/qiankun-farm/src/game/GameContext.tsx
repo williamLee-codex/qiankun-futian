@@ -21,7 +21,8 @@ type Action =
   | { type: 'SELL_CROPS'; amount: number }
   | { type: 'COMPLETE_TASK'; taskId: string }
   | { type: 'BUY_SEEDS_AND_PLANT_ALL'; coinsUsed: number; crystalsUsed: number; seedsBought: number }
-  | { type: 'UNLOCK_PLOT'; plotId: number };
+  | { type: 'UNLOCK_PLOT'; plotId: number }
+  | { type: 'CLAIM_TASK_REWARD'; taskId: string };
 
 /* ── 測試用成長時間（正式版由 growthHours 顯示）── */
 const GROW_TIME_MS = 10_000;
@@ -281,6 +282,19 @@ function reducer(state: GameState, action: Action): GameState {
     /* ── Tasks ── */
     case 'COMPLETE_TASK':
       return { ...state, tasks: state.tasks.map(t => t.id === action.taskId ? { ...t, done: true } : t) };
+
+    case 'CLAIM_TASK_REWARD': {
+      const task = state.tasks.find(t => t.id === action.taskId);
+      if (!task || !task.done || task.claimed) return state;
+      return {
+        ...state,
+        coins:    state.coins    + task.reward.coins,
+        crystals: state.crystals + task.reward.crystals,
+        tasks: state.tasks.map(t =>
+          t.id === action.taskId ? { ...t, claimed: true } : t
+        ),
+      };
+    }
 
     default: return state;
   }
