@@ -10,8 +10,8 @@ function nextNoon(from: number): number {
 }
 
 export const initialState: GameState = {
-  coins: 99999,
-  crystals: 9999,
+  coins: 20,
+  crystals: 0,
   totalDeposit: 999,
   weather: '晴',
   selectedPlotId: null,
