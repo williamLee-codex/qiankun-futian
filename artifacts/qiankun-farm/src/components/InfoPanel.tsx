@@ -68,7 +68,8 @@ export default function InfoPanel() {
   }
 
   /* ── Active (unlocked) plot ── */
-  const maxQty = Math.min(state.warehouseSeeds, plot.maxSeeds);
+  const seedStock = state.seedInventory[plot.cropId];
+  const maxQty = Math.min(seedStock, plot.maxSeeds);
   const growLabel = plot.growthHours >= 1
     ? `${plot.growthHours} 小時`
     : `${Math.round(plot.growthHours * 60)} 分鐘`;
@@ -91,7 +92,7 @@ export default function InfoPanel() {
         {plot.state === 'empty' && (
           <>
             <span className="ip-meta-item" style={{ flexShrink: 0 }}>
-              {plot.seedName} <strong>{state.warehouseSeeds}</strong> 顆
+              {plot.seedName} <strong>{seedStock}</strong> 顆
             </span>
             <div className="ip-qty">
               <button className="ip-qty-btn" onClick={() => dispatch({ type: 'SET_PLANT_QUANTITY', qty: state.plantQuantity - 1 })}>－</button>
@@ -101,7 +102,7 @@ export default function InfoPanel() {
             </div>
             <button
               className="ip-act-btn ip-act-btn--plant"
-              disabled={state.warehouseSeeds <= 0}
+              disabled={seedStock <= 0}
               onClick={() => dispatch({ type: 'PLANT', plotId: plot.id, quantity: state.plantQuantity })}
             >
               🌱 播種

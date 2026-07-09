@@ -9,7 +9,7 @@ export const initialState: GameState = {
   selectedPlotId: null,
   plantQuantity: 20,
   cropInventory: { ...EMPTY_INVENTORY },
-  warehouseSeeds: 50,
+  seedInventory: { yaojin: 50, youying: 0, zhusha: 0, yaozi: 0, feicui: 0, heijin: 0 },
   farmerUnlocked: false,
   openPanel: null,
   harvestAnimations: [],

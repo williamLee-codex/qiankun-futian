@@ -1,7 +1,125 @@
 import { useState } from 'react';
 import { useGame } from '../../game/GameContext';
-import { CROP_IDS, CROP_DATA } from '../../game/types';
+import { CROP_IDS, CROP_DATA, SEED_SHOP_DATA, SEED_MAX_UNITS, SEED_BIG_SPEND_RATIO } from '../../game/types';
 import type { CropId } from '../../game/types';
+
+/** 種子購買區塊：每種種子以「播種單位」購買，最多 10 單位，不提供「最大／一鍵買滿」 */
+function SeedBuyRow({ cropId }: { cropId: CropId }) {
+  const { state, dispatch } = useGame();
+  const data  = SEED_SHOP_DATA[cropId];
+  const plot  = state.plots.find(p => p.cropId === cropId);
+  const isUnlocked = plot?.unlocked ?? false;
+  const stock = state.seedInventory[cropId];
+
+  const [units, setUnits] = useState(1);
+  const [confirming, setConfirming] = useState(false);
+  const [toast, setToast] = useState(false);
+
+  const seeds   = units * data.unitQty;
+  const cost    = units * data.unitCost;
+  const balance = data.currency === 'coins' ? state.coins : state.crystals;
+  const canAfford = balance >= cost;
+  const percent = balance > 0 ? Math.round((cost / balance) * 100) : 100;
+  const needsConfirm = balance > 0 && cost > balance * SEED_BIG_SPEND_RATIO;
+
+  function commitBuy() {
+    dispatch({
+      type: 'BUY_SEEDS',
+      cropId,
+      seeds,
+      coinsUsed:    data.currency === 'coins'    ? cost : 0,
+      crystalsUsed: data.currency === 'crystals' ? cost : 0,
+    });
+    setConfirming(false);
+    setUnits(1);
+    setToast(true);
+    setTimeout(() => setToast(false), 1600);
+  }
+
+  function handleBuyClick() {
+    if (!canAfford) return;
+    if (needsConfirm) {
+      setConfirming(true);
+      return;
+    }
+    commitBuy();
+  }
+
+  return (
+    <div className={`seed-buy-row${!isUnlocked ? ' seed-buy-row--locked' : ''}`}>
+      <div className="seed-buy-header">
+        <span className="seed-buy-name">
+          {plot?.cropEmoji} {data.name}
+          {!isUnlocked && <span className="market-locked-tag"> 🔒</span>}
+        </span>
+        <span className="seed-buy-stock">目前：{stock} 顆</span>
+      </div>
+
+      {isUnlocked && (
+        <>
+          <div className="seed-buy-info">
+            <span>本次：<strong>{seeds}</strong> 顆</span>
+            <span>花費：<strong>{cost}</strong> {data.currency === 'coins' ? '🪙 金幣' : '💎 水晶'}</span>
+          </div>
+
+          <div className="seed-buy-actions">
+            <div className="qty-row">
+              <button
+                className="qty-btn"
+                onClick={() => setUnits(u => Math.max(1, u - 1))}
+                disabled={units <= 1}
+              >－</button>
+              <span className="qty-num">{seeds}</span>
+              <button
+                className="qty-btn"
+                onClick={() => setUnits(u => Math.min(SEED_MAX_UNITS, u + 1))}
+                disabled={units >= SEED_MAX_UNITS}
+              >＋</button>
+            </div>
+            <button
+              className="action-btn--sell seed-buy-btn"
+              disabled={!canAfford}
+              onClick={handleBuyClick}
+            >
+              {canAfford ? '購買' : '餘額不足'}
+            </button>
+          </div>
+
+          {toast && <div className="seed-buy-toast">購買成功</div>}
+        </>
+      )}
+
+      {confirming && (
+        <div
+          className="qa-modal-backdrop"
+          onClick={(e) => { e.stopPropagation(); setConfirming(false); }}
+        >
+          <div className="qa-modal-box" onClick={e => e.stopPropagation()}>
+            <p className="qa-modal-title">⚠ 大額購買確認</p>
+            <p className="qa-modal-body">
+              本次將花費 {cost} {data.currency === 'coins' ? '金幣' : '水晶'}，
+              約占目前持有資源的 {percent}%。是否確認購買？
+            </p>
+            <div className="qa-modal-btns">
+              <button
+                className="qa-modal-btn qa-modal-btn--cancel"
+                onClick={(e) => { e.stopPropagation(); setConfirming(false); }}
+              >
+                取消
+              </button>
+              <button
+                className="qa-modal-btn qa-modal-btn--confirm"
+                onClick={(e) => { e.stopPropagation(); commitBuy(); }}
+              >
+                確認購買
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** 每個作物的出售區塊 */
 function CropSellRow({ cropId }: { cropId: CropId }) {
@@ -113,6 +231,16 @@ export default function MarketPanel() {
             {!state.plots[5]?.unlocked && <span className="market-locked-tag">🔒</span>}
           </div>
         )}
+      </div>
+
+      <div className="panel-separator" style={{ margin: '10px 0' }} />
+
+      {/* 種子購買區：以「播種單位」購買，不提供最大／一鍵買滿 */}
+      <p className="panel-note" style={{ marginBottom: 8, fontWeight: 'bold' }}>
+        🌱 種子購買（每次最多 {SEED_MAX_UNITS} 個購買單位）
+      </p>
+      <div className="seed-buy-list">
+        {CROP_IDS.map(id => <SeedBuyRow key={id} cropId={id} />)}
       </div>
 
       <div className="panel-separator" style={{ margin: '10px 0' }} />

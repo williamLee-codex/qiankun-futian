@@ -1777,3 +1777,65 @@ body {
   flex-wrap: wrap;
   margin-top: 4px;
 }
+
+/* 種子購買區 */
+.seed-buy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.seed-buy-row {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(140,100,20,.25);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+.seed-buy-row--locked { opacity: .55; }
+.seed-buy-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.seed-buy-name {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 18px;
+  color: #f0d060;
+  font-weight: 700;
+}
+.seed-buy-stock {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 15px;
+  color: #c8aa70;
+}
+.seed-buy-info {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 15px;
+  color: #a89050;
+}
+.seed-buy-info strong { color: #f0e060; }
+.seed-buy-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.seed-buy-btn { flex-shrink: 0; }
+.seed-buy-btn:disabled { opacity: .45; cursor: not-allowed; }
+.seed-buy-toast {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: rgba(40,90,20,.92);
+  border: 1px solid #6a9040;
+  color: #d4f0a0;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 14px;
+  padding: 3px 10px;
+  border-radius: 6px;
+}

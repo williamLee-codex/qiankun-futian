@@ -33,6 +33,36 @@ export const EMPTY_INVENTORY: CropInventory = {
   yaojin: 0, youying: 0, zhusha: 0, yaozi: 0, feicui: 0, heijin: 0,
 };
 
+/** 種子庫存（獨立於作物庫存，各作物分開計算） */
+export type SeedInventory = CropInventory;
+
+export const EMPTY_SEED_INVENTORY: SeedInventory = {
+  yaojin: 0, youying: 0, zhusha: 0, yaozi: 0, feicui: 0, heijin: 0,
+};
+
+/** 種子購買單位：每按一次＋／－增減 1 個購買單位（unitQty顆 / unitCost 金幣或水晶） */
+export interface SeedShopItem {
+  name: string;
+  unitQty: number;
+  unitCost: number;
+  currency: 'coins' | 'crystals';
+}
+
+export const SEED_SHOP_DATA: Record<CropId, SeedShopItem> = {
+  yaojin:  { name: '曜金種子', unitQty: 20, unitCost: 1, currency: 'coins' },
+  youying: { name: '幽熒種子', unitQty: 30, unitCost: 3, currency: 'coins' },
+  zhusha:  { name: '朱砂種子', unitQty: 20, unitCost: 5, currency: 'coins' },
+  yaozi:   { name: '曜紫種子', unitQty: 6,  unitCost: 3, currency: 'coins' },
+  feicui:  { name: '翡翠種子', unitQty: 4,  unitCost: 4, currency: 'coins' },
+  heijin:  { name: '混沌種子', unitQty: 2,  unitCost: 1, currency: 'crystals' },
+};
+
+/** 每次購買最多 10 個購買單位，禁止「最大／一鍵買滿」 */
+export const SEED_MAX_UNITS = 10;
+
+/** 大額購買二次確認門檻：花費超過目前持有資源的 30% */
+export const SEED_BIG_SPEND_RATIO = 0.3;
+
 export interface Plot {
   id: number;
   name: string;
@@ -101,7 +131,7 @@ export interface GameState {
   plantQuantity: number;
   /** 各作物庫存（分作物儲存） */
   cropInventory: CropInventory;
-  warehouseSeeds: number;
+  seedInventory: SeedInventory;
   pets: Pet[];
   tasks: Task[];
   openPanel: 'warehouse' | 'seeds' | 'pets' | 'farmer' | 'tasks' | 'market' | 'law' | 'warehouseBuilding' | 'shopBuilding' | null;

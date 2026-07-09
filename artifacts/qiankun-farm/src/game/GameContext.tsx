@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer } from 'react';
-import type { GameState, Plot, HarvestAnim, CropId, CropInventory } from './types';
+import type { GameState, Plot, HarvestAnim, CropId, CropInventory, SeedInventory } from './types';
 import { CROP_DATA, EMPTY_INVENTORY } from './types';
 import { initialState } from './initialState';
 
@@ -21,7 +21,10 @@ type Action =
   | { type: 'FEED_PET'; petId: number }
   | { type: 'SELL_CROPS'; cropId: CropId; amount: number }
   | { type: 'COMPLETE_TASK'; taskId: string }
-  | { type: 'BUY_SEEDS_AND_PLANT_ALL'; coinsUsed: number; crystalsUsed: number; seedsBought: number }
+  /** 種子商店：直接購買種子（不播種），扣款＋加庫存 */
+  | { type: 'BUY_SEEDS'; cropId: CropId; seeds: number; coinsUsed: number; crystalsUsed: number }
+  /** 智慧收播：自動補足各田缺少的種子後播種 */
+  | { type: 'BUY_SEEDS_AND_PLANT_ALL'; purchases: { cropId: CropId; seeds: number }[]; coinsUsed: number; crystalsUsed: number }
   | { type: 'UNLOCK_PLOT'; plotId: number }
   | { type: 'CLAIM_TASK_REWARD'; taskId: string };
 
@@ -34,8 +37,8 @@ const ANIM_STAGGER = 130;
 let _animCounter = 0;
 function nextAnimId() { return ++_animCounter; }
 
-function plotMaxQty(plot: Plot, seeds: number) {
-  return Math.max(0, Math.min(seeds, plot.maxSeeds));
+function plotMaxQty(plot: Plot, seedInv: SeedInventory) {
+  return Math.max(0, Math.min(seedInv[plot.cropId], plot.maxSeeds));
 }
 
 /** 收成：作物進倉庫，不給金幣/水晶 */
@@ -49,7 +52,7 @@ function reducer(state: GameState, action: Action): GameState {
     /* ── Selection ── */
     case 'SELECT_PLOT': {
       const plot = state.plots.find(p => p.id === action.id);
-      const qty  = plot ? plotMaxQty(plot, state.warehouseSeeds) : 1;
+      const qty  = plot ? plotMaxQty(plot, state.seedInventory) : 1;
       return { ...state, selectedPlotId: action.id, plantQuantity: Math.max(1, qty), openPanel: null };
     }
     case 'DESELECT_PLOT':
@@ -60,7 +63,7 @@ function reducer(state: GameState, action: Action): GameState {
       const plot = state.selectedPlotId !== null
         ? state.plots.find(p => p.id === state.selectedPlotId)
         : null;
-      const maxAllowed = plot ? plotMaxQty(plot, state.warehouseSeeds) : 20;
+      const maxAllowed = plot ? plotMaxQty(plot, state.seedInventory) : 20;
       return { ...state, plantQuantity: Math.max(1, Math.min(maxAllowed, action.qty)) };
     }
 
@@ -68,7 +71,8 @@ function reducer(state: GameState, action: Action): GameState {
     case 'PLANT': {
       const plot = state.plots.find(p => p.id === action.plotId);
       if (!plot || !plot.unlocked || plot.state !== 'empty') return state;
-      const qty = Math.min(action.quantity, plot.maxSeeds, state.warehouseSeeds);
+      const seedStock = state.seedInventory[plot.cropId];
+      const qty = Math.min(action.quantity, plot.maxSeeds, seedStock);
       if (qty <= 0) return state;
       const newPlots = state.plots.map(p =>
         p.id === action.plotId
@@ -76,21 +80,28 @@ function reducer(state: GameState, action: Action): GameState {
           : p
       );
       const tasks = state.tasks.map(t => t.id === 'plant' ? { ...t, done: true } : t);
-      return { ...state, plots: newPlots, warehouseSeeds: state.warehouseSeeds - qty, tasks };
+      return {
+        ...state,
+        plots: newPlots,
+        seedInventory: { ...state.seedInventory, [plot.cropId]: seedStock - qty },
+        tasks,
+      };
     }
 
-    /* ── Plant ALL unlocked empty plots ── */
+    /* ── Plant ALL unlocked empty plots（各田各自消耗對應作物種子）── */
     case 'PLANT_ALL': {
-      let seeds = state.warehouseSeeds;
-      const now  = Date.now();
+      const seedInv = { ...state.seedInventory };
+      const now = Date.now();
       const newPlots = state.plots.map(plot => {
-        if (!plot.unlocked || plot.state !== 'empty' || seeds <= 0) return plot;
-        const qty = Math.min(seeds, plot.maxSeeds);
-        seeds -= qty;
+        if (!plot.unlocked || plot.state !== 'empty') return plot;
+        const avail = seedInv[plot.cropId];
+        if (avail <= 0) return plot;
+        const qty = Math.min(avail, plot.maxSeeds);
+        seedInv[plot.cropId] = avail - qty;
         return { ...plot, state: 'growing' as const, plantCount: qty, growthEndTime: now + GROW_TIME_MS };
       });
       const tasks = state.tasks.map(t => t.id === 'plant' ? { ...t, done: true } : t);
-      return { ...state, plots: newPlots, warehouseSeeds: seeds, tasks };
+      return { ...state, plots: newPlots, seedInventory: seedInv, tasks };
     }
 
     /* ── Harvest single ──────────────────────────────────────────
@@ -191,18 +202,34 @@ function reducer(state: GameState, action: Action): GameState {
       };
     }
 
-    /* ── 智慧收播：購買種子後播種 ── */
+    /* ── 種子商店：直接購買（不播種）── */
+    case 'BUY_SEEDS': {
+      if (state.coins < action.coinsUsed || state.crystals < action.crystalsUsed) return state;
+      return {
+        ...state,
+        coins:    state.coins    - action.coinsUsed,
+        crystals: state.crystals - action.crystalsUsed,
+        seedInventory: {
+          ...state.seedInventory,
+          [action.cropId]: state.seedInventory[action.cropId] + action.seeds,
+        },
+      };
+    }
+
+    /* ── 智慧收播：依各田缺少的種子分別補足後播種 ── */
     case 'BUY_SEEDS_AND_PLANT_ALL': {
       const afterCoins    = state.coins    - action.coinsUsed;
       const afterCrystals = state.crystals - action.crystalsUsed;
       if (afterCoins < 0 || afterCrystals < 0) return state;
-      const startSeeds = state.warehouseSeeds + action.seedsBought;
-      let seeds = startSeeds;
+      const seedInv = { ...state.seedInventory };
+      for (const p of action.purchases) seedInv[p.cropId] += p.seeds;
       const now = Date.now();
       const newPlots = state.plots.map(plot => {
-        if (!plot.unlocked || plot.state !== 'empty' || seeds <= 0) return plot;
-        const qty = Math.min(seeds, plot.maxSeeds);
-        seeds -= qty;
+        if (!plot.unlocked || plot.state !== 'empty') return plot;
+        const avail = seedInv[plot.cropId];
+        if (avail <= 0) return plot;
+        const qty = Math.min(avail, plot.maxSeeds);
+        seedInv[plot.cropId] = avail - qty;
         return { ...plot, state: 'growing' as const, plantCount: qty, growthEndTime: now + GROW_TIME_MS };
       });
       const tasks = state.tasks.map(t => t.id === 'plant' ? { ...t, done: true } : t);
@@ -210,7 +237,7 @@ function reducer(state: GameState, action: Action): GameState {
         ...state,
         coins:    afterCoins,
         crystals: afterCrystals,
-        warehouseSeeds: seeds,
+        seedInventory: seedInv,
         plots: newPlots,
         tasks,
       };

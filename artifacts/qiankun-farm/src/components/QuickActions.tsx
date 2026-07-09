@@ -13,6 +13,8 @@
  */
 import { useState } from 'react';
 import { useGame } from '../game/GameContext';
+import { SEED_SHOP_DATA } from '../game/types';
+import type { CropId } from '../game/types';
 
 const ANIM_STAGGER = 130;
 const ANIM_BASE    = 900;
@@ -20,12 +22,12 @@ function harvestDelay(readyCount: number) {
   return readyCount * ANIM_STAGGER + ANIM_BASE;
 }
 
-const SEED_PRICE_COINS = 10;
-const CRYSTAL_TO_COINS = 100;
+interface SeedPurchase { cropId: CropId; seeds: number; cost: number; currency: 'coins' | 'crystals' }
 
 interface SmartModal {
-  lacking:      number;
+  purchases:    SeedPurchase[];
   coinsNeeded:  number;
+  crystalsNeeded: number;
   coinsUsed:    number;
   crystalsUsed: number;
   readyCount:   number;
@@ -48,22 +50,34 @@ export default function QuickActions() {
   const smartUnlocked    = state.plots[5]?.unlocked ?? false; // 黑金晶土
 
   /* ── 動作可執行旗標 ── */
-  const canPlant   = state.plots.some(p => p.unlocked && p.state === 'empty' && state.warehouseSeeds > 0);
+  const canPlant   = state.plots.some(p => p.unlocked && p.state === 'empty' && state.seedInventory[p.cropId] > 0);
   const canHarvest = state.plots.some(p => p.state === 'ready');
 
-  /* ── 智慧收播：計算補種費用 ── */
+  /* ── 智慧收播：依各田缺少的種子分別計算補種費用（用種子商店牌價，整單位購買）── */
   function calcSmartModal(readyCount: number): SmartModal | null {
     const targetPlots = state.plots.filter(p =>
       p.unlocked && (p.state === 'empty' || p.state === 'ready')
     );
-    const totalNeeded = targetPlots.reduce((s, p) => s + p.maxSeeds, 0);
-    const lacking     = Math.max(0, totalNeeded - state.warehouseSeeds);
-    if (lacking === 0) return null;
+    const purchases: SeedPurchase[] = [];
+    for (const plot of targetPlots) {
+      const lacking = Math.max(0, plot.maxSeeds - state.seedInventory[plot.cropId]);
+      if (lacking <= 0) continue;
+      const data  = SEED_SHOP_DATA[plot.cropId];
+      const units = Math.ceil(lacking / data.unitQty);
+      purchases.push({
+        cropId: plot.cropId,
+        seeds: units * data.unitQty,
+        cost:  units * data.unitCost,
+        currency: data.currency,
+      });
+    }
+    if (purchases.length === 0) return null;
 
-    const coinsNeeded  = lacking * SEED_PRICE_COINS;
+    const coinsNeeded    = purchases.filter(p => p.currency === 'coins').reduce((s, p) => s + p.cost, 0);
+    const crystalsNeeded = purchases.filter(p => p.currency === 'crystals').reduce((s, p) => s + p.cost, 0);
     const coinsUsed    = Math.min(state.coins, coinsNeeded);
-    const crystalsUsed = Math.ceil(Math.max(0, coinsNeeded - coinsUsed) / CRYSTAL_TO_COINS);
-    return { lacking, coinsNeeded, coinsUsed, crystalsUsed, readyCount };
+    const crystalsUsed = Math.min(state.crystals, crystalsNeeded);
+    return { purchases, coinsNeeded, crystalsNeeded, coinsUsed, crystalsUsed, readyCount };
   }
 
   /* ── 一鍵收成 ── */
@@ -116,9 +130,9 @@ export default function QuickActions() {
     if (!smartModal) return;
     dispatch({
       type: 'BUY_SEEDS_AND_PLANT_ALL',
+      purchases: smartModal.purchases.map(p => ({ cropId: p.cropId, seeds: p.seeds })),
       coinsUsed:    smartModal.coinsUsed,
       crystalsUsed: smartModal.crystalsUsed,
-      seedsBought:  smartModal.lacking,
     });
     setSmartModal(null);
   }
@@ -230,21 +244,27 @@ export default function QuickActions() {
             <p className="qa-modal-body">是否花費資源補足種子後立即播種？</p>
 
             <div className="qa-modal-costs">
-              <div className="qa-cost-row">
-                <span className="qa-cost-label">缺少種子</span>
-                <span className="qa-cost-val">{smartModal.lacking} 顆</span>
-              </div>
-              <div className="qa-cost-row">
-                <span className="qa-cost-label">🪙 消耗金幣</span>
-                <span className="qa-cost-val">{smartModal.coinsUsed} 枚</span>
-              </div>
-              {smartModal.crystalsUsed > 0 && (
+              {smartModal.purchases.map(p => (
+                <div className="qa-cost-row" key={p.cropId}>
+                  <span className="qa-cost-label">補足 {SEED_SHOP_DATA[p.cropId].name}</span>
+                  <span className="qa-cost-val">
+                    {p.seeds} 顆（{p.cost} {p.currency === 'coins' ? '🪙' : '💎'}）
+                  </span>
+                </div>
+              ))}
+              {smartModal.coinsNeeded > 0 && (
                 <div className="qa-cost-row">
-                  <span className="qa-cost-label">💎 消耗水晶</span>
+                  <span className="qa-cost-label">🪙 消耗金幣合計</span>
+                  <span className="qa-cost-val">{smartModal.coinsUsed} 枚</span>
+                </div>
+              )}
+              {smartModal.crystalsNeeded > 0 && (
+                <div className="qa-cost-row">
+                  <span className="qa-cost-label">💎 消耗水晶合計</span>
                   <span className="qa-cost-val">{smartModal.crystalsUsed} 顆</span>
                 </div>
               )}
-              {(smartModal.coinsUsed > state.coins || smartModal.crystalsUsed > state.crystals) && (
+              {(smartModal.coinsUsed < smartModal.coinsNeeded || smartModal.crystalsUsed < smartModal.crystalsNeeded) && (
                 <p className="qa-cost-warn">⚠ 資源不足，將以現有種子播種。</p>
               )}
             </div>
@@ -264,8 +284,8 @@ export default function QuickActions() {
                 onPointerDown={e => e.stopPropagation()}
                 onTouchStart={e => e.stopPropagation()}
                 disabled={
-                  smartModal.coinsUsed > state.coins ||
-                  smartModal.crystalsUsed > state.crystals
+                  smartModal.coinsNeeded > state.coins ||
+                  smartModal.crystalsNeeded > state.crystals
                 }
               >
                 確認購買

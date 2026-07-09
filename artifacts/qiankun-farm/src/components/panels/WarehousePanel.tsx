@@ -8,11 +8,14 @@ export default function WarehousePanel() {
     <div className="panel-content">
       <h2 className="panel-title">📦 氣運倉庫</h2>
 
-      {/* 種子庫存 */}
-      <div className="panel-row">
-        <span className="panel-item-name">🌱 種子（通用）</span>
-        <span className="panel-item-qty">{state.warehouseSeeds} 顆</span>
-      </div>
+      {/* 種子庫存（分作物顯示） */}
+      <p className="panel-note" style={{ margin: '0 0 6px' }}>種子庫存</p>
+      {state.plots.map(plot => (
+        <div key={plot.id} className="panel-row">
+          <span className="panel-item-name">{plot.cropEmoji} {plot.seedName}</span>
+          <span className="panel-item-qty">{state.seedInventory[plot.cropId]} 顆</span>
+        </div>
+      ))}
 
       <div className="panel-separator" />
 

@@ -4,6 +4,7 @@ import { CROP_IDS } from '../../game/types';
 export default function WarehouseBuildingPanel() {
   const { state } = useGame();
   const totalCrops = CROP_IDS.reduce((sum, id) => sum + state.cropInventory[id], 0);
+  const totalSeeds = CROP_IDS.reduce((sum, id) => sum + state.seedInventory[id], 0);
   return (
     <div className="panel-content">
       <h2 className="panel-title">🏯 氣運倉庫</h2>
@@ -14,8 +15,8 @@ export default function WarehouseBuildingPanel() {
           <span className="building-stat-value">{totalCrops} 株</span>
         </div>
         <div className="building-stat">
-          <span className="building-stat-label">曜金種子</span>
-          <span className="building-stat-value">{state.warehouseSeeds} 顆</span>
+          <span className="building-stat-label">種子總數</span>
+          <span className="building-stat-value">{totalSeeds} 顆</span>
         </div>
         <div className="building-stat">
           <span className="building-stat-label">倉庫等級</span>
