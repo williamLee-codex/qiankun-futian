@@ -4,13 +4,13 @@ import { EMPTY_INVENTORY } from './types';
 export const initialState: GameState = {
   coins: 99999,
   crystals: 9999,
-  totalDeposit: 0,
+  totalDeposit: 999,
   weather: '晴',
   selectedPlotId: null,
   plantQuantity: 20,
   cropInventory: { ...EMPTY_INVENTORY },
   seedInventory: { yaojin: 50, youying: 0, zhusha: 0, yaozi: 0, feicui: 0, heijin: 0 },
-  farmerUnlocked: false,
+  farmerUnlocked: true,
   openPanel: null,
   harvestAnimations: [],
 
@@ -48,7 +48,7 @@ export const initialState: GameState = {
     /* ── 第4塊：曜紫靈土（累積儲值100水晶解鎖）── */
     {
       id: 3, name: '曜紫靈土', maxSeeds: 6,
-      unlocked: false, unlockCoins: null, unlockCrystals: 100,
+      unlocked: true, unlockCoins: null, unlockCrystals: 100,
       state: 'empty', plantCount: 0, growthEndTime: null,
       cropId: 'yaozi',
       cropName: '天樞蔓', seedName: '曜紫種子', cropEmoji: '🌿',
@@ -58,7 +58,7 @@ export const initialState: GameState = {
     /* ── 第5塊：翡翠聖土（累積儲值300水晶解鎖）── */
     {
       id: 4, name: '翡翠聖土', maxSeeds: 4,
-      unlocked: false, unlockCoins: null, unlockCrystals: 300,
+      unlocked: true, unlockCoins: null, unlockCrystals: 300,
       state: 'empty', plantCount: 0, growthEndTime: null,
       cropId: 'feicui',
       cropName: '太微蓮', seedName: '翡翠種子', cropEmoji: '🪷',
@@ -68,7 +68,7 @@ export const initialState: GameState = {
     /* ── 第6塊：黑金晶土（累積儲值600水晶解鎖）── */
     {
       id: 5, name: '黑金晶土', maxSeeds: 2,
-      unlocked: false, unlockCoins: null, unlockCrystals: 600,
+      unlocked: true, unlockCoins: null, unlockCrystals: 600,
       state: 'empty', plantCount: 0, growthEndTime: null,
       cropId: 'heijin',
       cropName: '混沌晶華', seedName: '混沌種子', cropEmoji: '💎',
@@ -92,13 +92,13 @@ export const initialState: GameState = {
     },
     {
       id: 2, name: '噬時諦聽', grade: '仙品',
-      owned: false, active: false, fed: false, fedUntil: null, cooldownUntil: null,
+      owned: true, active: false, fed: false, fedUntil: null, cooldownUntil: null,
       acquireType: 'deposit', acquireCost: 0, acquireDepositRequired: 450,
       description: '仙品靈獸，能壓縮時間流速，大幅縮短作物成熟時間。累積儲值450水晶自動贈送。',
     },
     {
       id: 3, name: '乾坤麒麟', grade: '神品',
-      owned: false, active: false, fed: false, fedUntil: null, cooldownUntil: null,
+      owned: true, active: false, fed: false, fedUntil: null, cooldownUntil: null,
       acquireType: 'deposit', acquireCost: 0, acquireDepositRequired: 799,
       description: '神品聖獸，乾坤之力加持，令所有作物產量倍增。累積儲值799水晶自動贈送。',
     },
