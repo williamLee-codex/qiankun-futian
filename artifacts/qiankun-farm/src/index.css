@@ -175,14 +175,15 @@ body {
    RESOURCE HUD — 頂部四格資源 Overlay
    底圖只提供外框；icon / 數字 / 名稱全部由系統生成。
    四欄 grid，每欄內 flex：[icon] [value\nlabel]
-   高度 58px（對齊底圖資源框，可微調 52–62px）。
+   top: 7px → 跳過底圖頂部薄黑框邊線，對齊金色格子內容區
+   height: 50px → 與底圖資源格子可見高度一致
 ══════════════════════════════════════════════════════════ */
 .resource-hud {
   position: absolute;
-  top: 0;
+  top: 7px;
   left: 0;
   width: 100%;
-  height: 58px;
+  height: 50px;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   z-index: 30;
