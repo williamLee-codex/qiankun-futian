@@ -89,9 +89,18 @@ export default function LawPanel() {
         </ul>
       </div>
 
-      {/* ⑧ 好友借運 */}
+      {/* ⑧ 福田任務 */}
       <div className="law-section">
-        <h3 className="law-subtitle">⑧ 好友借運</h3>
+        <h3 className="law-subtitle">⑧ 福田任務</h3>
+        <ul className="law-list">
+          <li>福田任務為乾坤福田內部每日小任務，獎勵僅限金幣，不提供水晶、功德、靈寵碎片或其他平台級獎勵。</li>
+          <li>福田任務與御策羅盤主頁未來的「天機」系統彼此獨立，不可混用。</li>
+        </ul>
+      </div>
+
+      {/* ⑨ 好友借運 */}
+      <div className="law-section">
+        <h3 className="law-subtitle">⑨ 好友借運</h3>
         <ul className="law-list">
           <li>好友可拜訪彼此福田，但第 1 塊新手田與第 6 塊水晶田不可借運，僅能借運第 2～5 塊。</li>
           <li>每次拜訪單一好友只能借運一格，出手後會對該好友產生獨立 24 小時因果鎖印冷卻。</li>
@@ -99,9 +108,9 @@ export default function LawPanel() {
         </ul>
       </div>
 
-      {/* ⑨ 結緣代收 */}
+      {/* ⑩ 結緣代收 */}
       <div className="law-section">
-        <h3 className="law-subtitle">⑨ 結緣代收</h3>
+        <h3 className="law-subtitle">⑩ 結緣代收</h3>
         <ul className="law-list">
           <li>成熟作物超過 1 小時未收，會進入能量外溢狀態。</li>
           <li>好友可一鍵結緣代收，訪客獲得 10% 總產值，其餘 90% 安全送回地主倉庫。</li>
@@ -109,9 +118,9 @@ export default function LawPanel() {
         </ul>
       </div>
 
-      {/* ⑩ 天氣系統 */}
+      {/* ⑪ 天氣系統 */}
       <div className="law-section">
-        <h3 className="law-subtitle">⑩ 天氣系統</h3>
+        <h3 className="law-subtitle">⑪ 天氣系統</h3>
         <ul className="law-list">
           <li>天氣類型：晴☀️ / 雨🌧️ / 雷⛈️ / 雪❄️，由系統每日隨機更新。</li>
           <li>晴天：正常生長速度，無額外加成。</li>
@@ -121,9 +130,9 @@ export default function LawPanel() {
         </ul>
       </div>
 
-      {/* ⑪ 常見問題 FAQ */}
+      {/* ⑫ 常見問題 FAQ */}
       <div className="law-section">
-        <h3 className="law-subtitle">⑪ 常見問題 FAQ</h3>
+        <h3 className="law-subtitle">⑫ 常見問題 FAQ</h3>
         <ul className="law-list">
           <li>Q：種子不夠怎麼辦？ → 前往市場購買種子，或等收成後補充庫存。</li>
           <li>Q：土地如何解鎖？ → 第2、3塊花費金幣；第4～6塊需累積儲值水晶自動解鎖。</li>
