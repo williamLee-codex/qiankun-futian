@@ -91,13 +91,6 @@ function Game() {
         <InfoPanel />
         <QuickActions />
         <BottomMenu />
-        <button
-          className="friend-entry-btn"
-          aria-label="好友"
-          onClick={(e) => { e.stopPropagation(); dispatch({ type: 'OPEN_PANEL', panel: 'friends' }); }}
-        >
-          🤝
-        </button>
 
         {/* z:50 HUD：疊在底圖頂部留白區 */}
         <GameHeader />

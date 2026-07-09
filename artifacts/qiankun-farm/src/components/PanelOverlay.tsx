@@ -1,6 +1,5 @@
 import { useGame } from '../game/GameContext';
 import WarehousePanel from './panels/WarehousePanel';
-import SeedsPanel from './panels/SeedsPanel';
 import PetsPanel from './panels/PetsPanel';
 import FarmerPanel from './panels/FarmerPanel';
 import TasksPanel from './panels/TasksPanel';
@@ -17,7 +16,6 @@ export default function PanelOverlay() {
 
   const panelMap: Record<string, React.ReactNode> = {
     warehouse: <WarehousePanel />,
-    seeds: <SeedsPanel />,
     pets: <PetsPanel />,
     farmer: <FarmerPanel />,
     tasks: <TasksPanel />,

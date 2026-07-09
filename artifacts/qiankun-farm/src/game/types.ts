@@ -150,7 +150,7 @@ export interface GameState {
   seedInventory: SeedInventory;
   pets: Pet[];
   tasks: Task[];
-  openPanel: 'warehouse' | 'seeds' | 'pets' | 'farmer' | 'tasks' | 'market' | 'law' | 'warehouseBuilding' | 'shopBuilding' | 'friends' | null;
+  openPanel: 'warehouse' | 'pets' | 'farmer' | 'tasks' | 'market' | 'law' | 'warehouseBuilding' | 'shopBuilding' | 'friends' | null;
   farmerUnlocked: boolean;
   /** 農夫是否啟動（解鎖後預設不強制開啟，玩家自行切換）*/
   farmerActive: boolean;

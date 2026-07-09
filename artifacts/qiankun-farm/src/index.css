@@ -1355,27 +1355,6 @@ body {
   50%      { transform: translateY(-6px); }
 }
 
-/* ── 好友入口懸浮按鈕 ─────────────────────────── */
-.friend-entry-btn {
-  position: absolute;
-  top: 9%;
-  right: 3%;
-  z-index: 25;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #3a2a08, #1a1004);
-  border: 1px solid rgba(200,160,40,.5);
-  color: #f0d060;
-  font-size: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 0 8px rgba(200,160,40,.3);
-}
-.friend-entry-btn:hover { filter: brightness(1.2); }
-
 /* ── 每日任務 ─────────────────────────────────── */
 .tasks-list { display: flex; flex-direction: column; gap: 12px; }
 .task-row   {

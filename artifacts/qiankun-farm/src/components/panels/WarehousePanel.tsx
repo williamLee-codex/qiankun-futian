@@ -2,13 +2,13 @@ import { useGame } from '../../game/GameContext';
 import { CROP_IDS, CROP_DATA } from '../../game/types';
 
 export default function WarehousePanel() {
-  const { state } = useGame();
+  const { state, dispatch } = useGame();
 
   return (
     <div className="panel-content">
       <h2 className="panel-title">📦 氣運倉庫</h2>
 
-      {/* 種子庫存（分作物顯示） */}
+      {/* 種子庫存（分作物顯示，種子入口已整合至此，底部導航不再單獨顯示種子頁）*/}
       <p className="panel-note" style={{ margin: '0 0 6px' }}>種子庫存</p>
       {state.plots.map(plot => (
         <div key={plot.id} className="panel-row">
@@ -16,6 +16,14 @@ export default function WarehousePanel() {
           <span className="panel-item-qty">{state.seedInventory[plot.cropId]} 顆</span>
         </div>
       ))}
+
+      <button
+        className="pet-btn pet-btn--buy"
+        style={{ width: '100%', marginTop: '10px' }}
+        onClick={() => dispatch({ type: 'OPEN_PANEL', panel: 'market' })}
+      >
+        前往市場購買種子
+      </button>
 
       <div className="panel-separator" />
 

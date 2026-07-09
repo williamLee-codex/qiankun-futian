@@ -6,16 +6,17 @@
  * which items appear and their order.
  *
  * Official menu (per V2 spec):
- *   福田首頁 | 種子 | 靈寵 | 農夫 | 任務 | 市場 | 天道律法
+ *   福田首頁 | 好友 | 靈寵 | 農夫 | 任務 | 市場 | 天道律法
  *
  * 倉庫 is removed from nav — access via clicking 氣運倉庫 building.
+ * 種子 is removed from nav — 種子庫存已整合進氣運倉庫，購買種子請至市場。
  */
 import { useGame } from '../game/GameContext';
 import type { GameState } from '../game/types';
 
 const MENU_ITEMS: { label: string; icon: string; panel: GameState['openPanel'] }[] = [
   { label: '福田首頁', icon: '🏠', panel: null },
-  { label: '種子',    icon: '🌱', panel: 'seeds' },
+  { label: '好友',    icon: '🤝', panel: 'friends' },
   { label: '靈寵',    icon: '🐾', panel: 'pets' },
   { label: '農夫',    icon: '👨‍🌾', panel: 'farmer' },
   { label: '任務',    icon: '📜', panel: 'tasks' },
