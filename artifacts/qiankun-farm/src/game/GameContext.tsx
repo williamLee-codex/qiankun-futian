@@ -29,8 +29,10 @@ type Action =
   | { type: 'CLAIM_TASK_REWARD'; taskId: string }
   /** 農夫開關（僅解鎖後可切換，不強制接管） */
   | { type: 'TOGGLE_FARMER' }
-  /** 借運：拜訪好友（平台 uid），代收其福田溢出作物（僅限第2～5塊）*/
-  | { type: 'VISIT_BORROW'; friendUid: string };
+  /** 借運：拜訪好友（平台 uid），從第2～5塊隨機借運一塊成熟田（僅限第2～5塊）*/
+  | { type: 'VISIT_BORROW'; friendUid: string }
+  /** 一鍵採收：協助好友收取其福田所有「超時1小時未收」的作物，不是借運 */
+  | { type: 'HARVEST_ALL_FRIEND'; friendUid: string };
 
 const LOCAL_STORAGE_KEY = 'qiankun-farm-save-v1';
 
@@ -268,21 +270,72 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, farmerActive: !state.farmerActive };
     }
 
-    /* ── 借運：拜訪好友，一鍵結緣代收（僅限第2～5塊，每好友獨立24H冷卻，每日總次數限制）──
-       好友身份資料一律來自平台 platformFriends，這裡只用 uid 索引福田專屬的借運狀態。*/
+    /* ── 借運：拜訪好友，隨機借運第2～5塊中一塊成熟田（每好友獨立24H冷卻，每日總次數限制）──
+       好友身份資料一律來自平台 platformFriends，這裡只用 uid 索引福田專屬的借運狀態。
+       規則：系統從第2～5塊「合法成熟田」中隨機選1塊，訪客取得該田可借運作物數量的20%（無條件進位，至少1個），
+       地主損失同等數量；借運會扣每日次數、建立24H因果鎖印、套用靈寵效果。*/
     case 'VISIT_BORROW': {
       const now = Date.now();
       const borrow = state.borrowState[action.friendUid];
       if (!borrow) return state;
       if (borrow.cooldownUntil && now < borrow.cooldownUntil) return state;
-      if (!borrow.overflowReadyAt || now < borrow.overflowReadyAt) return state;
       if (state.dailyBorrowCount >= state.dailyBorrowLimit) return state;
-      if (borrow.overflowPlotIndex < 1 || borrow.overflowPlotIndex > 4) return state;
 
-      /* 模擬總產值（依對方田地作物基準值計算），訪客取得 10%，其餘 90% 回地主倉庫（模擬對象，非本地玩家資產）*/
-      const mockCropId = state.plots[borrow.overflowPlotIndex].cropId;
-      const mockYield = CROP_DATA[mockCropId].sellCoins * state.plots[borrow.overflowPlotIndex].harvestCount || 10;
-      const visitorReward = Math.max(1, Math.round(mockYield * 0.1));
+      /* 第2～5塊中，目前已成熟（readyAt 非 null）的合法借運田 */
+      const eligible = borrow.plots
+        .map((p, i) => ({ ...p, i }))
+        .filter(p => p.readyAt !== null);
+      if (eligible.length === 0) return state;
+
+      const picked = eligible[Math.floor(Math.random() * eligible.length)];
+      const realPlot = state.plots[picked.i + 1]; // borrow.plots[0..3] 對應福田第2～5塊 = state.plots[1..4]
+      const cropQty = realPlot.harvestCount; // 該田可借運作物數量（模擬對象，非本地玩家資產）
+      let visitorReward = Math.max(1, Math.ceil(cropQty * 0.2));
+
+      /* 靈寵效果：噬時諦聽（仙品，出戰中）有機率額外觸發一次收益 */
+      const chishi = state.pets.find(p => p.name === '噬時諦聽');
+      if (chishi?.owned && chishi.active && Math.random() < 0.3) {
+        visitorReward += Math.max(1, Math.ceil(cropQty * 0.2));
+      }
+
+      const newPlots = borrow.plots.map((p, i) => (i === picked.i ? { readyAt: null } : p)) as typeof borrow.plots;
+
+      return {
+        ...state,
+        coins: state.coins + visitorReward,
+        borrowState: {
+          ...state.borrowState,
+          [action.friendUid]: {
+            cooldownUntil: now + FRIEND_COOLDOWN_MS,
+            plots: newPlots,
+          },
+        },
+        dailyBorrowCount: state.dailyBorrowCount + 1,
+      };
+    }
+
+    /* ── 一鍵採收：協助好友收取所有「成熟超時1小時未收」的作物，不是借運 ──
+       規則：一次處理所有符合條件的超時作物；訪客取得總量5%（無條件進位，至少1個），
+       地主取得剩餘95%回到地主倉庫；不扣每日借運次數、不建立因果鎖印、不受靈寵借運效果影響。*/
+    case 'HARVEST_ALL_FRIEND': {
+      const now = Date.now();
+      const borrow = state.borrowState[action.friendUid];
+      if (!borrow) return state;
+
+      const overtime = borrow.plots
+        .map((p, i) => ({ ...p, i }))
+        .filter(p => p.readyAt !== null && now - p.readyAt! >= OVERFLOW_MS);
+      if (overtime.length === 0) return state;
+
+      const totalYield = overtime.reduce((sum, p) => {
+        const realPlot = state.plots[p.i + 1];
+        return sum + realPlot.harvestCount;
+      }, 0);
+      const visitorReward = Math.max(1, Math.ceil(totalYield * 0.05));
+      /* 剩餘 95% 回到地主（好友）倉庫，屬於模擬對象，非本地玩家資產，此處不需寫入本地狀態 */
+
+      const overtimeIdx = new Set(overtime.map(p => p.i));
+      const newPlots = borrow.plots.map((p, i) => (overtimeIdx.has(i) ? { readyAt: null } : p)) as typeof borrow.plots;
 
       return {
         ...state,
@@ -291,11 +344,9 @@ function reducer(state: GameState, action: Action): GameState {
           ...state.borrowState,
           [action.friendUid]: {
             ...borrow,
-            cooldownUntil: now + FRIEND_COOLDOWN_MS,
-            overflowReadyAt: null,
+            plots: newPlots,
           },
         },
-        dailyBorrowCount: state.dailyBorrowCount + 1,
       };
     }
 

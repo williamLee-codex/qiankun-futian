@@ -28,11 +28,36 @@ export const initialState: GameState = {
   /**
    * 好友借運狀態，以平台 platformFriends 的 uid 為索引鍵（見 src/platform）。
    * 好友身份資料（暱稱等）不存在這裡，一律由平台 platformFriends 提供。
+   * plots[0～3] 對應對方福田第2～5塊，模擬資料。
    */
   borrowState: {
-    'friend-001': { cooldownUntil: null, overflowReadyAt: Date.now(), overflowPlotIndex: 1 },
-    'friend-002': { cooldownUntil: null, overflowReadyAt: Date.now(), overflowPlotIndex: 3 },
-    'friend-003': { cooldownUntil: null, overflowReadyAt: null, overflowPlotIndex: 2 },
+    'friend-001': {
+      cooldownUntil: null,
+      plots: [
+        { readyAt: Date.now() },              // 第2塊：剛成熟，可借運，尚未超時
+        { readyAt: null },                     // 第3塊：未成熟
+        { readyAt: Date.now() - 2 * 60 * 60 * 1000 }, // 第4塊：已超時2小時，可借運也可一鍵採收
+        { readyAt: null },                     // 第5塊：未成熟
+      ],
+    },
+    'friend-002': {
+      cooldownUntil: null,
+      plots: [
+        { readyAt: null },
+        { readyAt: Date.now() - 90 * 60 * 1000 }, // 第3塊：已超時90分鐘
+        { readyAt: null },
+        { readyAt: Date.now() },                   // 第5塊：剛成熟，尚未超時
+      ],
+    },
+    'friend-003': {
+      cooldownUntil: null,
+      plots: [
+        { readyAt: null },
+        { readyAt: null },
+        { readyAt: null },
+        { readyAt: null },
+      ],
+    },
   },
 
   plots: [
