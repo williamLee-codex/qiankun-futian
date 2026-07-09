@@ -85,6 +85,7 @@ function reducer(state: GameState, action: Action): GameState {
         plots: newPlots,
         seedInventory: { ...state.seedInventory, [plot.cropId]: seedStock - qty },
         tasks,
+        selectedPlotId: null,
       };
     }
 
@@ -126,6 +127,7 @@ function reducer(state: GameState, action: Action): GameState {
         cropInventory: addHarvestToInventory(state.cropInventory, plot),
         tasks,
         harvestAnimations: [...state.harvestAnimations, anim],
+        selectedPlotId: state.selectedPlotId === action.plotId ? null : state.selectedPlotId,
       };
     }
 
