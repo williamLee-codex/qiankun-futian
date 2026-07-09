@@ -110,10 +110,12 @@ export interface Pet {
   description: string;
 }
 
-/** 好友（模擬資料，僅前端展示與互動，不連接真實帳號/後端）*/
-export interface Friend {
-  id: number;
-  name: string;
+/**
+ * 好友借運狀態（乾坤福田專屬，僅記錄「與平台好友互動的福田狀態」，
+ * 不包含好友身份資料 — 身份資料一律由平台 platformFriends 提供，
+ * 這裡用平台 uid 作為索引鍵）。
+ */
+export interface FriendBorrowState {
   /** 該好友的因果鎖印冷卻結束時間（借運後 24 小時內不可再借） */
   cooldownUntil: number | null;
   /** 對方福田目前是否有「能量外溢」可代收的作物；null = 無 */
@@ -155,7 +157,11 @@ export interface GameState {
   /** 農夫是否啟動（解鎖後預設不強制開啟，玩家自行切換）*/
   farmerActive: boolean;
   harvestAnimations: HarvestAnim[];
-  friends: Friend[];
+  /**
+   * 好友借運狀態（以平台 platformFriends 的 uid 為索引鍵）。
+   * 好友「身份資料」不存在這裡 — 一律讀取平台 platformFriends。
+   */
+  borrowState: Record<string, FriendBorrowState>;
   /** 今日已使用借運次數 */
   dailyBorrowCount: number;
   /** 每日總借運次數上限（預設 10）*/

@@ -25,11 +25,15 @@ export const initialState: GameState = {
   dailyBorrowCount: 0,
   dailyBorrowLimit: 10,
   dailyBorrowResetAt: nextNoon(Date.now()),
-  friends: [
-    { id: 0, name: '清風道友', cooldownUntil: null, overflowReadyAt: Date.now(), overflowPlotIndex: 1 },
-    { id: 1, name: '墨衍師姐', cooldownUntil: null, overflowReadyAt: Date.now(), overflowPlotIndex: 3 },
-    { id: 2, name: '玄夜真人', cooldownUntil: null, overflowReadyAt: null, overflowPlotIndex: 2 },
-  ],
+  /**
+   * 好友借運狀態，以平台 platformFriends 的 uid 為索引鍵（見 src/platform）。
+   * 好友身份資料（暱稱等）不存在這裡，一律由平台 platformFriends 提供。
+   */
+  borrowState: {
+    'friend-001': { cooldownUntil: null, overflowReadyAt: Date.now(), overflowPlotIndex: 1 },
+    'friend-002': { cooldownUntil: null, overflowReadyAt: Date.now(), overflowPlotIndex: 3 },
+    'friend-003': { cooldownUntil: null, overflowReadyAt: null, overflowPlotIndex: 2 },
+  },
 
   plots: [
     /* ── 第1塊：微芒凡土（初始解鎖）── */

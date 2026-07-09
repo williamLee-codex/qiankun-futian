@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGame } from '../../game/GameContext';
+import { usePlatformFriends } from '../../platform/usePlatformFriends';
 
 function fmtDuration(ms: number) {
   const totalMin = Math.max(0, Math.ceil(ms / 60000));
@@ -9,17 +10,21 @@ function fmtDuration(ms: number) {
   return `${m} 分鐘`;
 }
 
-/** 好友頁（最小可行版本）：僅作為入口，顯示好友列表與拜訪按鈕。
- *  拜訪詳細畫面／選田借運／一鍵結緣代收／靈寵影響，留待下一階段任務實作。 */
+/**
+ * 好友頁（最小可行版本）。
+ *
+ * 好友身份資料一律讀取自平台 platformFriends（見 src/platform），
+ * 乾坤福田不維護自己的獨立好友資料。
+ * 拜訪詳細畫面／選田借運／一鍵結緣代收／靈寵影響，留待下一階段任務實作。
+ */
 export default function FriendsPanel() {
-  const { state, dispatch } = useGame();
+  const { state } = useGame();
+  const { friends, addFriend } = usePlatformFriends();
   const [name, setName] = useState('');
   const now = Date.now();
 
   function handleAdd() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    dispatch({ type: 'ADD_FRIEND', name: trimmed });
+    addFriend(name);
     setName('');
   }
 
@@ -40,31 +45,38 @@ export default function FriendsPanel() {
       </div>
 
       <div className="pets-list">
-        {state.friends.length === 0 && (
+        {friends.length === 0 && (
           <p className="panel-note">尚無好友，新增一位好友開始互動吧！</p>
         )}
-        {state.friends.map(friend => {
-          const inCooldown = friend.cooldownUntil !== null && now < friend.cooldownUntil;
-          const canVisit = !inCooldown;
+        {friends.map(friend => {
+          const borrow = state.borrowState[friend.uid];
+          const inCooldown = !!borrow?.cooldownUntil && now < borrow.cooldownUntil;
+          const canVisit = friend.farmPublic && !inCooldown;
           return (
-            <div key={friend.id} className="pet-card">
+            <div key={friend.uid} className="pet-card">
               <div className="pet-header">
-                <span className="pet-name">{friend.name}</span>
+                <span className="pet-name">{friend.avatar} {friend.nickname}</span>
                 <span className={`pet-status ${canVisit ? 'pet-status--active' : ''}`}>
-                  {inCooldown ? '冷卻中' : '可拜訪'}
+                  {!friend.farmPublic ? '福田未公開' : inCooldown ? '冷卻中' : '可拜訪'}
                 </span>
               </div>
               <p className="pet-desc">
-                {inCooldown
-                  ? `因果鎖印冷卻中，剩 ${fmtDuration(friend.cooldownUntil! - now)}`
-                  : '目前可以前往拜訪。'}
+                {!friend.farmPublic
+                  ? '對方尚未公開福田，暫時無法拜訪。'
+                  : inCooldown
+                    ? `因果鎖印冷卻中，剩 ${fmtDuration(borrow!.cooldownUntil! - now)}`
+                    : '目前可以前往拜訪。'}
               </p>
               <div className="pet-actions">
                 <button
                   className={`pet-btn pet-btn--deploy${!canVisit ? ' pet-btn--disabled' : ''}`}
                   onClick={() => {
                     if (!canVisit) {
-                      alert(`對 ${friend.name} 的因果鎖印尚未解除，剩 ${fmtDuration(friend.cooldownUntil! - now)}。`);
+                      if (!friend.farmPublic) {
+                        alert(`${friend.nickname} 尚未公開福田，暫時無法拜訪。`);
+                      } else {
+                        alert(`對 ${friend.nickname} 的因果鎖印尚未解除，剩 ${fmtDuration(borrow!.cooldownUntil! - now)}。`);
+                      }
                       return;
                     }
                     alert(`好友福田拜訪功能即將推出，敬請期待！`);

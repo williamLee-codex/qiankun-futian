@@ -29,10 +29,8 @@ type Action =
   | { type: 'CLAIM_TASK_REWARD'; taskId: string }
   /** 農夫開關（僅解鎖後可切換，不強制接管） */
   | { type: 'TOGGLE_FARMER' }
-  /** 新增好友（模擬，僅前端資料） */
-  | { type: 'ADD_FRIEND'; name: string }
-  /** 借運：拜訪好友，代收其福田溢出作物（僅限第2～5塊）*/
-  | { type: 'VISIT_BORROW'; friendId: number };
+  /** 借運：拜訪好友（平台 uid），代收其福田溢出作物（僅限第2～5塊）*/
+  | { type: 'VISIT_BORROW'; friendUid: string };
 
 const LOCAL_STORAGE_KEY = 'qiankun-farm-save-v1';
 
@@ -270,50 +268,33 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, farmerActive: !state.farmerActive };
     }
 
-    /* ── 新增好友（模擬資料）── */
-    case 'ADD_FRIEND': {
-      const name = action.name.trim();
-      if (!name) return state;
-      const id = state.friends.length ? Math.max(...state.friends.map(f => f.id)) + 1 : 0;
-      const newFriend = {
-        id,
-        name,
-        cooldownUntil: null,
-        overflowReadyAt: Date.now(),
-        overflowPlotIndex: 1 + Math.floor(Math.random() * 4),
-      };
-      return { ...state, friends: [...state.friends, newFriend] };
-    }
-
-    /* ── 借運：拜訪好友，一鍵結緣代收（僅限第2～5塊，每好友獨立24H冷卻，每日總次數限制）── */
+    /* ── 借運：拜訪好友，一鍵結緣代收（僅限第2～5塊，每好友獨立24H冷卻，每日總次數限制）──
+       好友身份資料一律來自平台 platformFriends，這裡只用 uid 索引福田專屬的借運狀態。*/
     case 'VISIT_BORROW': {
       const now = Date.now();
-      const friend = state.friends.find(f => f.id === action.friendId);
-      if (!friend) return state;
-      if (friend.cooldownUntil && now < friend.cooldownUntil) return state;
-      if (!friend.overflowReadyAt || now < friend.overflowReadyAt) return state;
+      const borrow = state.borrowState[action.friendUid];
+      if (!borrow) return state;
+      if (borrow.cooldownUntil && now < borrow.cooldownUntil) return state;
+      if (!borrow.overflowReadyAt || now < borrow.overflowReadyAt) return state;
       if (state.dailyBorrowCount >= state.dailyBorrowLimit) return state;
-      if (friend.overflowPlotIndex < 1 || friend.overflowPlotIndex > 4) return state;
+      if (borrow.overflowPlotIndex < 1 || borrow.overflowPlotIndex > 4) return state;
 
       /* 模擬總產值（依對方田地作物基準值計算），訪客取得 10%，其餘 90% 回地主倉庫（模擬對象，非本地玩家資產）*/
-      const mockCropId = state.plots[friend.overflowPlotIndex].cropId;
-      const mockYield = CROP_DATA[mockCropId].sellCoins * state.plots[friend.overflowPlotIndex].harvestCount || 10;
+      const mockCropId = state.plots[borrow.overflowPlotIndex].cropId;
+      const mockYield = CROP_DATA[mockCropId].sellCoins * state.plots[borrow.overflowPlotIndex].harvestCount || 10;
       const visitorReward = Math.max(1, Math.round(mockYield * 0.1));
-
-      const newFriends = state.friends.map(f =>
-        f.id === action.friendId
-          ? {
-              ...f,
-              cooldownUntil: now + FRIEND_COOLDOWN_MS,
-              overflowReadyAt: null,
-            }
-          : f
-      );
 
       return {
         ...state,
         coins: state.coins + visitorReward,
-        friends: newFriends,
+        borrowState: {
+          ...state.borrowState,
+          [action.friendUid]: {
+            ...borrow,
+            cooldownUntil: now + FRIEND_COOLDOWN_MS,
+            overflowReadyAt: null,
+          },
+        },
         dailyBorrowCount: state.dailyBorrowCount + 1,
       };
     }
