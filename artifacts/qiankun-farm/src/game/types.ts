@@ -89,6 +89,10 @@ export interface Plot {
   growthHours: number;
   /** true = 第6塊，出售給水晶而非金幣 */
   yieldCrystal: boolean;
+  /** 成熟瞬間的時間戳（用於好友代收「超時1小時」判定）；非成熟或已被收成/農夫代管則為 null */
+  readyAt: number | null;
+  /** 可被好友借運（僅第2～5塊，第1、6塊固定 false）*/
+  borrowable: boolean;
 }
 
 export interface Pet {
@@ -104,6 +108,18 @@ export interface Pet {
   acquireCost: number;
   acquireDepositRequired: number;
   description: string;
+}
+
+/** 好友（模擬資料，僅前端展示與互動，不連接真實帳號/後端）*/
+export interface Friend {
+  id: number;
+  name: string;
+  /** 該好友的因果鎖印冷卻結束時間（借運後 24 小時內不可再借） */
+  cooldownUntil: number | null;
+  /** 對方福田目前是否有「能量外溢」可代收的作物；null = 無 */
+  overflowReadyAt: number | null;
+  /** 可代收格對應第幾塊田（1～4，代表第2～5塊）*/
+  overflowPlotIndex: number;
 }
 
 export interface Task {
@@ -134,7 +150,16 @@ export interface GameState {
   seedInventory: SeedInventory;
   pets: Pet[];
   tasks: Task[];
-  openPanel: 'warehouse' | 'seeds' | 'pets' | 'farmer' | 'tasks' | 'market' | 'law' | 'warehouseBuilding' | 'shopBuilding' | null;
+  openPanel: 'warehouse' | 'seeds' | 'pets' | 'farmer' | 'tasks' | 'market' | 'law' | 'warehouseBuilding' | 'shopBuilding' | 'friends' | null;
   farmerUnlocked: boolean;
+  /** 農夫是否啟動（解鎖後預設不強制開啟，玩家自行切換）*/
+  farmerActive: boolean;
   harvestAnimations: HarvestAnim[];
+  friends: Friend[];
+  /** 今日已使用借運次數 */
+  dailyBorrowCount: number;
+  /** 每日總借運次數上限（預設 10）*/
+  dailyBorrowLimit: number;
+  /** 下一次每日借運次數重置時間（每日中午 12:00）*/
+  dailyBorrowResetAt: number;
 }

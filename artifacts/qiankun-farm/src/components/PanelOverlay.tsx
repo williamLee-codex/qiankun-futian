@@ -8,6 +8,7 @@ import MarketPanel from './panels/MarketPanel';
 import LawPanel from './panels/LawPanel';
 import WarehouseBuildingPanel from './panels/WarehouseBuildingPanel';
 import ShopBuildingPanel from './panels/ShopBuildingPanel';
+import FriendsPanel from './panels/FriendsPanel';
 
 export default function PanelOverlay() {
   const { state, dispatch } = useGame();
@@ -24,6 +25,7 @@ export default function PanelOverlay() {
     law: <LawPanel />,
     warehouseBuilding: <WarehouseBuildingPanel />,
     shopBuilding: <ShopBuildingPanel />,
+    friends: <FriendsPanel />,
   };
 
   const content = panelMap[state.openPanel];

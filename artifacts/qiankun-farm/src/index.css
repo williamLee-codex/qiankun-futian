@@ -1217,6 +1217,15 @@ body {
 .pet-btn--buy    { background: #1e1404; border: 1px solid #7a5818; color: #d4a830; }
 .pet-btn--deploy { background: #0a1e08; border: 1px solid #3a7030; color: #70d060; }
 .pet-btn--feed   { background: #080e1e; border: 1px solid #2a5080; color: #70a8c8; }
+.pet-btn--disabled { opacity: .45; cursor: not-allowed; }
+.panel-note {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 17px;
+  color: #b8a068;
+  line-height: 1.6;
+  margin-top: 14px;
+  font-style: italic;
+}
 
 /* ── 農夫 ─────────────────────────────────────── */
 .farmer-locked       { text-align: center; padding: 16px 0; }
@@ -1273,6 +1282,99 @@ body {
   font-style: italic;
   line-height: 1.7;
 }
+.farmer-status-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 8px; }
+.farmer-status-badge {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 16px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-weight: 700;
+}
+.farmer-status-badge--unlocked { background: rgba(200,160,40,.15); color: #d4a830; border: 1px solid rgba(200,160,40,.4); }
+.farmer-status-badge--on  { background: rgba(60,200,60,.15); color: #70d060; border: 1px solid rgba(60,200,60,.4); }
+.farmer-status-badge--off { background: rgba(180,80,80,.15); color: #d07070; border: 1px solid rgba(180,80,80,.4); }
+.farmer-toggle-row { display: flex; justify-content: center; gap: 16px; margin-bottom: 20px; }
+.farmer-btn {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 20px;
+  font-weight: 700;
+  min-height: 52px;
+  padding: 0 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: filter .15s, opacity .15s;
+}
+.farmer-btn--on  { background: #0a1e08; border: 1px solid #3a7030; color: #70d060; }
+.farmer-btn--off { background: #1e0a0a; border: 1px solid #703a3a; color: #d07070; }
+.farmer-btn:disabled { opacity: .4; cursor: not-allowed; }
+.farmer-btn--current { opacity: 1; box-shadow: 0 0 10px rgba(200,160,40,.3); }
+
+/* ── 好友 ─────────────────────────────────────── */
+.friend-add-row { display: flex; gap: 10px; align-items: center; }
+.friend-add-input {
+  flex: 1;
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 18px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(140,100,20,.4);
+  background: rgba(255,255,255,.04);
+  color: #f0e8d0;
+}
+.friend-add-input:focus { outline: none; border-color: #c89030; }
+
+/* ── 主畫面靈獸出戰顯示（PetOverlay）───────────────
+   定位於右上安全區，避開 HUD／建築／狀態列／農田範圍，且不攔截點擊 */
+.pet-overlay {
+  position: absolute;
+  top: 9%;
+  right: 15%;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  animation: pet-idle-bob 2.4s ease-in-out infinite;
+}
+.pet-overlay-icon {
+  font-size: 34px;
+  filter: drop-shadow(0 0 6px rgba(255, 220, 120, .6));
+}
+.pet-overlay-name {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'KaiTi', serif;
+  font-size: 12px;
+  color: #ffe9a8;
+  background: rgba(30, 20, 8, .55);
+  padding: 1px 8px;
+  border-radius: 10px;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+@keyframes pet-idle-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+/* ── 好友入口懸浮按鈕 ─────────────────────────── */
+.friend-entry-btn {
+  position: absolute;
+  top: 9%;
+  right: 3%;
+  z-index: 25;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #3a2a08, #1a1004);
+  border: 1px solid rgba(200,160,40,.5);
+  color: #f0d060;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(200,160,40,.3);
+}
+.friend-entry-btn:hover { filter: brightness(1.2); }
 
 /* ── 每日任務 ─────────────────────────────────── */
 .tasks-list { display: flex; flex-direction: column; gap: 12px; }

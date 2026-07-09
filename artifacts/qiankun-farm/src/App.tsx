@@ -26,6 +26,7 @@ import InfoPanel        from './components/InfoPanel';
 import QuickActions     from './components/QuickActions';
 import BottomMenu       from './components/BottomMenu';
 import PanelOverlay     from './components/PanelOverlay';
+import PetOverlay        from './components/PetOverlay';
 
 /* ── 設計稿尺寸（與底圖寬高比一致）──────────────────────────
    底圖原始：853 × 1844 px  →  比例 ≈ 390 / 843
@@ -81,12 +82,22 @@ function Game() {
         {/* z:10 農田 / 建築 Hotspot */}
         <FarmScene />
 
+        {/* z:15 靈獸出戰顯示（不攔截點擊，重整後仍保留）*/}
+        <PetOverlay />
+
         {/* z:20 遊戲 Overlay */}
         <HarvestAnimation />
         <StatusBar />
         <InfoPanel />
         <QuickActions />
         <BottomMenu />
+        <button
+          className="friend-entry-btn"
+          aria-label="好友"
+          onClick={(e) => { e.stopPropagation(); dispatch({ type: 'OPEN_PANEL', panel: 'friends' }); }}
+        >
+          🤝
+        </button>
 
         {/* z:50 HUD：疊在底圖頂部留白區 */}
         <GameHeader />

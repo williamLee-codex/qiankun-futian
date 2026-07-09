@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import type { GameState, Plot, HarvestAnim, CropId, CropInventory, SeedInventory } from './types';
 import { CROP_DATA, EMPTY_INVENTORY } from './types';
 import { initialState } from './initialState';
@@ -26,7 +26,50 @@ type Action =
   /** 智慧收播：自動補足各田缺少的種子後播種 */
   | { type: 'BUY_SEEDS_AND_PLANT_ALL'; purchases: { cropId: CropId; seeds: number }[]; coinsUsed: number; crystalsUsed: number }
   | { type: 'UNLOCK_PLOT'; plotId: number }
-  | { type: 'CLAIM_TASK_REWARD'; taskId: string };
+  | { type: 'CLAIM_TASK_REWARD'; taskId: string }
+  /** 農夫開關（僅解鎖後可切換，不強制接管） */
+  | { type: 'TOGGLE_FARMER' }
+  /** 新增好友（模擬，僅前端資料） */
+  | { type: 'ADD_FRIEND'; name: string }
+  /** 借運：拜訪好友，代收其福田溢出作物（僅限第2～5塊）*/
+  | { type: 'VISIT_BORROW'; friendId: number };
+
+const LOCAL_STORAGE_KEY = 'qiankun-farm-save-v1';
+
+function loadPersisted(): GameState | undefined {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!raw) return undefined;
+    const saved = JSON.parse(raw) as Partial<GameState>;
+    /** 淺合併，確保新增欄位（新版本升級後）有預設值，不影響已存資料的核心欄位 */
+    return { ...initialState, ...saved };
+  } catch {
+    return undefined;
+  }
+}
+
+function savePersisted(state: GameState) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    /* 儲存失敗（如無痕模式）不影響遊戲運作 */
+  }
+}
+
+/** 每日借運次數重置：中午 12:00 */
+function nextNoon(from: number): number {
+  const d = new Date(from);
+  d.setHours(12, 0, 0, 0);
+  if (d.getTime() <= from) d.setDate(d.getDate() + 1);
+  return d.getTime();
+}
+
+/** 借運/代收超時門檻：成熟超過 1 小時未收，進入能量外溢 */
+const OVERFLOW_MS = 60 * 60_000;
+/** 好友借運後的因果鎖印冷卻 */
+const FRIEND_COOLDOWN_MS = 24 * 3600_000;
 
 /* ── 測試用成長時間（正式版由 growthHours 顯示）── */
 const GROW_TIME_MS = 10_000;
@@ -116,7 +159,7 @@ function reducer(state: GameState, action: Action): GameState {
 
       const newPlots = state.plots.map(p =>
         p.id === action.plotId
-          ? { ...p, state: 'empty' as const, plantCount: 0, growthEndTime: null }
+          ? { ...p, state: 'empty' as const, plantCount: 0, growthEndTime: null, readyAt: null }
           : p
       );
       const tasks = state.tasks.map(t => t.id === 'harvest' ? { ...t, done: true } : t);
@@ -140,7 +183,7 @@ function reducer(state: GameState, action: Action): GameState {
         if (plot.state !== 'ready') return plot;
         newInventory = addHarvestToInventory(newInventory, plot);
         newAnims.push({ id: nextAnimId(), plotIndex: idx, plantCount: plot.harvestCount, delay: wave++ * ANIM_STAGGER });
-        return { ...plot, state: 'empty' as const, plantCount: 0, growthEndTime: null };
+        return { ...plot, state: 'empty' as const, plantCount: 0, growthEndTime: null, readyAt: null };
       });
       if (!newAnims.length) return state;
       const tasks = state.tasks.map(t => t.id === 'harvest' ? { ...t, done: true } : t);
@@ -160,18 +203,119 @@ function reducer(state: GameState, action: Action): GameState {
         harvestAnimations: state.harvestAnimations.filter(a => !action.ids.includes(a.id)),
       };
 
-    /* ── Growth tick ── */
+    /* ── Growth tick ──────────────────────────────────────────────
+       農夫啟動時：作物一成熟即自動收成（只進倉庫，不加金幣），
+       接著若該作物種子足夠則立即自動補種同一作物；
+       種子不足則保持空地（不自動購買、不自動花費）。
+       農夫未啟動：維持原本「成熟→ready，等待玩家手動收成」邏輯，
+       並記錄 readyAt 供好友「能量外溢代收」判斷使用。
+    ────────────────────────────────────────────────────────────── */
     case 'CHECK_GROWTH': {
       const now = Date.now();
       let changed = false;
-      const newPlots = state.plots.map(p => {
+      const seedInv = { ...state.seedInventory };
+      const newAnims: HarvestAnim[] = [];
+      let newInventory = state.cropInventory;
+      let wave = 0;
+
+      const newPlots = state.plots.map((p, idx) => {
         if (p.state === 'growing' && p.growthEndTime && now >= p.growthEndTime) {
           changed = true;
-          return { ...p, state: 'ready' as const };
+
+          if (state.farmerActive) {
+            /* 農夫自動收成：只進倉庫，不給金幣/水晶 */
+            newInventory = addHarvestToInventory(newInventory, p);
+            newAnims.push({ id: nextAnimId(), plotIndex: idx, plantCount: p.harvestCount, delay: wave++ * ANIM_STAGGER });
+
+            /* 農夫自動補種：種子足夠才播種同一作物，否則保持空地 */
+            const seedStock = seedInv[p.cropId];
+            if (seedStock > 0) {
+              const qty = Math.min(seedStock, p.maxSeeds);
+              seedInv[p.cropId] = seedStock - qty;
+              return { ...p, state: 'growing' as const, plantCount: qty, growthEndTime: now + GROW_TIME_MS, readyAt: null };
+            }
+            return { ...p, state: 'empty' as const, plantCount: 0, growthEndTime: null, readyAt: null };
+          }
+
+          /* 未啟動農夫：正常進入「成熟待收」狀態，記錄成熟時間供好友外溢判斷 */
+          return { ...p, state: 'ready' as const, readyAt: now };
         }
         return p;
       });
-      return changed ? { ...state, plots: newPlots } : state;
+
+      /* 每日借運次數重置（中午 12:00）*/
+      let dailyBorrowCount = state.dailyBorrowCount;
+      let dailyBorrowResetAt = state.dailyBorrowResetAt;
+      if (now >= dailyBorrowResetAt) {
+        dailyBorrowCount = 0;
+        dailyBorrowResetAt = nextNoon(now);
+        changed = true;
+      }
+
+      if (!changed) return state;
+      return {
+        ...state,
+        plots: newPlots,
+        cropInventory: newInventory,
+        seedInventory: seedInv,
+        harvestAnimations: newAnims.length ? [...state.harvestAnimations, ...newAnims] : state.harvestAnimations,
+        dailyBorrowCount,
+        dailyBorrowResetAt,
+      };
+    }
+
+    /* ── 農夫開關：僅解鎖後可切換，不強制接管 ── */
+    case 'TOGGLE_FARMER': {
+      if (!state.farmerUnlocked) return state;
+      return { ...state, farmerActive: !state.farmerActive };
+    }
+
+    /* ── 新增好友（模擬資料）── */
+    case 'ADD_FRIEND': {
+      const name = action.name.trim();
+      if (!name) return state;
+      const id = state.friends.length ? Math.max(...state.friends.map(f => f.id)) + 1 : 0;
+      const newFriend = {
+        id,
+        name,
+        cooldownUntil: null,
+        overflowReadyAt: Date.now(),
+        overflowPlotIndex: 1 + Math.floor(Math.random() * 4),
+      };
+      return { ...state, friends: [...state.friends, newFriend] };
+    }
+
+    /* ── 借運：拜訪好友，一鍵結緣代收（僅限第2～5塊，每好友獨立24H冷卻，每日總次數限制）── */
+    case 'VISIT_BORROW': {
+      const now = Date.now();
+      const friend = state.friends.find(f => f.id === action.friendId);
+      if (!friend) return state;
+      if (friend.cooldownUntil && now < friend.cooldownUntil) return state;
+      if (!friend.overflowReadyAt || now < friend.overflowReadyAt) return state;
+      if (state.dailyBorrowCount >= state.dailyBorrowLimit) return state;
+      if (friend.overflowPlotIndex < 1 || friend.overflowPlotIndex > 4) return state;
+
+      /* 模擬總產值（依對方田地作物基準值計算），訪客取得 10%，其餘 90% 回地主倉庫（模擬對象，非本地玩家資產）*/
+      const mockCropId = state.plots[friend.overflowPlotIndex].cropId;
+      const mockYield = CROP_DATA[mockCropId].sellCoins * state.plots[friend.overflowPlotIndex].harvestCount || 10;
+      const visitorReward = Math.max(1, Math.round(mockYield * 0.1));
+
+      const newFriends = state.friends.map(f =>
+        f.id === action.friendId
+          ? {
+              ...f,
+              cooldownUntil: now + FRIEND_COOLDOWN_MS,
+              overflowReadyAt: null,
+            }
+          : f
+      );
+
+      return {
+        ...state,
+        coins: state.coins + visitorReward,
+        friends: newFriends,
+        dailyBorrowCount: state.dailyBorrowCount + 1,
+      };
     }
 
     /* ── Test deposit ── */
@@ -330,7 +474,14 @@ interface Ctx { state: GameState; dispatch: React.Dispatch<Action>; }
 const GameContext = createContext<Ctx | null>(null);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer, undefined, () => loadPersisted() ?? initialState);
+
+  /* 僅本機端持久化（localStorage），不涉及資料庫／Supabase：
+     用於保存靈獸出戰、農夫開關、好友借運等狀態，重新整理後仍維持。 */
+  useEffect(() => {
+    savePersisted(state);
+  }, [state]);
+
   return <GameContext.Provider value={{ state, dispatch }}>{children}</GameContext.Provider>;
 }
 
