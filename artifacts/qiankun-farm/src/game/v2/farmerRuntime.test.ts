@@ -88,7 +88,9 @@ describe('Farm V2 farmer runtime', () => {
     expect(result.harvestedQuantity).toBe(20);
     expect(result.completedCycles).toBe(2);
     expect(result.seedsRemaining).toBe(0);
-    expect(result.land.lifecycle).toBe('EMPTY');
+    expect(result.land.lifecycle).toBe('GROWING');
+    expect(result.land.plantedAt).toBe(12 * HOUR);
+    expect(result.land.maturesAt).toBe(18 * HOUR);
   });
 
   it('field 6 consumes only stored chaos seeds and never creates pending seeds', () => {
