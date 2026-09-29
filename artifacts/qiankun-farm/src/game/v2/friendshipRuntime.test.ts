@@ -3,6 +3,8 @@ import {
   acceptFriendship,
   areMutualFriends,
   blockFriendship,
+  cancelPendingFriendship,
+  rejectPendingFriendship,
   createFriendshipRuntimeState,
   removeFriendship,
   requestFriendship,
@@ -21,6 +23,19 @@ describe('Farm V2 friendship runtime', () => {
     let state = requestFriendship(createFriendshipRuntimeState(), 'A', 'B');
     state = acceptFriendship(state, 'A', 'B');
     state = removeFriendship(state, 'B', 'A');
+    expect(areMutualFriends(state, 'A', 'B')).toBe(false);
+  });
+
+  it('allows requester cancellation and later re-request', () => {
+    let state = requestFriendship(createFriendshipRuntimeState(), 'A', 'B');
+    state = cancelPendingFriendship(state, 'A', 'B');
+    state = requestFriendship(state, 'A', 'B');
+    expect(areMutualFriends(state, 'A', 'B')).toBe(false);
+  });
+
+  it('allows target rejection without granting rights', () => {
+    let state = requestFriendship(createFriendshipRuntimeState(), 'A', 'B');
+    state = rejectPendingFriendship(state, 'A', 'B');
     expect(areMutualFriends(state, 'A', 'B')).toBe(false);
   });
 
