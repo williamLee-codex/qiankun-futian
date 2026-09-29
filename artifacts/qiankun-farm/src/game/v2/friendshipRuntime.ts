@@ -76,6 +76,36 @@ export function removeFriendship(
   };
 }
 
+export function cancelPendingFriendship(
+  state: FriendshipRuntimeState,
+  requester: string,
+  target: string,
+): FriendshipRuntimeState {
+  const existing = getFriendship(state, requester, target);
+  if (!existing || existing.status !== 'PENDING' || existing.userA !== requester || existing.userB !== target) {
+    throw new Error('FRIEND_REQUEST_NOT_PENDING');
+  }
+  return {
+    records: state.records.map((record) =>
+      record === existing ? { ...record, status: 'REMOVED' as const } : record),
+  };
+}
+
+export function rejectPendingFriendship(
+  state: FriendshipRuntimeState,
+  requester: string,
+  target: string,
+): FriendshipRuntimeState {
+  const existing = getFriendship(state, requester, target);
+  if (!existing || existing.status !== 'PENDING' || existing.userA !== requester || existing.userB !== target) {
+    throw new Error('FRIEND_REQUEST_NOT_PENDING');
+  }
+  return {
+    records: state.records.map((record) =>
+      record === existing ? { ...record, status: 'REMOVED' as const } : record),
+  };
+}
+
 export function blockFriendship(
   state: FriendshipRuntimeState,
   blocker: string,
