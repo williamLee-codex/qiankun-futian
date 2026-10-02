@@ -4,10 +4,13 @@
     "incremental": true,
     "tsBuildInfoFile": ".tsbuildinfo",
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": "../",
     "types": ["node"]
   },
-  "include": ["src"],
+  "include": [
+    "src",
+    "../qiankun-farm/src/game/v2"
+  ],
   "references": [
     {
       "path": "../../lib/db"
