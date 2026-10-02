@@ -8,7 +8,7 @@ const router: IRouter = Router();
 
 router.get("/farm/v2/state", async (req, res, next) => {
   try {
-    const userId = String(req.header("x-user-id") ?? "").trim();
+    const userId = String(res.locals.authenticatedUserId ?? "").trim();
     if (!userId) {
       res.status(401).json({ error: "AUTH_REQUIRED" });
       return;
@@ -36,7 +36,7 @@ router.get("/farm/v2/state", async (req, res, next) => {
 
 router.post("/farm/v2/lands/:landId/sow", async (req, res, next) => {
   try {
-    const userId = String(req.header("x-user-id") ?? "").trim();
+    const userId = String(res.locals.authenticatedUserId ?? "").trim();
     const requestId = String(req.header("x-request-id") ?? "").trim();
     if (!userId) {
       res.status(401).json({ error: "AUTH_REQUIRED" });
@@ -60,7 +60,7 @@ router.post("/farm/v2/lands/:landId/sow", async (req, res, next) => {
 
 router.post("/farm/v2/lands/:landId/harvest", async (req, res, next) => {
   try {
-    const userId = String(req.header("x-user-id") ?? "").trim();
+    const userId = String(res.locals.authenticatedUserId ?? "").trim();
     const requestId = String(req.header("x-request-id") ?? "").trim();
     if (!userId) { res.status(401).json({ error: "AUTH_REQUIRED" }); return; }
     if (!requestId) { res.status(400).json({ error: "REQUEST_ID_REQUIRED" }); return; }
