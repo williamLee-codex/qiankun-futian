@@ -3,8 +3,11 @@ import { eq } from "drizzle-orm";
 import { db, farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
 import { sowFarmV2Land } from "../lib/farm-v2-sow";
 import { harvestFarmV2Land } from "../lib/farm-v2-harvest";
+import { requireFarmV2LaunchIdentity } from "../middlewares/farm-v2-launch-auth";
 
 const router: IRouter = Router();
+
+router.use("/farm/v2", requireFarmV2LaunchIdentity);
 
 router.get("/farm/v2/state", async (req, res, next) => {
   try {
