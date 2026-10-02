@@ -44,3 +44,4 @@ export * from './potRuntime';
 export * from './potDisplayRuntime';
 export * from './potGalleryRuntime';
 export * from './potUpgradeAction';
+export * from './runtimeBoundary';
