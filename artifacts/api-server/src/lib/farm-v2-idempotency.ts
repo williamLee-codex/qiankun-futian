@@ -5,7 +5,7 @@ export async function runFarmV2IdempotentMutation<T>(input: {
   requestId: string;
   userId: string;
   action: string;
-  execute: () => Promise<T>;
+  execute: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>;
 }): Promise<T> {
   if (!input.requestId.trim()) throw new Error("REQUEST_ID_REQUIRED");
   if (!input.userId.trim()) throw new Error("ACTOR_UID_REQUIRED");
@@ -33,7 +33,9 @@ export async function runFarmV2IdempotentMutation<T>(input: {
       response: null,
     });
 
-    const response = await input.execute();
+    // The domain mutation must use this same transaction. If it fails, the
+    // idempotency reservation rolls back with the state mutation.
+    const response = await input.execute(tx);
 
     await tx
       .update(farmV2MutationTable)
