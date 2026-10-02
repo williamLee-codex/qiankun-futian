@@ -40,10 +40,12 @@ export async function sowFarmV2Land(input: {
       });
 
       const persistedLand = farmV2LandEntityToPersistence(result.land);
-      await tx.update(farmV2LandTable).set({
+      const updated = await tx.update(farmV2LandTable).set({
         ...persistedLand,
         version: landRow.version + 1,
-      }).where(sql`user_id = ${input.userId} and land_id = ${input.landId} and version = ${landRow.version}`);
+      }).where(sql`user_id = ${input.userId} and land_id = ${input.landId} and version = ${landRow.version}`)
+        .returning({ version: farmV2LandTable.version });
+      if (updated.length !== 1) throw new Error("FARM_LAND_CONCURRENT_MODIFICATION");
 
       await tx.update(farmV2PlayerStateTable).set({
         warehouseState: result.warehouse,
