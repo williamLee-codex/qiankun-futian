@@ -44,8 +44,13 @@ export async function requireFarmV2LaunchIdentity(
       return;
     }
 
+    if (body.appId !== "qiankun-futian") {
+      res.status(403).json({ error: "APP_TOKEN_MISMATCH" });
+      return;
+    }
+
     res.locals.authenticatedUserId = body.userId;
-    res.locals.authenticatedAppId = body.appId ?? null;
+    res.locals.authenticatedAppId = body.appId;
     next();
   } catch (error) {
     next(error);
