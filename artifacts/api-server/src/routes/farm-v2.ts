@@ -4,6 +4,7 @@ import { db, farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
 import { sowFarmV2Land } from "../lib/farm-v2-sow";
 import { harvestFarmV2Land } from "../lib/farm-v2-harvest";
 import { requireFarmV2LaunchIdentity } from "../middlewares/farm-v2-launch-auth";
+import { farmV2ErrorHandler } from "../middlewares/farm-v2-error-handler";
 
 const router: IRouter = Router();
 
@@ -71,5 +72,7 @@ router.post("/farm/v2/lands/:landId/harvest", async (req, res, next) => {
     res.json(result);
   } catch (error) { next(error); }
 });
+
+router.use("/farm/v2", farmV2ErrorHandler);
 
 export default router;
