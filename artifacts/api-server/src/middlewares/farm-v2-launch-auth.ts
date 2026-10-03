@@ -15,7 +15,11 @@ export async function requireFarmV2LaunchIdentity(
   next: NextFunction,
 ) {
   try {
-    const launchToken = String(req.header("x-launch-token") ?? "").trim();
+    const authorization = String(req.header("authorization") ?? "").trim();
+    const bearerMatch = authorization.match(/^Bearer\\s+(.+)$/i);
+    const launchToken = String(
+      bearerMatch?.[1] ?? req.header("x-launch-token") ?? "",
+    ).trim();
     const sharedSecret = process.env.REPLIT_APP_SHARED_SECRET;
     const platformBaseUrl = process.env.PLATFORM_BASE_URL;
 
