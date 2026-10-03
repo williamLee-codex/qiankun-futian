@@ -5,6 +5,10 @@ type LaunchValidationResponse = {
   appId?: string;
 };
 
+type LaunchValidationError = {
+  error?: string;
+};
+
 export async function requireFarmV2LaunchIdentity(
   req: Request,
   res: Response,
@@ -36,11 +40,24 @@ export async function requireFarmV2LaunchIdentity(
       },
     );
 
-    const body = await response.json().catch(() => null) as LaunchValidationResponse | null;
-    if (!response.ok || !body?.userId) {
-      res.status(response.status === 404 ? 404 : 401).json({
-        error: "INVALID_LAUNCH_IDENTITY",
-      });
+    const body = await response.json().catch(() => null) as
+      | LaunchValidationResponse
+      | LaunchValidationError
+      | null;
+    if (!response.ok) {
+      if (response.status === 503) {
+        res.status(503).json({ error: "LAUNCH_VALIDATE_NOT_CONFIGURED" });
+        return;
+      }
+      if (response.status === 404) {
+        res.status(404).json({ error: "APP_NOT_AVAILABLE" });
+        return;
+      }
+      res.status(401).json({ error: "INVALID_LAUNCH_IDENTITY" });
+      return;
+    }
+    if (!body || !("userId" in body) || !body.userId) {
+      res.status(502).json({ error: "INVALID_LAUNCH_VALIDATE_RESPONSE" });
       return;
     }
 
