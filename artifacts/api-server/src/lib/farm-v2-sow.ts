@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { db, farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
+import { farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
 import { executeSowTransaction } from "../../../qiankun-farm/src/game/v2/farmActionTransactions";
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
 import type { MissionState } from "../../../qiankun-farm/src/game/v2/missionRuntime";
