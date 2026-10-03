@@ -9,7 +9,10 @@
   },
   "include": [
     "src",
-    "../qiankun-farm/src/game/v2"
+    "../qiankun-farm/src/game/v2/**/*.ts"
+  ],
+  "exclude": [
+    "../qiankun-farm/src/game/v2/**/*.test.ts"
   ],
   "references": [
     {
