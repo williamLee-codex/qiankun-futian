@@ -1,4 +1,5 @@
 name: Farm V2 Gate
+# Gate trigger: branch-only verification; no deploy or DB mutation.
 
 on:
   workflow_dispatch:
