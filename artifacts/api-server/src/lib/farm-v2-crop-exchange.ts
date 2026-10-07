@@ -6,7 +6,7 @@ import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseR
 import type { MissionState } from "../../../qiankun-farm/src/game/v2/missionRuntime";
 import { recordMissionEvent } from "../../../qiankun-farm/src/game/v2/missionRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
-import { applyFarmV2WalletStep } from "./farm-v2-wallet-saga";
+import { applyFarmV2WalletStep, isPermanentFarmV2RecoveryError } from "./farm-v2-wallet-saga";
 
 export async function exchangeFarmV2Crops(input: {
   userId: string; launchToken: string; requestId: string;
@@ -20,6 +20,7 @@ export async function exchangeFarmV2Crops(input: {
   return runFarmV2IdempotentMutation({
     requestId: input.requestId, userId: input.userId,
     action: `crop-exchange:${landId}:${input.cropQuantity}`,
+    isPermanentRecoveryError: isPermanentFarmV2RecoveryError,
     recover: async (tx) => {
       const [player] = await tx.select().from(farmV2PlayerStateTable)
         .where(eq(farmV2PlayerStateTable.userId, input.userId)).for("update").limit(1);
