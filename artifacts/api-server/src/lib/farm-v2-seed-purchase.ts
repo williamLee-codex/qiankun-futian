@@ -75,4 +75,4 @@ export async function purchaseFarmV2SeedPacks(input: {
     },
     }),
   });
-}}
+}
