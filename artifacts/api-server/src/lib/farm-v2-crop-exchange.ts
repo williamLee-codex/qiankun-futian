@@ -6,7 +6,7 @@ import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseR
 import type { MissionState } from "../../../qiankun-farm/src/game/v2/missionRuntime";
 import { recordMissionEvent } from "../../../qiankun-farm/src/game/v2/missionRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
-import { applyFarmV2WalletStep, isPermanentFarmV2RecoveryError } from "./farm-v2-wallet-saga";
+import { applyFarmV2WalletStep, isPermanentFarmV2RecoveryError, runFarmV2RecoveryWithPostRollbackCompensation } from "./farm-v2-wallet-saga";
 
 export async function exchangeFarmV2Crops(input: {
   userId: string; launchToken: string; requestId: string;
@@ -17,7 +17,11 @@ export async function exchangeFarmV2Crops(input: {
   const landId = input.landId as FarmLandId;
   const rate = getExchangeRate(landId);
 
-  return runFarmV2IdempotentMutation({
+  return runFarmV2RecoveryWithPostRollbackCompensation({
+    userId: input.userId,
+    requestId: input.requestId,
+    launchToken: input.launchToken,
+    recover: () => runFarmV2IdempotentMutation({
     requestId: input.requestId, userId: input.userId,
     action: `crop-exchange:${landId}:${input.cropQuantity}`,
     isPermanentRecoveryError: isPermanentFarmV2RecoveryError,
@@ -80,5 +84,6 @@ export async function exchangeFarmV2Crops(input: {
         currency: rate.currency === "coins" ? "coin" as const : "crystal" as const,
         warehouse: nextWarehouse, missions: nextMissions };
     },
+    }),
   });
-}
+}}
