@@ -37,10 +37,14 @@ export const farmV2LandTable = pgTable(
   (table) => [primaryKey({ columns: [table.userId, table.landId] })],
 );
 
-export const farmV2MutationTable = pgTable("farm_v2_mutation", {
-  requestId: text("request_id").primaryKey(),
-  userId: text("user_id").notNull(),
-  action: text("action").notNull(),
-  response: jsonb("response"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const farmV2MutationTable = pgTable(
+  "farm_v2_mutation",
+  {
+    requestId: text("request_id").notNull(),
+    userId: text("user_id").notNull(),
+    action: text("action").notNull(),
+    response: jsonb("response"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.requestId] })],
+);
