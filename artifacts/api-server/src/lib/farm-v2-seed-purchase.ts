@@ -4,7 +4,7 @@ import { getSeedPack } from "../../../qiankun-farm/src/game/v2/canonicalEconomyD
 import type { FarmLandId } from "../../../qiankun-farm/src/game/v2/canonicalLandData";
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
-import { mutateFarmV2Wallet } from "./farm-v2-wallet-client";
+import { applyFarmV2WalletStep } from "./farm-v2-wallet-saga";
 
 export async function purchaseFarmV2SeedPacks(input: {
   userId: string;
@@ -29,7 +29,8 @@ export async function purchaseFarmV2SeedPacks(input: {
       if (!player) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
 
       const cost = pack.price * input.packs;
-      await mutateFarmV2Wallet({
+      await applyFarmV2WalletStep({
+        userId: input.userId,
         amount: cost,
         currency: "coin",
         direction: "debit",
