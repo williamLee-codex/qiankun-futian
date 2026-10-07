@@ -111,3 +111,26 @@ const PERMANENT_FARM_RECOVERY_CODES = new Set([
 export function isPermanentFarmV2RecoveryError(error: unknown): boolean {
   return error instanceof Error && PERMANENT_FARM_RECOVERY_CODES.has(error.message);
 }
+
+
+export async function runFarmV2RecoveryWithPostRollbackCompensation<T>(input: {
+  userId: string;
+  requestId: string;
+  launchToken: string;
+  recover: () => Promise<T>;
+}): Promise<T> {
+  try {
+    return await input.recover();
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "PERMANENT_MUTATION_RECOVERY_FAILURE") {
+      throw error;
+    }
+    // Recovery transaction has already rolled back before compensation starts.
+    await compensateFarmV2WalletStep({
+      userId: input.userId,
+      requestId: input.requestId,
+      launchToken: input.launchToken,
+    });
+    throw new Error("FARM_MUTATION_COMPENSATED");
+  }
+}
