@@ -19,6 +19,9 @@ export function encodeFarmAccessState(state: FarmAccessState): PersistedAccessSt
 
 export function decodeFarmAccessState(value: unknown): FarmAccessState {
   const state = value as PersistedAccessState;
+  if (!state || !Array.isArray(state.historicallyUnlocked) || !Array.isArray(state.accessActive)) {
+    throw new Error("INVALID_PERSISTED_FARM_ACCESS_STATE");
+  }
   return {
     ...state,
     historicallyUnlocked: new Set(state.historicallyUnlocked),
@@ -32,5 +35,6 @@ export function encodeFarmPetState(state: FarmPetState): PersistedPetState {
 
 export function decodeFarmPetState(value: unknown): FarmPetState {
   const state = value as PersistedPetState;
+  if (!state || !Array.isArray(state.owned)) throw new Error("INVALID_PERSISTED_FARM_PET_STATE");
   return { ...state, owned: new Set(state.owned) };
 }
