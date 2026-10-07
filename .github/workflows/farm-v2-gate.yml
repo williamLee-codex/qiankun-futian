@@ -25,6 +25,8 @@ jobs:
           node-version: "24"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Build referenced libraries
+        run: pnpm run typecheck:libs
       - name: Typecheck API server
         run: pnpm --filter @workspace/api-server run typecheck
       - name: Build API server
