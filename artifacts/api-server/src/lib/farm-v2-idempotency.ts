@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db, farmV2MutationTable } from "@workspace/db";
 
 export async function runFarmV2IdempotentMutation<T>(input: {
@@ -11,6 +11,11 @@ export async function runFarmV2IdempotentMutation<T>(input: {
   if (!input.userId.trim()) throw new Error("ACTOR_UID_REQUIRED");
 
   return db.transaction(async (tx) => {
+    // Serialize retries for the same user/request pair before probing the
+    // mutation table. This closes the concurrent first-request race without
+    // serializing unrelated Farm V2 mutations.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${input.userId + ":" + input.requestId}, 0))`);
+
     const [existing] = await tx
       .select()
       .from(farmV2MutationTable)
