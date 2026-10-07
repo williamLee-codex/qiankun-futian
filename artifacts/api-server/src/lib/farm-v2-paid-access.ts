@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
 import type { ChaosSeedState } from "../../../qiankun-farm/src/game/v2/chaosSeedRuntime";
@@ -48,7 +48,7 @@ export async function reconcileFarmV2PaidAccess(input: {
 
       for (const land of result.lands) {
         await tx.update(farmV2LandTable).set(farmV2LandEntityToPersistence(land))
-          .where(eq(farmV2LandTable.userId, input.userId));
+          .where(and(eq(farmV2LandTable.userId, input.userId), eq(farmV2LandTable.landId, land.landId)));
       }
       return { effectivePaidCrystals: input.effectivePaidCrystals, access: encodeFarmAccessState(result.access), warehouse: result.warehouse, chaosSeedState: result.chaosState };
     },
