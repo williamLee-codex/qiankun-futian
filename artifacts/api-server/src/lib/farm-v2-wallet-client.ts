@@ -10,6 +10,7 @@ export type FarmWalletMutationInput = {
   referenceId: string;
   referenceType: string;
   requestId: string;
+  idempotencySuffix?: string;
 };
 
 export type FarmWalletMutationResult = {
@@ -36,7 +37,7 @@ export async function mutateFarmV2Wallet(
       amount: input.amount,
       currency: input.currency,
       direction: input.direction,
-      idempotencyKey: `farm-v2:${input.requestId}:${input.direction}:${input.currency}`,
+      idempotencyKey: `farm-v2:${input.requestId}:${input.idempotencySuffix ?? "primary"}:${input.direction}:${input.currency}`,
       launchToken: input.launchToken,
       reason: input.reason,
       referenceId: input.referenceId,
