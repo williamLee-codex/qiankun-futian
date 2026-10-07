@@ -49,6 +49,9 @@ export async function compensateFarmV2WalletStep(input: {
     ),
   });
   if (!existing) throw new Error("FARM_MUTATION_NOT_FOUND");
+  if (existing.transactionState === "COMPENSATED" && existing.walletTransaction) {
+    return existing.walletTransaction as FarmWalletMutationResult;
+  }
   if (existing.transactionState === "COMPLETED") throw new Error("COMPLETED_MUTATION_CANNOT_BE_COMPENSATED");
   if (!existing.walletDirection || !existing.walletCurrency || !existing.walletAmount) {
     throw new Error("WALLET_EFFECT_NOT_APPLIED");
@@ -76,27 +79,6 @@ export async function compensateFarmV2WalletStep(input: {
     eq(farmV2MutationTable.requestId, input.requestId),
   ));
   return result;
-}
-
-
-export async function recoverOrCompensateFarmV2WalletMutation<T>(input: {
-  userId: string;
-  requestId: string;
-  launchToken: string;
-  recover: () => Promise<T>;
-  isPermanentRecoveryError?: (error: unknown) => boolean;
-}): Promise<T> {
-  try {
-    return await input.recover();
-  } catch (error) {
-    if (!input.isPermanentRecoveryError?.(error)) throw error;
-    await compensateFarmV2WalletStep({
-      userId: input.userId,
-      requestId: input.requestId,
-      launchToken: input.launchToken,
-    });
-    throw new Error("FARM_MUTATION_COMPENSATED");
-  }
 }
 
 
