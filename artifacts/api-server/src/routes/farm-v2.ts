@@ -4,6 +4,7 @@ import { harvestFarmV2Land } from "../lib/farm-v2-harvest";
 import { requireFarmV2LaunchIdentity } from "../middlewares/farm-v2-launch-auth";
 import { farmV2ErrorHandler } from "../middlewares/farm-v2-error-handler";
 import { ensureFarmV2PlayerInitialized } from "../lib/farm-v2-init";
+import { purchaseFarmV2SeedPacks } from "../lib/farm-v2-seed-purchase";
 
 const router: IRouter = Router();
 
@@ -55,6 +56,24 @@ router.post("/farm/v2/lands/:landId/harvest", async (req, res, next) => {
     if (!userId) { res.status(401).json({ error: "AUTH_REQUIRED" }); return; }
     if (!requestId) { res.status(400).json({ error: "REQUEST_ID_REQUIRED" }); return; }
     const result = await harvestFarmV2Land({ requestId, userId, landId: Number(req.params.landId) });
+    res.json(result);
+  } catch (error) { next(error); }
+});
+
+router.post("/farm/v2/seeds/:landId/purchase", async (req, res, next) => {
+  try {
+    const userId = String(res.locals.authenticatedUserId ?? "").trim();
+    const launchToken = String(res.locals.launchToken ?? "").trim();
+    const requestId = String(req.header("x-request-id") ?? "").trim();
+    if (!userId || !launchToken) { res.status(401).json({ error: "AUTH_REQUIRED" }); return; }
+    if (!requestId) { res.status(400).json({ error: "REQUEST_ID_REQUIRED" }); return; }
+    const result = await purchaseFarmV2SeedPacks({
+      userId,
+      launchToken,
+      requestId,
+      landId: Number(req.params.landId),
+      packs: Number(req.body?.packs),
+    });
     res.json(result);
   } catch (error) { next(error); }
 });
