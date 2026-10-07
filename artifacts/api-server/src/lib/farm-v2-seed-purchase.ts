@@ -4,7 +4,7 @@ import { getSeedPack } from "../../../qiankun-farm/src/game/v2/canonicalEconomyD
 import type { FarmLandId } from "../../../qiankun-farm/src/game/v2/canonicalLandData";
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
-import { applyFarmV2WalletStep, isPermanentFarmV2RecoveryError } from "./farm-v2-wallet-saga";
+import { applyFarmV2WalletStep, isPermanentFarmV2RecoveryError, runFarmV2RecoveryWithPostRollbackCompensation } from "./farm-v2-wallet-saga";
 
 export async function purchaseFarmV2SeedPacks(input: {
   userId: string;
@@ -19,7 +19,11 @@ export async function purchaseFarmV2SeedPacks(input: {
   const pack = getSeedPack(landId);
   if (!pack.purchasable) throw new Error("SEED_NOT_PURCHASABLE");
 
-  return runFarmV2IdempotentMutation({
+  return runFarmV2RecoveryWithPostRollbackCompensation({
+    userId: input.userId,
+    requestId: input.requestId,
+    launchToken: input.launchToken,
+    recover: () => runFarmV2IdempotentMutation({
     requestId: input.requestId,
     userId: input.userId,
     action: `seed-purchase:${landId}:${input.packs}`,
@@ -69,5 +73,6 @@ export async function purchaseFarmV2SeedPacks(input: {
 
       return { landId, packs: input.packs, seedsAdded, cost, currency: "coin" as const, warehouse: nextWarehouse };
     },
+    }),
   });
-}
+}}
