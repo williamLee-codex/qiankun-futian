@@ -1,10 +1,9 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
 import { sowFarmV2Land } from "../lib/farm-v2-sow";
 import { harvestFarmV2Land } from "../lib/farm-v2-harvest";
 import { requireFarmV2LaunchIdentity } from "../middlewares/farm-v2-launch-auth";
 import { farmV2ErrorHandler } from "../middlewares/farm-v2-error-handler";
+import { ensureFarmV2PlayerInitialized } from "../lib/farm-v2-init";
 
 const router: IRouter = Router();
 
@@ -18,21 +17,8 @@ router.get("/farm/v2/state", async (req, res, next) => {
       return;
     }
 
-    const [player, lands] = await Promise.all([
-      db.query.farmV2PlayerStateTable.findFirst({
-        where: eq(farmV2PlayerStateTable.userId, userId),
-      }),
-      db.select().from(farmV2LandTable)
-        .where(eq(farmV2LandTable.userId, userId))
-        .orderBy(farmV2LandTable.landId),
-    ]);
-
-    if (!player) {
-      res.status(404).json({ error: "FARM_PLAYER_STATE_NOT_FOUND" });
-      return;
-    }
-
-    res.json({ player, lands });
+    const state = await ensureFarmV2PlayerInitialized({ userId });
+    res.json(state);
   } catch (error) {
     next(error);
   }
