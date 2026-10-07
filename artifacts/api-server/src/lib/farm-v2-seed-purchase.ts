@@ -4,7 +4,7 @@ import { getSeedPack } from "../../../qiankun-farm/src/game/v2/canonicalEconomyD
 import type { FarmLandId } from "../../../qiankun-farm/src/game/v2/canonicalLandData";
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
-import { applyFarmV2WalletStep } from "./farm-v2-wallet-saga";
+import { applyFarmV2WalletStep, isPermanentFarmV2RecoveryError } from "./farm-v2-wallet-saga";
 
 export async function purchaseFarmV2SeedPacks(input: {
   userId: string;
@@ -23,6 +23,7 @@ export async function purchaseFarmV2SeedPacks(input: {
     requestId: input.requestId,
     userId: input.userId,
     action: `seed-purchase:${landId}:${input.packs}`,
+    isPermanentRecoveryError: isPermanentFarmV2RecoveryError,
     recover: async (tx) => {
       const [player] = await tx.select().from(farmV2PlayerStateTable)
         .where(eq(farmV2PlayerStateTable.userId, input.userId)).for("update").limit(1);
