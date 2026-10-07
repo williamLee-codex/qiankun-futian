@@ -73,6 +73,7 @@ export async function requireFarmV2LaunchIdentity(
 
     res.locals.authenticatedUserId = body.userId;
     res.locals.authenticatedAppId = body.appId;
+    res.locals.launchToken = launchToken;
     next();
   } catch (error) {
     if (error instanceof Error && error.name === "TimeoutError") {
