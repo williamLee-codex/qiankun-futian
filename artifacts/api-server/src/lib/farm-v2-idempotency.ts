@@ -6,6 +6,7 @@ export async function runFarmV2IdempotentMutation<T>(input: {
   userId: string;
   action: string;
   execute: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>;
+  recover?: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>;
 }): Promise<T> {
   if (!input.requestId.trim()) throw new Error("REQUEST_ID_REQUIRED");
   if (!input.userId.trim()) throw new Error("ACTOR_UID_REQUIRED");
@@ -28,7 +29,17 @@ export async function runFarmV2IdempotentMutation<T>(input: {
     if (existing) {
       if (existing.action !== input.action) throw new Error("REQUEST_ID_ACTION_MISMATCH");
       if (existing.response === null) {
-        if (existing.transactionState === "WALLET_APPLIED") throw new Error("MUTATION_RECOVERY_REQUIRED");
+        if (existing.transactionState === "WALLET_APPLIED") {
+          if (!input.recover) throw new Error("MUTATION_RECOVERY_REQUIRED");
+          const recovered = await input.recover(tx);
+          await tx.update(farmV2MutationTable)
+            .set({ response: recovered as object, transactionState: "COMPLETED", updatedAt: new Date() })
+            .where(and(
+              eq(farmV2MutationTable.requestId, input.requestId),
+              eq(farmV2MutationTable.userId, input.userId),
+            ));
+          return recovered;
+        }
         throw new Error("MUTATION_IN_PROGRESS");
       }
       return existing.response as T;
