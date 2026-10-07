@@ -98,3 +98,16 @@ export async function recoverOrCompensateFarmV2WalletMutation<T>(input: {
     throw new Error("FARM_MUTATION_COMPENSATED");
   }
 }
+
+
+const PERMANENT_FARM_RECOVERY_CODES = new Set([
+  "FARM_PLAYER_STATE_NOT_FOUND",
+  "INVALID_FARM_LAND_ID",
+  "INVALID_EXCHANGE_QUANTITY",
+  "INSUFFICIENT_CROPS_FOR_EXCHANGE",
+  "SEED_NOT_PURCHASABLE",
+]);
+
+export function isPermanentFarmV2RecoveryError(error: unknown): boolean {
+  return error instanceof Error && PERMANENT_FARM_RECOVERY_CODES.has(error.message);
+}
