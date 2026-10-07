@@ -27,7 +27,10 @@ export async function runFarmV2IdempotentMutation<T>(input: {
 
     if (existing) {
       if (existing.action !== input.action) throw new Error("REQUEST_ID_ACTION_MISMATCH");
-      if (existing.response === null) throw new Error("MUTATION_IN_PROGRESS");
+      if (existing.response === null) {
+        if (existing.transactionState === "WALLET_APPLIED") throw new Error("MUTATION_RECOVERY_REQUIRED");
+        throw new Error("MUTATION_IN_PROGRESS");
+      }
       return existing.response as T;
     }
 
@@ -44,7 +47,7 @@ export async function runFarmV2IdempotentMutation<T>(input: {
 
     await tx
       .update(farmV2MutationTable)
-      .set({ response: response as object })
+      .set({ response: response as object, transactionState: "COMPLETED", updatedAt: new Date() })
       .where(and(
         eq(farmV2MutationTable.requestId, input.requestId),
         eq(farmV2MutationTable.userId, input.userId),
