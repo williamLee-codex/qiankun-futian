@@ -56,7 +56,6 @@ export async function compensateFarmV2WalletStep(input: {
 
   const direction = existing.walletDirection === "debit" ? "credit" : "debit";
   const result = await mutateFarmV2Wallet({
-    userId: input.userId,
     requestId: input.requestId,
     idempotencySuffix: "compensation",
     amount: existing.walletAmount,
