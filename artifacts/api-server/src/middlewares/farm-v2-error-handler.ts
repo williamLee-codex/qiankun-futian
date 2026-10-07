@@ -11,6 +11,10 @@ const FARM_V2_STATUS_BY_ERROR: Readonly<Record<string, number>> = {
   REQUEST_ID_ACTION_MISMATCH: 409,
   MUTATION_IN_PROGRESS: 409,
   FARM_LAND_CONCURRENT_MODIFICATION: 409,
+  LAND_NOT_ACCESSIBLE: 409,
+  LAND_NOT_EMPTY: 409,
+  INSUFFICIENT_SEEDS_FOR_FULL_BATCH: 409,
+  LAND_NOT_HARVESTABLE: 409,
 };
 
 export const farmV2ErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
