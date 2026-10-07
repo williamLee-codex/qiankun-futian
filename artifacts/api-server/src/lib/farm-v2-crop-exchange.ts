@@ -6,7 +6,7 @@ import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseR
 import type { MissionState } from "../../../qiankun-farm/src/game/v2/missionRuntime";
 import { recordMissionEvent } from "../../../qiankun-farm/src/game/v2/missionRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
-import { mutateFarmV2Wallet } from "./farm-v2-wallet-client";
+import { applyFarmV2WalletStep } from "./farm-v2-wallet-saga";
 
 export async function exchangeFarmV2Crops(input: {
   userId: string; launchToken: string; requestId: string;
@@ -33,7 +33,8 @@ export async function exchangeFarmV2Crops(input: {
       const cropsConsumed = units * rate.cropQuantity;
       const rewardQuantity = units * rate.rewardQuantity;
 
-      await mutateFarmV2Wallet({
+      await applyFarmV2WalletStep({
+        userId: input.userId,
         amount: rewardQuantity,
         currency: rate.currency === "coins" ? "coin" : "crystal",
         direction: "credit",
