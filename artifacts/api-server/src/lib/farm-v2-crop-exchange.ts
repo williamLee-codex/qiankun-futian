@@ -20,6 +20,28 @@ export async function exchangeFarmV2Crops(input: {
   return runFarmV2IdempotentMutation({
     requestId: input.requestId, userId: input.userId,
     action: `crop-exchange:${landId}:${input.cropQuantity}`,
+    recover: async (tx) => {
+      const [player] = await tx.select().from(farmV2PlayerStateTable)
+        .where(eq(farmV2PlayerStateTable.userId, input.userId)).for("update").limit(1);
+      if (!player) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
+      const warehouse = player.warehouseState as FarmWarehouse;
+      const available = warehouse.crops[landId];
+      const requested = Math.min(input.cropQuantity, available);
+      const units = Math.floor(requested / rate.cropQuantity);
+      if (units <= 0) throw new Error("INSUFFICIENT_CROPS_FOR_EXCHANGE");
+      const cropsConsumed = units * rate.cropQuantity;
+      const rewardQuantity = units * rate.rewardQuantity;
+      const nextWarehouse: FarmWarehouse = {
+        ...warehouse, crops: { ...warehouse.crops, [landId]: available - cropsConsumed },
+      };
+      const nextMissions = recordMissionEvent(player.missionState as MissionState, "EXCHANGE", input.now ?? Date.now());
+      await tx.update(farmV2PlayerStateTable).set({
+        warehouseState: nextWarehouse, missionState: nextMissions, updatedAt: new Date(),
+      }).where(eq(farmV2PlayerStateTable.userId, input.userId));
+      return { landId, cropsConsumed, rewardQuantity,
+        currency: rate.currency === "coins" ? "coin" as const : "crystal" as const,
+        warehouse: nextWarehouse, missions: nextMissions };
+    },
     execute: async (tx) => {
       const [player] = await tx.select().from(farmV2PlayerStateTable)
         .where(eq(farmV2PlayerStateTable.userId, input.userId)).for("update").limit(1);
