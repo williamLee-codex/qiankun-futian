@@ -16,7 +16,7 @@ export async function requireFarmV2LaunchIdentity(
 ) {
   try {
     const authorization = String(req.header("authorization") ?? "").trim();
-    const bearerMatch = authorization.match(/^Bearer\\s+(.+)$/i);
+    const bearerMatch = authorization.match(/^Bearer[ ]+(.+)$/i);
     const launchToken = String(
       bearerMatch?.[1] ?? req.header("x-launch-token") ?? "",
     ).trim();
