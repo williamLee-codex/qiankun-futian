@@ -77,3 +77,24 @@ export async function compensateFarmV2WalletStep(input: {
   ));
   return result;
 }
+
+
+export async function recoverOrCompensateFarmV2WalletMutation<T>(input: {
+  userId: string;
+  requestId: string;
+  launchToken: string;
+  recover: () => Promise<T>;
+  isPermanentRecoveryError?: (error: unknown) => boolean;
+}): Promise<T> {
+  try {
+    return await input.recover();
+  } catch (error) {
+    if (!input.isPermanentRecoveryError?.(error)) throw error;
+    await compensateFarmV2WalletStep({
+      userId: input.userId,
+      requestId: input.requestId,
+      launchToken: input.launchToken,
+    });
+    throw new Error("FARM_MUTATION_COMPENSATED");
+  }
+}
