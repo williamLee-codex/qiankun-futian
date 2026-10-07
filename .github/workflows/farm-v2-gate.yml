@@ -1,0 +1,29 @@
+name: Farm V2 Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/farm-v2-canonical-runtime
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck API server
+        run: pnpm --filter @workspace/api-server run typecheck
+      - name: Build API server
+        run: pnpm --filter @workspace/api-server run build
