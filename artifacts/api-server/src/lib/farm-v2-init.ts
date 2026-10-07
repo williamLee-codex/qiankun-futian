@@ -6,6 +6,7 @@ import { createMissionState } from "../../../qiankun-farm/src/game/v2/missionRun
 import { createFarmPetState } from "../../../qiankun-farm/src/game/v2/petRuntime";
 import { createFarmerState } from "../../../qiankun-farm/src/game/v2/farmerRuntime";
 import { createEmptyFarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
+import { encodeFarmAccessState, encodeFarmPetState } from "./farm-v2-json-codecs";
 
 export async function ensureFarmV2PlayerInitialized(input: { userId: string; now?: number }) {
   const userId = input.userId.trim();
@@ -28,10 +29,10 @@ export async function ensureFarmV2PlayerInitialized(input: { userId: string; now
         userId,
         firstFarmEnteredAt: enteredAt,
         effectivePaidCrystals: 0,
-        accessState: access,
+        accessState: encodeFarmAccessState(access),
         warehouseState: createEmptyFarmWarehouse(),
         missionState: createMissionState(now),
-        petState: createFarmPetState(),
+        petState: encodeFarmPetState(createFarmPetState()),
         farmerState: createFarmerState(),
         chaosSeedState: null,
       }).returning();
