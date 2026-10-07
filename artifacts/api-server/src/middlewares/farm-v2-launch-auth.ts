@@ -41,6 +41,7 @@ export async function requireFarmV2LaunchIdentity(
           "x-replit-shared-secret": sharedSecret,
         },
         body: JSON.stringify({ launchToken }),
+        signal: AbortSignal.timeout(5_000),
       },
     );
 
@@ -74,6 +75,10 @@ export async function requireFarmV2LaunchIdentity(
     res.locals.authenticatedAppId = body.appId;
     next();
   } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      res.status(504).json({ error: "LAUNCH_VALIDATE_TIMEOUT" });
+      return;
+    }
     next(error);
   }
 }
