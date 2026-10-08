@@ -76,6 +76,9 @@ export async function reconcileFarmV2PaidAccessFromCore(input: {
     userId: input.userId,
     requestId: input.requestId,
     action: "paid-access:core-authoritative",
+    // Re-query Core even when a caller retries the same requestId after a refund.
+    // Domain milestone grants remain idempotent under the player row lock.
+    refreshCompleted: true,
     execute: async (tx) => {
       const [player] = await tx.select().from(farmV2PlayerStateTable)
         .where(eq(farmV2PlayerStateTable.userId, input.userId)).for("update").limit(1);
