@@ -120,6 +120,7 @@ router.post("/farm/v2/crops/:landId/exchange", async (req, res, next) => {
     const requestId = String(req.header("x-request-id") ?? "").trim();
     if (!userId || !launchToken) { res.status(401).json({ error: "AUTH_REQUIRED" }); return; }
     if (!requestId) { res.status(400).json({ error: "REQUEST_ID_REQUIRED" }); return; }
+    await reconcileFarmV2PaidAccessFromCore({ userId, launchToken, requestId: `farm-v2-exchange:${randomUUID()}` });
     const result = await exchangeFarmV2Crops({
       userId, launchToken, requestId,
       landId: Number(req.params.landId),
