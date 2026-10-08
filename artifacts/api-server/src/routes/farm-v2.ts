@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { sowFarmV2Land } from "../lib/farm-v2-sow";
 import { harvestFarmV2Land } from "../lib/farm-v2-harvest";
@@ -33,7 +32,7 @@ router.get("/farm/v2/state", async (req, res, next) => {
     await reconcileFarmV2PaidAccessFromCore({
       userId,
       launchToken,
-      requestId: `farm-v2-state:${randomUUID()}`,
+      requestId: "farm-v2:core-paid-refresh:v1",
     });
     // Return the committed, post-reconciliation state rather than the
     // pre-reconciliation snapshot.
@@ -63,7 +62,7 @@ router.post("/farm/v2/lands/:landId/sow", async (req, res, next) => {
     // Refresh paid land access before accepting a gameplay mutation.
     // Core outage fails closed instead of trusting cached unlocks.
     await reconcileFarmV2PaidAccessFromCore({
-      userId, launchToken, requestId: `farm-v2-sowFarmV2Land:${randomUUID()}`,
+      userId, launchToken, requestId: "farm-v2:core-paid-refresh:v1",
     });
     const result = await sowFarmV2Land({
       requestId,
@@ -87,7 +86,7 @@ router.post("/farm/v2/lands/:landId/harvest", async (req, res, next) => {
     // Refresh paid land access before accepting a gameplay mutation.
     // Core outage fails closed instead of trusting cached unlocks.
     await reconcileFarmV2PaidAccessFromCore({
-      userId, launchToken, requestId: `farm-v2-harvestFarmV2Land:${randomUUID()}`,
+      userId, launchToken, requestId: "farm-v2:core-paid-refresh:v1",
     });
     const result = await harvestFarmV2Land({ requestId, userId, landId: Number(req.params.landId) });
     res.json(result);
@@ -101,7 +100,7 @@ router.post("/farm/v2/seeds/:landId/purchase", async (req, res, next) => {
     const requestId = String(req.header("x-request-id") ?? "").trim();
     if (!userId || !launchToken) { res.status(401).json({ error: "AUTH_REQUIRED" }); return; }
     if (!requestId) { res.status(400).json({ error: "REQUEST_ID_REQUIRED" }); return; }
-    await reconcileFarmV2PaidAccessFromCore({ userId, launchToken, requestId: `farm-v2-seeds:${randomUUID()}` });
+    await reconcileFarmV2PaidAccessFromCore({ userId, launchToken, requestId: "farm-v2:core-paid-refresh:v1" });
     const result = await purchaseFarmV2SeedPacks({
       userId,
       launchToken,
@@ -120,7 +119,7 @@ router.post("/farm/v2/crops/:landId/exchange", async (req, res, next) => {
     const requestId = String(req.header("x-request-id") ?? "").trim();
     if (!userId || !launchToken) { res.status(401).json({ error: "AUTH_REQUIRED" }); return; }
     if (!requestId) { res.status(400).json({ error: "REQUEST_ID_REQUIRED" }); return; }
-    await reconcileFarmV2PaidAccessFromCore({ userId, launchToken, requestId: `farm-v2-exchange:${randomUUID()}` });
+    await reconcileFarmV2PaidAccessFromCore({ userId, launchToken, requestId: "farm-v2:core-paid-refresh:v1" });
     const result = await exchangeFarmV2Crops({
       userId, launchToken, requestId,
       landId: Number(req.params.landId),
