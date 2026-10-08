@@ -6,6 +6,8 @@ export async function runFarmV2IdempotentMutation<T>(input: {
   userId: string;
   action: string;
   execute: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>;
+  /** For Core-derived state reconciliation only: refresh a completed request. */
+  refreshCompleted?: boolean;
   recover?: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>;
   isPermanentRecoveryError?: (error: unknown) => boolean;
 }): Promise<T> {
@@ -48,6 +50,16 @@ export async function runFarmV2IdempotentMutation<T>(input: {
           return recovered;
         }
         throw new Error("MUTATION_IN_PROGRESS");
+      }
+      if (input.refreshCompleted) {
+        const refreshed = await input.execute(tx);
+        await tx.update(farmV2MutationTable)
+          .set({ response: refreshed as object, updatedAt: new Date() })
+          .where(and(
+            eq(farmV2MutationTable.requestId, input.requestId),
+            eq(farmV2MutationTable.userId, input.userId),
+          ));
+        return refreshed;
       }
       return existing.response as T;
     }
