@@ -6,7 +6,7 @@ import { farmV2ErrorHandler } from "../middlewares/farm-v2-error-handler";
 import { ensureFarmV2PlayerInitialized } from "../lib/farm-v2-init";
 import { purchaseFarmV2SeedPacks } from "../lib/farm-v2-seed-purchase";
 import { exchangeFarmV2Crops } from "../lib/farm-v2-crop-exchange";
-import { reconcileFarmV2PaidAccess } from "../lib/farm-v2-paid-access";
+import { reconcileFarmV2PaidAccessFromCore } from "../lib/farm-v2-paid-access";
 
 const router: IRouter = Router();
 
@@ -96,11 +96,18 @@ router.post("/farm/v2/crops/:landId/exchange", async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// Fail closed until Core Wallet exposes an authenticated, authoritative
-// paid-value reconciliation contract. Launch identity is not authorization
-// to set effectivePaidCrystals supplied by a client.
-router.post("/farm/v2/internal/effective-paid/reconcile", (_req, res) => {
-  res.status(503).json({ error: "FARM_PAID_VALUE_SYNC_NOT_CONFIGURED" });
+// Never accept paid qualification from the request body. Only Core Wallet
+// can supply it; unavailable Core authority fails closed.
+router.post("/farm/v2/internal/effective-paid/reconcile", async (req, res, next) => {
+  try {
+    const userId = String(res.locals.authenticatedUserId ?? "").trim();
+    const launchToken = String(res.locals.launchToken ?? "").trim();
+    const requestId = String(req.header("x-request-id") ?? "").trim();
+    if (!userId || !launchToken) { res.status(401).json({ error: "AUTH_REQUIRED" }); return; }
+    if (!requestId) { res.status(400).json({ error: "REQUEST_ID_REQUIRED" }); return; }
+    const result = await reconcileFarmV2PaidAccessFromCore({ userId, launchToken, requestId });
+    res.json(result);
+  } catch (error) { next(error); }
 });
 
 router.use("/farm/v2", farmV2ErrorHandler);
