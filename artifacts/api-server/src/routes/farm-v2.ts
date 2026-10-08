@@ -58,6 +58,13 @@ router.post("/farm/v2/lands/:landId/sow", async (req, res, next) => {
       return;
     }
 
+    const launchToken = String(res.locals.launchToken ?? "").trim();
+    if (!launchToken) { res.status(401).json({ error: "AUTH_REQUIRED" }); return; }
+    // Refresh paid land access before accepting a gameplay mutation.
+    // Core outage fails closed instead of trusting cached unlocks.
+    await reconcileFarmV2PaidAccessFromCore({
+      userId, launchToken, requestId: `farm-v2-sowFarmV2Land:${randomUUID()}`,
+    });
     const result = await sowFarmV2Land({
       requestId,
       userId,
@@ -75,6 +82,13 @@ router.post("/farm/v2/lands/:landId/harvest", async (req, res, next) => {
     const requestId = String(req.header("x-request-id") ?? "").trim();
     if (!userId) { res.status(401).json({ error: "AUTH_REQUIRED" }); return; }
     if (!requestId) { res.status(400).json({ error: "REQUEST_ID_REQUIRED" }); return; }
+    const launchToken = String(res.locals.launchToken ?? "").trim();
+    if (!launchToken) { res.status(401).json({ error: "AUTH_REQUIRED" }); return; }
+    // Refresh paid land access before accepting a gameplay mutation.
+    // Core outage fails closed instead of trusting cached unlocks.
+    await reconcileFarmV2PaidAccessFromCore({
+      userId, launchToken, requestId: `farm-v2-harvestFarmV2Land:${randomUUID()}`,
+    });
     const result = await harvestFarmV2Land({ requestId, userId, landId: Number(req.params.landId) });
     res.json(result);
   } catch (error) { next(error); }
