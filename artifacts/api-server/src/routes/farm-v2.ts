@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { sowFarmV2Land } from "../lib/farm-v2-sow";
 import { harvestFarmV2Land } from "../lib/farm-v2-harvest";
@@ -20,7 +21,24 @@ router.get("/farm/v2/state", async (req, res, next) => {
       return;
     }
 
+    const launchToken = String(res.locals.launchToken ?? "").trim();
+    if (!launchToken) {
+      res.status(401).json({ error: "AUTH_REQUIRED" });
+      return;
+    }
+
+    // Initialize first, then reconcile against Core on every state read.
+    // Never serve cached paid entitlements when Core is unavailable.
+    await ensureFarmV2PlayerInitialized({ userId });
+    await reconcileFarmV2PaidAccessFromCore({
+      userId,
+      launchToken,
+      requestId: `farm-v2-state:${randomUUID()}`,
+    });
+    // Return the committed, post-reconciliation state rather than the
+    // pre-reconciliation snapshot.
     const state = await ensureFarmV2PlayerInitialized({ userId });
+    res.setHeader("Cache-Control", "no-store");
     res.json(state);
   } catch (error) {
     next(error);
