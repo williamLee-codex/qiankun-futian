@@ -96,19 +96,11 @@ router.post("/farm/v2/crops/:landId/exchange", async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-router.post("/farm/v2/internal/effective-paid/reconcile", async (req, res, next) => {
-  try {
-    const userId = String(res.locals.authenticatedUserId ?? "").trim();
-    const requestId = String(req.header("x-request-id") ?? "").trim();
-    if (!userId) { res.status(401).json({ error: "AUTH_REQUIRED" }); return; }
-    if (!requestId) { res.status(400).json({ error: "REQUEST_ID_REQUIRED" }); return; }
-    const result = await reconcileFarmV2PaidAccess({
-      userId,
-      requestId,
-      effectivePaidCrystals: Number(req.body?.effectivePaidCrystals),
-    });
-    res.json(result);
-  } catch (error) { next(error); }
+// Fail closed until Core Wallet exposes an authenticated, authoritative
+// paid-value reconciliation contract. Launch identity is not authorization
+// to set effectivePaidCrystals supplied by a client.
+router.post("/farm/v2/internal/effective-paid/reconcile", (_req, res) => {
+  res.status(503).json({ error: "FARM_PAID_VALUE_SYNC_NOT_CONFIGURED" });
 });
 
 router.use("/farm/v2", farmV2ErrorHandler);
