@@ -101,6 +101,7 @@ router.post("/farm/v2/seeds/:landId/purchase", async (req, res, next) => {
     const requestId = String(req.header("x-request-id") ?? "").trim();
     if (!userId || !launchToken) { res.status(401).json({ error: "AUTH_REQUIRED" }); return; }
     if (!requestId) { res.status(400).json({ error: "REQUEST_ID_REQUIRED" }); return; }
+    await reconcileFarmV2PaidAccessFromCore({ userId, launchToken, requestId: `farm-v2-seeds:${randomUUID()}` });
     const result = await purchaseFarmV2SeedPacks({
       userId,
       launchToken,
