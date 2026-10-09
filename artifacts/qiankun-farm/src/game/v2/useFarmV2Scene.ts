@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createFarmV2Api } from './farmV2ApiClient';
 import { mapServerLands, mapServerWarehouse } from './farmV2SceneAdapter';
 import type { Plot, CropInventory } from '../types';
@@ -23,8 +23,11 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const mutationInFlight = useRef(false);
+  const readSequence = useRef(0);
 
   const refresh = useCallback(async () => {
+    const sequence = ++readSequence.current;
     if (!launchToken) {
       setData(null);
       setError('FARM_V2_LAUNCH_TOKEN_REQUIRED');
@@ -34,18 +37,21 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     setLoading(true);
     try {
       const snapshot = await createFarmV2Api({ baseUrl, launchToken }).readState() as unknown as Snapshot;
-      setData({
+      const nextData = {
         plots: mapServerLands(snapshot.lands),
         ...mapServerWarehouse(snapshot.player.warehouseState),
-      });
+      };
+      if (sequence !== readSequence.current) return false;
+      setData(nextData);
       setError(null);
       return true;
     } catch (cause) {
+      if (sequence !== readSequence.current) return false;
       setData(null);
       setError(cause instanceof Error ? cause.message : 'FARM_V2_STATE_FAILED');
       return false;
     } finally {
-      setLoading(false);
+      if (sequence === readSequence.current) setLoading(false);
     }
   }, [baseUrl, launchToken]);
 
@@ -56,8 +62,9 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     landId: number,
     quantity?: number,
   ) => {
-    if (!launchToken || busy) return false;
+    if (!launchToken || mutationInFlight.current) return false;
     if (!Number.isInteger(landId) || landId < 1 || landId > 6) return false;
+    mutationInFlight.current = true;
     setBusy(true);
     try {
       const api = createFarmV2Api({ baseUrl, launchToken });
@@ -74,9 +81,10 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       setError(cause instanceof Error ? cause.message : 'FARM_V2_MUTATION_FAILED');
       return false;
     } finally {
+      mutationInFlight.current = false;
       setBusy(false);
     }
-  }, [baseUrl, launchToken, busy, refresh]);
+  }, [baseUrl, launchToken, refresh]);
 
   return { data, error, loading, busy, refresh, mutate };
 }
