@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useFarmV2Scene } from './useFarmV2Scene';
+import { CROP_DATA } from '../types';
 
 /**
  * Authenticated Farm V2 integration surface. The platform host supplies a
@@ -14,9 +15,9 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
     useFarmV2Scene(props.apiBaseUrl, props.launchToken);
   const [notice, setNotice] = useState<string | null>(null);
 
-  async function execute(operation: 'sow' | 'harvest', landId: number) {
+  async function execute(operation: 'sow' | 'harvest' | 'purchaseSeeds' | 'exchangeCrops', landId: number, quantity?: number) {
     setNotice(null);
-    const ok = await mutate(operation, landId);
+    const ok = await mutate(operation, landId, quantity);
     setNotice(ok ? '操作已由伺服器確認。' : '操作未確認，請檢查錯誤並重新讀取。');
   }
 
@@ -43,6 +44,9 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
           const crops = data.cropInventory[plot.cropId];
           const canSow = plot.unlocked && plot.state === 'empty' && seeds >= plot.maxSeeds;
           const canHarvest = plot.unlocked && plot.state === 'ready';
+          const exchangeUnit = CROP_DATA[plot.cropId].sellQty;
+          const canExchange = plot.unlocked && crops >= exchangeUnit;
+          const canPurchase = plot.unlocked && plot.id < 5;
           return (
             <article key={plot.id}>
               <h3>{plot.name}</h3>
@@ -55,6 +59,12 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
                 onClick={() => { void execute('sow', plot.id + 1); }}>整批播種</button>
               <button type="button" disabled={busy || loading || !canHarvest}
                 onClick={() => { void execute('harvest', plot.id + 1); }}>收成入庫</button>
+              {canPurchase && <button type="button" disabled={busy || loading}
+                onClick={() => { void execute('purchaseSeeds', plot.id + 1, 1); }}>購買一包種子（1 金幣）</button>}
+              <button type="button" disabled={busy || loading || !canExchange}
+                onClick={() => { void execute('exchangeCrops', plot.id + 1, exchangeUnit); }}>
+                兌換 {exchangeUnit} 株作物
+              </button>
             </article>
           );
         })}
