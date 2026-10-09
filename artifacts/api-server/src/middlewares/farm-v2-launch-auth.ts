@@ -36,6 +36,7 @@ export async function requireFarmV2LaunchIdentity(
       new URL("/api/replit/launch/validate", platformBaseUrl),
       {
         method: "POST",
+        redirect: "error",
         headers: {
           "content-type": "application/json",
           "x-replit-shared-secret": sharedSecret,
