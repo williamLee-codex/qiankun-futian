@@ -9,6 +9,29 @@ describe('Farm V2 API contract', () => {
       .toThrow('FARM_V2_LAUNCH_TOKEN_REQUIRED');
   });
 
+  it('rejects insecure remote API origins and credential-bearing base URLs', () => {
+    expect(() => createFarmV2Api({ baseUrl: 'http://example.test/api', launchToken: 'token' }))
+      .toThrow('FARM_V2_SECURE_API_REQUIRED');
+    expect(() => createFarmV2Api({ baseUrl: 'https://user:password@example.test/api', launchToken: 'token' }))
+      .toThrow('FARM_V2_INVALID_API_BASE');
+    expect(() => createFarmV2Api({ baseUrl: 'https://example.test/api?redirect=elsewhere', launchToken: 'token' }))
+      .toThrow('FARM_V2_INVALID_API_BASE');
+    expect(() => createFarmV2Api({ baseUrl: 'https://example.test/api#fragment', launchToken: 'token' }))
+      .toThrow('FARM_V2_INVALID_API_BASE');
+    expect(() => createFarmV2Api({ baseUrl: 'http://localhost:3000/api', launchToken: 'token' }))
+      .not.toThrow();
+  });
+
+  it('does not follow redirects when sending the launch token', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetchMock);
+    await createFarmV2Api({ baseUrl: 'https://example.test/api', launchToken: 'token' }).readState();
+    expect(fetchMock.mock.calls[0][1]).toEqual(expect.objectContaining({
+      redirect: 'error',
+      cache: 'no-store',
+    }));
+  });
+
   it('reads authoritative state with bearer authentication and no cache', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true, json: async () => ({ player: {}, lands: [] }),
