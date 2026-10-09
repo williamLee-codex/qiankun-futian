@@ -36,6 +36,13 @@ describe('Farm V2 canonical time boundaries', () => {
       .toBe(ts('2026-11-01T05:00:00+08:00'));
   });
 
+  it('applies newbie x6 to sixth-land chaos crystal harvest, without changing its 1:1 exchange rate', () => {
+    const first = ts('2026-09-01T12:34:56+08:00');
+    const withinSevenDays = first + 60 * 60 * 60 * 1000;
+    expect(applyNewbieHarvestMultiplier(1, first, withinSevenDays)).toBe(6);
+    expect(applyNewbieHarvestMultiplier(1, first, first + 7 * 24 * 60 * 60 * 1000)).toBe(1);
+  });
+
   it('applies newbie x6 only during the exact first 7x24h window', () => {
     const first = ts('2026-09-01T12:34:56+08:00');
     expect(applyNewbieHarvestMultiplier(20, first, first)).toBe(120);
