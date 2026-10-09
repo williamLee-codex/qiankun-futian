@@ -10,6 +10,7 @@ export async function fetchFarmV2CorePaidQualification(launchToken: string): Pro
   }
   const response = await fetch(new URL("/api/replit/farm-v2/paid-value", platformBaseUrl), {
     method: "POST",
+    redirect: "error",
     headers: {
       "content-type": "application/json",
       "x-replit-shared-secret": sharedSecret,
