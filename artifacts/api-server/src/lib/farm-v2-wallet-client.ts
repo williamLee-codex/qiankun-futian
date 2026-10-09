@@ -1,3 +1,4 @@
+import { farmAuthorityContext } from "./farm-v2-authority-context";
 type FarmWalletCurrency = "coin" | "crystal";
 type FarmWalletDirection = "credit" | "debit";
 
@@ -94,6 +95,7 @@ export async function mutateFarmV2Wallet(
         "x-request-id": input.requestId,
       },
       body: JSON.stringify({
+        operationId: farmAuthorityContext.getStore()?.operationId,
         amount: input.amount,
         currency: input.currency,
         direction: input.direction,

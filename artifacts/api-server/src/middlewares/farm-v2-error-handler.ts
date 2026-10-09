@@ -2,6 +2,9 @@ import type { ErrorRequestHandler } from "express";
 import { farmV2PlatformConnection } from "../lib/farm-v2-platform";
 
 const FARM_V2_STATUS_BY_ERROR: Readonly<Record<string, number>> = {
+  FARM_PAID_AUTHORITY_UNAVAILABLE: 503,
+  INVALID_FARM_PAID_AUTHORIZATION: 502,
+  FARM_AUTHORIZATION_FENCED: 409,
   ACTOR_UID_REQUIRED: 401,
   AUTH_REQUIRED: 401,
   REQUEST_ID_REQUIRED: 400,

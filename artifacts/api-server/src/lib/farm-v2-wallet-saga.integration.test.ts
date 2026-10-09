@@ -39,7 +39,7 @@ describe.skipIf(!enabled)(
         .purchaseFarmV2SeedPacks;
       exchange = (await import("./farm-v2-crop-exchange")).exchangeFarmV2Crops;
       await storage.pool.query(
-        `create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql as 'select null::uuid'; insert into auth.users values ('${userId}');`,
+        `create schema auth; create table auth.users(id uuid primary key,banned_until timestamptz,deleted_at timestamptz); create function auth.uid() returns uuid language sql as 'select null::uuid'; insert into auth.users(id) values ('${userId}');`,
       );
       const root = process.env.FARM_V2_PLATFORM_CHECKOUT!;
       await storage.pool.query(
@@ -54,8 +54,42 @@ describe.skipIf(!enabled)(
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       }
+      await storage.pool.query("create schema core");
+      for (const file of [
+        "0003_create_core_identity_tables.sql",
+        "0006_create_core_wallet_tables.sql",
+      ]) {
+        await storage.pool.query(
+          readFileSync(
+            `${root}/supabase/baseline/dev-canonical-0001-0010/${file}`,
+            "utf8",
+          ),
+        );
+      }
+      await storage.pool.query(
+        `insert into core.users(id,auth_user_id,status) values('10000000-0000-0000-0000-000000000001','${userId}','active');insert into core.wallets(id,user_id) values('${userId}','10000000-0000-0000-0000-000000000001');insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','credit',600,'payment','fixture-payment');`,
+      );
+      for (const file of [
+        "0125_farm_v2_paid_auth_identity.sql",
+        "0127_farm_v2_paid_operation_authority.sql",
+        "0128_farm_v2_operator_reconciliation.sql",
+      ]) {
+        await storage.pool.query(
+          readFileSync(`${root}/supabase/migrations/${file}`, "utf8"),
+        );
+      }
+      await storage.pool.query(
+        readFileSync(
+          new URL(
+            "../../../../lib/db/migrations/0001_farm_v2_authority_reconciliation.sql",
+            import.meta.url,
+          ),
+          "utf8",
+        ),
+      );
       await storage.pool.query(`
       create table farm_v2_player_state(user_id text primary key, first_farm_entered_at timestamptz, effective_paid_crystals integer not null default 0, access_state jsonb not null, warehouse_state jsonb not null, mission_state jsonb not null, pet_state jsonb not null, farmer_state jsonb not null, chaos_seed_state jsonb, updated_at timestamptz default now());
+      create table farm_v2_land(user_id text,land_id integer,lifecycle text,access_active boolean,planted_quantity integer default 0,planted_at timestamptz,matures_at timestamptz,version bigint default 0,primary key(user_id,land_id));
       create table farm_v2_mutation(user_id text,request_id text,action text not null,response jsonb,transaction_state text not null default 'PENDING',wallet_direction text,wallet_currency text,wallet_amount integer,wallet_transaction jsonb,failure_code text,updated_at timestamptz default now(),created_at timestamptz default now(),primary key(user_id,request_id));
       create table farm_test_failures(flag boolean); create function fail_farm_commit() returns trigger language plpgsql as $$ begin if new.transaction_state='COMPLETED' and exists(select 1 from farm_test_failures) then raise exception 'TEST_FARM_COMMIT_FAILURE'; end if; return new; end $$; create trigger farm_test_failure before update on farm_v2_mutation for each row execute function fail_farm_commit();
     `);
@@ -64,7 +98,7 @@ describe.skipIf(!enabled)(
       dropWalletResponse = false;
       dropFarmCommit = false;
       await storage.pool.query(
-        `truncate farm_v2_mutation, farm_v2_player_state, farm_test_failures; truncate core_wallet_ledger, core_wallets; select core_wallet_get_or_create('${userId}'); update core_wallets set coin_balance=100;`,
+        `truncate farm_v2_land, farm_v2_mutation, farm_v2_player_state, farm_test_failures, farm_v2_authorization_attempt, farm_v2_reconciliation_event, farm_v2_reconciliation_case; truncate farm_v2_paid_operations, farm_v2_wallet_closures, farm_v2_wallet_reconciliation_audit; truncate core.wallet_ledgers; insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','credit',600,'payment','fixture-payment'); truncate core_wallet_ledger, core_wallets; select core_wallet_get_or_create('${userId}'); update core_wallets set coin_balance=100;`,
       );
       const warehouse = {
         seeds: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
@@ -78,9 +112,26 @@ describe.skipIf(!enabled)(
       );
       vi.stubGlobal("fetch", async (_url: unknown, init: RequestInit) => {
         const input = JSON.parse(String(init.body));
+        if (String(_url).endsWith("/authorization")) {
+          if (input.phase === "begin") {
+            const grant = await corePool.query(
+              "select farm_v2_begin_paid_operation($1,$2,$3,$4) as grant",
+              [userId, input.operationId, input.requestId, input.action],
+            );
+            return Response.json(grant.rows[0].grant);
+          }
+          await corePool.query("select farm_v2_end_paid_operation($1,$2)", [
+            userId,
+            input.operationId,
+          ]);
+          return Response.json({ settled: true });
+        }
         const result = await corePool.query(
-          "select farm_v2_apply_wallet_transaction($1,$2,$3,$4,$5,$6,$7,$8,$9) as result",
+          input.operationId
+            ? "select farm_v2_apply_authorized_wallet_transaction($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) as result"
+            : "select farm_v2_apply_wallet_transaction($1,$2,$3,$4,$5,$6,$7,$8,$9) as result",
           [
+            ...(input.operationId ? [input.operationId] : []),
             userId,
             init.headers &&
               (init.headers as Record<string, string>)["x-request-id"],
@@ -137,6 +188,7 @@ describe.skipIf(!enabled)(
       await (
         await import("./farm-v2-wallet-saga")
       ).farmV2WalletJournalPool.end();
+      await (await import("./farm-v2-authority")).farmAuthorityPool.end();
       await storage?.pool.end();
       await corePool?.end();
     });
@@ -271,19 +323,52 @@ describe.skipIf(!enabled)(
       ).toBe(2);
     });
     it("spent crop rewards leave compensation pending until the exact inverse can settle", async () => {
-      const input = { userId, launchToken: "test-launch", requestId: "spent-reward", landId: 6, cropQuantity: 6 };
+      const input = {
+        userId,
+        launchToken: "test-launch",
+        requestId: "spent-reward",
+        landId: 6,
+        cropQuantity: 6,
+      };
       dropFarmCommit = true;
-      await expect(exchange(input)).rejects.toMatchObject({ cause: { message: "TEST_FARM_COMMIT_FAILURE" } });
-      await storage.pool.query("delete from farm_test_failures; delete from farm_v2_player_state; update core_wallets set crystal_balance=0");
+      await expect(exchange(input)).rejects.toMatchObject({
+        cause: { message: "TEST_FARM_COMMIT_FAILURE" },
+      });
+      await storage.pool.query(
+        "delete from farm_test_failures; delete from farm_v2_player_state; update core_wallets set crystal_balance=0",
+      );
       await expect(exchange(input)).rejects.toThrow("insufficient_funds");
-      expect((await storage.pool.query("select transaction_state from farm_v2_mutation")).rows[0].transaction_state).toBe("COMPENSATING");
-      expect((await storage.pool.query("select count(*)::int as count from core_wallet_ledger")).rows[0].count).toBe(1);
+      expect(
+        (
+          await storage.pool.query(
+            "select transaction_state from farm_v2_mutation",
+          )
+        ).rows[0].transaction_state,
+      ).toBe("COMPENSATING");
+      expect(
+        (
+          await storage.pool.query(
+            "select count(*)::int as count from core_wallet_ledger",
+          )
+        ).rows[0].count,
+      ).toBe(1);
       // Test-only available-funds restoration; production resolution needs an
       // approved authority operation, never a balance/journal edit.
       await storage.pool.query("update core_wallets set crystal_balance=6");
-      await expect(exchange(input)).rejects.toThrow("FARM_MUTATION_COMPENSATED");
-      expect((await storage.pool.query("select crystal_balance from core_wallets")).rows[0].crystal_balance).toBe(0);
-      expect((await storage.pool.query("select transaction_state from farm_v2_mutation")).rows[0].transaction_state).toBe("COMPENSATED");
+      await expect(exchange(input)).rejects.toThrow(
+        "FARM_MUTATION_COMPENSATED",
+      );
+      expect(
+        (await storage.pool.query("select crystal_balance from core_wallets"))
+          .rows[0].crystal_balance,
+      ).toBe(0);
+      expect(
+        (
+          await storage.pool.query(
+            "select transaction_state from farm_v2_mutation",
+          )
+        ).rows[0].transaction_state,
+      ).toBe("COMPENSATED");
     });
     it("never changes a reserved request payload and does not grant assets on insufficient funds", async () => {
       await purchase(seedInput());
@@ -301,6 +386,433 @@ describe.skipIf(!enabled)(
           )
         ).rows[0].warehouse_state.seeds["1"],
       ).toBe(40);
+    });
+    it("holds the Core refund barrier across the Farm commit and reads refunded qualification on the next operation", async () => {
+      const { withFarmAuthority } = await import("./farm-v2-authority");
+      const { farmAuthorityContext } =
+        await import("./farm-v2-authority-context");
+      const refund = `insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','refund',600,'refund','barrier-refund')`;
+      await withFarmAuthority(
+        { ...seedInput(), action: "purchase" },
+        async () => {
+          expect(farmAuthorityContext.getStore()?.qualification).toBe(600);
+          await expect(corePool.query(refund)).rejects.toMatchObject({
+            message: "FARM_PAID_OPERATION_IN_PROGRESS",
+          });
+          await purchase(seedInput());
+        },
+      );
+      await corePool.query(refund);
+      await withFarmAuthority(
+        { ...seedInput(), requestId: "after-refund", action: "purchase" },
+        async () => {
+          expect(farmAuthorityContext.getStore()?.qualification).toBe(0);
+        },
+      );
+    });
+    it("a fenced late Farm callback cannot write assets after its Core permit was settled", async () => {
+      const { farmAuthorityContext } =
+        await import("./farm-v2-authority-context");
+      const id = "20000000-0000-0000-0000-000000000020";
+      await storage.pool.query(
+        "insert into farm_v2_authorization_attempt(id,user_id,request_id,action,state) values($1,$2,'seed-1','purchase','FENCED')",
+        [id, userId],
+      );
+      await expect(
+        farmAuthorityContext.run(
+          { operationId: id, userId, qualification: 600 },
+          () => purchase(seedInput()),
+        ),
+      ).rejects.toThrow("FARM_AUTHORIZATION_FENCED");
+      expect(
+        (
+          await storage.pool.query(
+            "select count(*)::int as count from core_wallet_ledger",
+          )
+        ).rows[0].count,
+      ).toBe(0);
+    });
+    it("operator reconciliation is dry-run by default and closes a legacy applied journal with one audited inverse", async () => {
+      const { reconcileFarmWallet } = await import("./farm-v2-reconciliation");
+      dropFarmCommit = true;
+      await expect(purchase(seedInput())).rejects.toMatchObject({
+        cause: { message: "TEST_FARM_COMMIT_FAILURE" },
+      });
+      await storage.pool.query(
+        "delete from farm_test_failures;update farm_v2_mutation set wallet_transaction=null",
+      );
+      const rpc = async (name: string, args: Record<string, unknown>) => {
+        if (name === "farm_v2_end_paid_operation")
+          return (
+            await corePool.query("select farm_v2_end_paid_operation($1,$2)", [
+              args.p_user_id,
+              args.p_operation_id,
+            ])
+          ).rows[0];
+        return (
+          await corePool.query(
+            "select farm_v2_operator_wallet_reconcile($1,$2,$3,$4,$5,$6) as result",
+            [
+              args.p_user_id,
+              args.p_request_id,
+              args.p_mode,
+              args.p_case_id,
+              args.p_actor,
+              args.p_evidence,
+            ],
+          )
+        ).rows[0].result;
+      };
+      const input = {
+        userId,
+        requestId: "seed-1",
+        caseId: "case-legacy",
+        actor: "operator-1",
+        evidence: "ticket-42",
+        apply: false,
+      };
+      expect(await reconcileFarmWallet(input, rpc)).toMatchObject({
+        dryRun: true,
+      });
+      expect(
+        (
+          await storage.pool.query(
+            "select count(*)::int as count from farm_v2_reconciliation_event",
+          )
+        ).rows[0].count,
+      ).toBe(0);
+      expect(
+        await reconcileFarmWallet({ ...input, apply: true }, rpc),
+      ).toMatchObject({ status: "CLOSED" });
+      expect(
+        await reconcileFarmWallet({ ...input, apply: true }, rpc),
+      ).toMatchObject({ status: "CLOSED" });
+      expect(
+        (await storage.pool.query("select coin_balance from core_wallets"))
+          .rows[0].coin_balance,
+      ).toBe(100);
+      expect(
+        (
+          await storage.pool.query(
+            "select count(*)::int as count from core_wallet_ledger",
+          )
+        ).rows[0].count,
+      ).toBe(2);
+      await expect(
+        storage.pool.query("delete from farm_v2_reconciliation_event"),
+      ).rejects.toMatchObject({ message: "FARM_AUDIT_IMMUTABLE" });
+    });
+    it("0128 and Farm 0001 reject duplicate application transactionally without losing audit tables", async () => {
+      const client = await corePool.connect();
+      try {
+        for (const file of [
+          process.env.FARM_V2_PLATFORM_CHECKOUT +
+            "/supabase/migrations/0128_farm_v2_operator_reconciliation.sql",
+          new URL(
+            "../../../../lib/db/migrations/0001_farm_v2_authority_reconciliation.sql",
+            import.meta.url,
+          ),
+        ]) {
+          await expect(
+            client.query(readFileSync(file, "utf8")),
+          ).rejects.toThrow("already exists");
+          await client.query("ROLLBACK");
+        }
+        expect(
+          (
+            await client.query(
+              "select to_regclass('farm_v2_wallet_closures') is not null and to_regclass('farm_v2_reconciliation_event') is not null as intact",
+            )
+          ).rows[0].intact,
+        ).toBe(true);
+      } finally {
+        client.release();
+      }
+    });
+    it("operator reconciles an original legacy key without inventing a missing command", async () => {
+      const { reconcileFarmWallet } = await import("./farm-v2-reconciliation");
+      await corePool.query(
+        "select core_wallet_apply_transaction($1,2,'coin','debit','farm-v2:legacy-key:primary:debit:coin','farm_seed_purchase','1:2','farm_seed_pack',null)",
+        [userId],
+      );
+      await storage.pool.query(
+        "insert into farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) values($1,'legacy-key','seed-purchase:1:2','WALLET_APPLIED','debit','coin',2)",
+        [userId],
+      );
+      const rpc = async (_name: string, args: Record<string, unknown>) =>
+        (
+          await corePool.query(
+            "select farm_v2_operator_wallet_reconcile($1,$2,$3,$4,$5,$6) as result",
+            [
+              args.p_user_id,
+              args.p_request_id,
+              args.p_mode,
+              args.p_case_id,
+              args.p_actor,
+              args.p_evidence,
+            ],
+          )
+        ).rows[0].result;
+      expect(
+        await reconcileFarmWallet(
+          {
+            userId,
+            requestId: "legacy-key",
+            caseId: "case-legacy-key",
+            actor: "operator-1",
+            evidence: "ticket-legacy",
+            apply: true,
+          },
+          rpc,
+        ),
+      ).toMatchObject({ status: "CLOSED" });
+      expect(
+        (await corePool.query("select coin_balance from core_wallets")).rows[0]
+          .coin_balance,
+      ).toBe(100);
+      expect(
+        (
+          await corePool.query(
+            "select count(*)::int as count from core_wallet_ledger",
+          )
+        ).rows[0].count,
+      ).toBe(2);
+    });
+    it("operator escalates conflicting immutable intent without reversing Core money", async () => {
+      const { reconcileFarmWallet } = await import("./farm-v2-reconciliation");
+      dropFarmCommit = true;
+      await expect(purchase(seedInput())).rejects.toMatchObject({
+        cause: { message: "TEST_FARM_COMMIT_FAILURE" },
+      });
+      await storage.pool.query(
+        "delete from farm_test_failures;update farm_v2_mutation set wallet_transaction=jsonb_set(wallet_transaction,'{command,amount}','99')",
+      );
+      const rpc = async (_name: string, args: Record<string, unknown>) =>
+        (
+          await corePool.query(
+            "select farm_v2_operator_wallet_reconcile($1,$2,$3,$4,$5,$6) as result",
+            [
+              args.p_user_id,
+              args.p_request_id,
+              args.p_mode,
+              args.p_case_id,
+              args.p_actor,
+              args.p_evidence,
+            ],
+          )
+        ).rows[0].result;
+      expect(
+        await reconcileFarmWallet(
+          {
+            userId,
+            requestId: "seed-1",
+            caseId: "case-conflict",
+            actor: "operator-1",
+            evidence: "ticket-conflict",
+            apply: true,
+          },
+          rpc,
+        ),
+      ).toMatchObject({ status: "ESCALATED" });
+      expect(
+        (
+          await corePool.query(
+            "select count(*)::int as count from core_wallet_ledger",
+          )
+        ).rows[0].count,
+      ).toBe(1);
+      expect(
+        (
+          await storage.pool.query(
+            "select details from farm_v2_reconciliation_event where action='ESCALATED'",
+          )
+        ).rows[0].details.reason,
+      ).toBe("IMMUTABLE_INTENT_CONFLICT");
+    });
+    it("operator compensation remains auditable through insufficient funds and a lost inverse response", async () => {
+      const { reconcileFarmWallet } = await import("./farm-v2-reconciliation");
+      const input = {
+        userId,
+        launchToken: "test-launch",
+        requestId: "operator-crop",
+        landId: 6,
+        cropQuantity: 6,
+      };
+      dropFarmCommit = true;
+      await expect(exchange(input)).rejects.toMatchObject({
+        cause: { message: "TEST_FARM_COMMIT_FAILURE" },
+      });
+      await storage.pool.query(
+        "delete from farm_test_failures;update core_wallets set crystal_balance=0",
+      );
+      let lost = false;
+      const rpc = async (name: string, args: Record<string, unknown>) => {
+        const result = (
+          await corePool.query(
+            "select farm_v2_operator_wallet_reconcile($1,$2,$3,$4,$5,$6) as result",
+            [
+              args.p_user_id,
+              args.p_request_id,
+              args.p_mode,
+              args.p_case_id,
+              args.p_actor,
+              args.p_evidence,
+            ],
+          )
+        ).rows[0].result;
+        if (lost && args.p_mode === "compensate") {
+          lost = false;
+          throw new Error("TEST_LOST_OPERATOR_RESPONSE");
+        }
+        return result;
+      };
+      const operator = {
+        userId,
+        requestId: input.requestId,
+        caseId: "case-spent",
+        actor: "operator-1",
+        evidence: "ticket-43",
+        apply: true,
+      };
+      expect(await reconcileFarmWallet(operator, rpc)).toMatchObject({
+        status: "NEEDS_FUNDS",
+      });
+      expect(
+        (
+          await storage.pool.query(
+            "select transaction_state from farm_v2_mutation",
+          )
+        ).rows[0].transaction_state,
+      ).toBe("COMPENSATING");
+      await storage.pool.query("update core_wallets set crystal_balance=6");
+      lost = true;
+      await expect(reconcileFarmWallet(operator, rpc)).rejects.toThrow(
+        "TEST_LOST_OPERATOR_RESPONSE",
+      );
+      expect(await reconcileFarmWallet(operator, rpc)).toMatchObject({
+        status: "CLOSED",
+      });
+      expect(
+        (await storage.pool.query("select crystal_balance from core_wallets"))
+          .rows[0].crystal_balance,
+      ).toBe(0);
+      expect(
+        (
+          await storage.pool.query(
+            "select count(*)::int as count from core_wallet_ledger",
+          )
+        ).rows[0].count,
+      ).toBe(2);
+    });
+    it("operator cancels an absent Core effect and blocks a late primary using the same request", async () => {
+      const { reconcileFarmWallet } = await import("./farm-v2-reconciliation");
+      await storage.pool.query(
+        "insert into farm_v2_mutation(user_id,request_id,action) values($1,'never-applied','seed-purchase:1:2')",
+        [userId],
+      );
+      const rpc = async (name: string, args: Record<string, unknown>) =>
+        (
+          await corePool.query(
+            "select farm_v2_operator_wallet_reconcile($1,$2,$3,$4,$5,$6) as result",
+            [
+              args.p_user_id,
+              args.p_request_id,
+              args.p_mode,
+              args.p_case_id,
+              args.p_actor,
+              args.p_evidence,
+            ],
+          )
+        ).rows[0].result;
+      expect(
+        await reconcileFarmWallet(
+          {
+            userId,
+            requestId: "never-applied",
+            caseId: "case-absent",
+            actor: "operator-1",
+            evidence: "ticket-44",
+            apply: true,
+          },
+          rpc,
+        ),
+      ).toMatchObject({ status: "CLOSED" });
+      expect(
+        (
+          await corePool.query(
+            "select farm_v2_apply_wallet_transaction($1,'never-applied',2,'coin','debit','farm_seed_purchase','1:2','farm_seed_pack',null) as result",
+            [userId],
+          )
+        ).rows[0].result.result_status,
+      ).toBe("compensated");
+      expect(
+        (await storage.pool.query("select coin_balance from core_wallets"))
+          .rows[0].coin_balance,
+      ).toBe(100);
+    });
+    it("paid sow/harvest use real persisted fields and a post-refund operation cannot retain paid land access", async () => {
+      await storage.pool.query("delete from farm_v2_player_state");
+      const { ensureFarmV2PlayerInitialized } = await import("./farm-v2-init");
+      const { reconcileFarmV2PaidAccessFromCore } =
+        await import("./farm-v2-paid-access");
+      const { sowFarmV2Land } = await import("./farm-v2-sow");
+      const { harvestFarmV2Land } = await import("./farm-v2-harvest");
+      const { withFarmAuthority } = await import("./farm-v2-authority");
+      await ensureFarmV2PlayerInitialized({ userId });
+      await storage.pool.query(
+        `update farm_v2_player_state set warehouse_state=jsonb_set(warehouse_state,'{seeds,6}','1')`,
+      );
+      await withFarmAuthority(
+        { ...seedInput(), requestId: "paid-sow", action: "SOW:6" },
+        async () => {
+          await reconcileFarmV2PaidAccessFromCore({
+            userId,
+            launchToken: "test-launch",
+            requestId: "paid-refresh",
+          });
+          expect(
+            await sowFarmV2Land({ userId, requestId: "paid-sow", landId: 6 }),
+          ).toMatchObject({ land: { landId: 6, lifecycle: "GROWING" } });
+        },
+      );
+      await storage.pool.query(
+        "update farm_v2_land set lifecycle='MATURE',matures_at=now()-interval '1 minute' where land_id=6",
+      );
+      await withFarmAuthority(
+        { ...seedInput(), requestId: "paid-harvest", action: "HARVEST:6" },
+        async () => {
+          expect(
+            await harvestFarmV2Land({
+              userId,
+              requestId: "paid-harvest",
+              landId: 6,
+            }),
+          ).toMatchObject({ land: { landId: 6, lifecycle: "EMPTY" } });
+        },
+      );
+      await corePool.query(
+        `insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','refund',600,'refund','land-fixture-refund')`,
+      );
+      await withFarmAuthority(
+        { ...seedInput(), requestId: "refunded-sow", action: "SOW:6" },
+        async () => {
+          await reconcileFarmV2PaidAccessFromCore({
+            userId,
+            launchToken: "test-launch",
+            requestId: "paid-refresh",
+          });
+          await expect(
+            sowFarmV2Land({ userId, requestId: "refunded-sow", landId: 6 }),
+          ).rejects.toThrow("LAND_NOT_ACCESSIBLE");
+        },
+      );
+      expect(
+        (
+          await storage.pool.query(
+            "select access_active from farm_v2_land where land_id=6",
+          )
+        ).rows[0].access_active,
+      ).toBe(false);
     });
     it("ten concurrent retries cannot starve the durable journal connection", async () => {
       let timer: ReturnType<typeof setTimeout> | undefined;

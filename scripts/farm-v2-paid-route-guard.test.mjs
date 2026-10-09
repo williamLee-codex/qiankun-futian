@@ -7,7 +7,7 @@ const paidAccess = readFileSync(new URL("../artifacts/api-server/src/lib/farm-v2
 const idempotency = readFileSync(new URL("../artifacts/api-server/src/lib/farm-v2-idempotency.ts", import.meta.url), "utf8");
 
 function routeBody(method, path) {
-  const start = route.indexOf(`router.${method}("${path}", async (req, res, next) => {`);
+  const start = route.indexOf(`router.${method}("${path}", authorizedRoute(async (req, res, next) => {`);
   assert.notEqual(start, -1, `route missing: ${method} ${path}`);
   const next = route.indexOf("\nrouter.", start + 1);
   return route.slice(start, next < 0 ? undefined : next);
@@ -41,10 +41,11 @@ test("Core authority is fetched after the Farm player row lock", () => {
   assert.ok(lock >= 0 && fetch > lock);
 });
 
-test("KNOWN GAP: paid refresh and gameplay remain separate transactions", () => {
+test("paid refresh and gameplay share a durable Core authority barrier", () => {
   const sow = routeBody("post", "/farm/v2/lands/:landId/sow");
   assert.match(sow, /await reconcileFarmV2PaidAccessFromCore\(/);
   assert.match(sow, /await sowFarmV2Land\(/);
   assert.match(paidAccess, /return runFarmV2IdempotentMutation\(/);
-  // Characterization only: does not prove atomicity across Core and Farm.
+  assert.match(route, /withFarmAuthority/);
+  // Structural coverage only; PostgreSQL integration tests verify the barrier.
 });

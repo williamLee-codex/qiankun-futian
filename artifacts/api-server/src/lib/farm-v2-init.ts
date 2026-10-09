@@ -1,3 +1,4 @@
+import { assertFarmAuthorityFence } from "./farm-v2-authority-context";
 import { eq, sql } from "drizzle-orm";
 import { db, farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
 import { createInitialFarmAccess } from "../../../qiankun-farm/src/game/v2/accessRuntime";
@@ -15,6 +16,7 @@ export async function ensureFarmV2PlayerInitialized(input: { userId: string; now
   const enteredAt = new Date(now);
 
   return db.transaction(async (tx) => {
+    await assertFarmAuthorityFence(tx);
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtextextended(${userId + ':farm-v2-init'}, 0))`,
     );

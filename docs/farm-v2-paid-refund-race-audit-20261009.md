@@ -1,5 +1,7 @@
 # Farm V2 × Core Wallet — refund concurrency audit (2026-10-09)
 
+> Historical pre-fix characterization. The durable Core permit/local fencing implementation supersedes the gap described below; current ordering and remaining production requirements are in [P0 release gate](farm-v2-p0-release-gate.md).
+
 ## Verified code path
 - `artifacts/api-server/src/routes/farm-v2.ts`: sow, harvest, seed purchase, and crop exchange call `reconcileFarmV2PaidAccessFromCore` before the gameplay mutation.
 - `artifacts/api-server/src/lib/farm-v2-paid-access.ts`: fetches Core qualification while holding the Farm player row lock, then commits reconciliation.

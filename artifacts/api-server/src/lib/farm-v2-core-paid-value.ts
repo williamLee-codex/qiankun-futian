@@ -1,8 +1,11 @@
+import { farmAuthorityContext } from "./farm-v2-authority-context";
 /**
  * Fetches paid qualification only from the Core Wallet service.
  * Never accept effectivePaidCrystals from a Farm request body.
  */
 export async function fetchFarmV2CorePaidQualification(launchToken: string): Promise<number> {
+  const authority = farmAuthorityContext.getStore();
+  if (authority) return authority.qualification;
   const sharedSecret = process.env.REPLIT_APP_SHARED_SECRET;
   const platformBaseUrl = process.env.PLATFORM_BASE_URL;
   if (!sharedSecret || !platformBaseUrl || !launchToken) {

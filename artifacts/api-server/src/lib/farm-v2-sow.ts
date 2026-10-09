@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, eq, and } from "drizzle-orm";
 import { farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
 import { executeSowTransaction } from "../../../qiankun-farm/src/game/v2/farmActionTransactions";
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
@@ -22,12 +22,10 @@ export async function sowFarmV2Land(input: {
     userId: input.userId,
     action: `SOW:${input.landId}`,
     execute: async (tx) => {
-      const playerRows = await tx.execute(sql`select * from farm_v2_player_state where user_id = ${input.userId} for update`);
-      const player = playerRows.rows[0] as typeof farmV2PlayerStateTable.$inferSelect | undefined;
+      const [player] = await tx.select().from(farmV2PlayerStateTable).where(eq(farmV2PlayerStateTable.userId, input.userId)).for("update").limit(1);
       if (!player) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
 
-      const landRows = await tx.execute(sql`select * from farm_v2_land where user_id = ${input.userId} and land_id = ${input.landId} for update`);
-      const landRow = landRows.rows[0] as typeof farmV2LandTable.$inferSelect | undefined;
+      const [landRow] = await tx.select().from(farmV2LandTable).where(and(eq(farmV2LandTable.userId, input.userId), eq(farmV2LandTable.landId, input.landId))).for("update").limit(1);
       if (!landRow) throw new Error("FARM_LAND_NOT_FOUND");
 
       const result = executeSowTransaction({

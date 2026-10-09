@@ -1,4 +1,6 @@
-import { Router, type IRouter } from "express";
+import { randomUUID } from "node:crypto";
+import { withFarmAuthority } from "../lib/farm-v2-authority";
+import { Router, type IRouter, type RequestHandler } from "express";
 import { sowFarmV2Land } from "../lib/farm-v2-sow";
 import { harvestFarmV2Land } from "../lib/farm-v2-harvest";
 import { requireFarmV2LaunchIdentity } from "../middlewares/farm-v2-launch-auth";
@@ -10,6 +12,14 @@ import { reconcileFarmV2PaidAccessFromCore } from "../lib/farm-v2-paid-access";
 import { requestFarmV2PlatformSession } from "../lib/farm-v2-platform";
 
 const router: IRouter = Router();
+const authorizedRoute = (handler: RequestHandler): RequestHandler => async (req, res, next) => {
+  try {
+    const requestId = req.header("x-request-id") ?? (req.method === "GET" ? randomUUID() : "");
+    if (!/^[A-Za-z0-9._:-]{1,120}$/.test(requestId)) throw new Error("REQUEST_ID_REQUIRED");
+    await withFarmAuthority({ userId: String(res.locals.authenticatedUserId), launchToken: String(res.locals.launchToken), requestId, action: req.method + ":" + req.path }, async () => { await handler(req, res, next); });
+  } catch (error) { if (!res.headersSent) next(error); }
+};
+
 
 router.post("/farm/v2/session", async (req, res, next) => {
   try {
@@ -34,7 +44,7 @@ router.post("/farm/v2/session", async (req, res, next) => {
 
 router.use("/farm/v2", requireFarmV2LaunchIdentity);
 
-router.get("/farm/v2/state", async (req, res, next) => {
+router.get("/farm/v2/state", authorizedRoute(async (req, res, next) => {
   try {
     const userId = String(res.locals.authenticatedUserId ?? "").trim();
     if (!userId) {
@@ -64,9 +74,9 @@ router.get("/farm/v2/state", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
+}));
 
-router.post("/farm/v2/lands/:landId/sow", async (req, res, next) => {
+router.post("/farm/v2/lands/:landId/sow", authorizedRoute(async (req, res, next) => {
   try {
     const userId = String(res.locals.authenticatedUserId ?? "").trim();
     const requestId = String(req.header("x-request-id") ?? "").trim();
@@ -100,9 +110,9 @@ router.post("/farm/v2/lands/:landId/sow", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
+}));
 
-router.post("/farm/v2/lands/:landId/harvest", async (req, res, next) => {
+router.post("/farm/v2/lands/:landId/harvest", authorizedRoute(async (req, res, next) => {
   try {
     const userId = String(res.locals.authenticatedUserId ?? "").trim();
     const requestId = String(req.header("x-request-id") ?? "").trim();
@@ -135,9 +145,9 @@ router.post("/farm/v2/lands/:landId/harvest", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
+}));
 
-router.post("/farm/v2/seeds/:landId/purchase", async (req, res, next) => {
+router.post("/farm/v2/seeds/:landId/purchase", authorizedRoute(async (req, res, next) => {
   try {
     const userId = String(res.locals.authenticatedUserId ?? "").trim();
     const launchToken = String(res.locals.launchToken ?? "").trim();
@@ -166,9 +176,9 @@ router.post("/farm/v2/seeds/:landId/purchase", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
+}));
 
-router.post("/farm/v2/crops/:landId/exchange", async (req, res, next) => {
+router.post("/farm/v2/crops/:landId/exchange", authorizedRoute(async (req, res, next) => {
   try {
     const userId = String(res.locals.authenticatedUserId ?? "").trim();
     const launchToken = String(res.locals.launchToken ?? "").trim();
@@ -197,13 +207,13 @@ router.post("/farm/v2/crops/:landId/exchange", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
+}));
 
 // Never accept paid qualification from the request body. Only Core Wallet
 // can supply it; unavailable Core authority fails closed.
 router.post(
   "/farm/v2/internal/effective-paid/reconcile",
-  async (req, res, next) => {
+  authorizedRoute(async (req, res, next) => {
     try {
       const userId = String(res.locals.authenticatedUserId ?? "").trim();
       const launchToken = String(res.locals.launchToken ?? "").trim();
@@ -225,7 +235,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  },
+  }),
 );
 
 router.use("/farm/v2", farmV2ErrorHandler);

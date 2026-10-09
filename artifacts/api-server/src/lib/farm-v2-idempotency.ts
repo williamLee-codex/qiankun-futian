@@ -1,3 +1,4 @@
+import { assertFarmAuthorityFence } from "./farm-v2-authority-context";
 import { and, eq, sql } from "drizzle-orm";
 import { db, farmV2MutationTable } from "@workspace/db";
 import { journalDb } from "./farm-v2-wallet-saga";
@@ -35,6 +36,7 @@ export async function runFarmV2IdempotentMutation<T>(input: {
   }
 
   return db.transaction(async (tx) => {
+    await assertFarmAuthorityFence(tx);
     // Serialize retries for the same user/request pair before probing the
     // mutation table. This closes the concurrent first-request race without
     // serializing unrelated Farm V2 mutations.
