@@ -21,12 +21,12 @@ export const CROP_DATA: Record<CropId, {
   sellCoins: number;
   sellCrystals: number;
 }> = {
-  yaojin:  { name: '曜金粟', emoji: '🌾', sellQty: 20, sellCoins: 1,  sellCrystals: 0 },
-  youying: { name: '月海曇', emoji: '🌙', sellQty: 15, sellCoins: 7,  sellCrystals: 0 },
-  zhusha:  { name: '赤血參', emoji: '🌺', sellQty: 10, sellCoins: 9,  sellCrystals: 0 },
-  yaozi:   { name: '天樞蔓', emoji: '🌿', sellQty: 6,  sellCoins: 12, sellCrystals: 0 },
-  feicui:  { name: '太微蓮', emoji: '🪷', sellQty: 4,  sellCoins: 13, sellCrystals: 0 },
-  heijin:  { name: '混沌晶華', emoji: '💎', sellQty: 1,  sellCoins: 0,  sellCrystals: 1 },
+  yaojin:  { name: '曜金粟', emoji: '🌾', sellQty: 5, sellCoins: 1, sellCrystals: 0 },
+  youying: { name: '月海曇', emoji: '🌙', sellQty: 2, sellCoins: 1, sellCrystals: 0 },
+  zhusha:  { name: '赤血參', emoji: '🌺', sellQty: 1, sellCoins: 1, sellCrystals: 0 },
+  yaozi:   { name: '天樞蔓', emoji: '🌿', sellQty: 1, sellCoins: 2, sellCrystals: 0 },
+  feicui:  { name: '太微蓮', emoji: '🪷', sellQty: 1, sellCoins: 4, sellCrystals: 0 },
+  heijin:  { name: '混沌晶華', emoji: '💎', sellQty: 1, sellCoins: 0, sellCrystals: 1 },
 };
 
 export const EMPTY_INVENTORY: CropInventory = {
@@ -50,11 +50,12 @@ export interface SeedShopItem {
 
 export const SEED_SHOP_DATA: Record<CropId, SeedShopItem> = {
   yaojin:  { name: '曜金種子', unitQty: 20, unitCost: 1, currency: 'coins' },
-  youying: { name: '幽熒種子', unitQty: 30, unitCost: 3, currency: 'coins' },
-  zhusha:  { name: '朱砂種子', unitQty: 20, unitCost: 5, currency: 'coins' },
-  yaozi:   { name: '曜紫種子', unitQty: 6,  unitCost: 3, currency: 'coins' },
-  feicui:  { name: '翡翠種子', unitQty: 4,  unitCost: 4, currency: 'coins' },
-  heijin:  { name: '混沌種子', unitQty: 2,  unitCost: 1, currency: 'crystals' },
+  youying: { name: '幽熒種子', unitQty: 10, unitCost: 1, currency: 'coins' },
+  zhusha:  { name: '朱砂種子', unitQty: 6, unitCost: 1, currency: 'coins' },
+  yaozi:   { name: '曜紫種子', unitQty: 4, unitCost: 1, currency: 'coins' },
+  feicui:  { name: '翡翠種子', unitQty: 3, unitCost: 1, currency: 'coins' },
+  // Sixth-land chaos seed is granted on the 72-hour cycle, never purchased.
+  heijin:  { name: '混沌種子（不可購買）', unitQty: 0, unitCost: 0, currency: 'crystals' },
 };
 
 /** 每次購買最多 10 個購買單位，禁止「最大／一鍵買滿」 */
