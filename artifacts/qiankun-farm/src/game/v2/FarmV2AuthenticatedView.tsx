@@ -1,3 +1,4 @@
+import farmBackground from '@assets/file_00000000095072069ef62748d273ae91_1783571778589.png';
 import { useState } from 'react';
 import { useFarmV2Scene } from './useFarmV2Scene';
 import { CROP_DATA } from '../types';
@@ -31,7 +32,13 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
   );
 
   return (
-    <section aria-label="乾坤福田正式農田">
+    <section aria-label="乾坤福田正式農田" style={{ maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ position: "relative", aspectRatio: "390 / 843", maxHeight: "65vh", overflow: "hidden" }}>
+        <img src={farmBackground} alt="乾坤福田六田場景" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+        <div aria-label="正式農田狀態" style={{ position: "absolute", bottom: 12, left: 12, right: 12, background: "rgba(16, 27, 20, .85)", color: "white", padding: 12, borderRadius: 12, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+          {data.plots.map(plot => <span key={plot.id}>{plot.name}：{!plot.unlocked ? "🔒" : plot.state === "ready" ? "🌾" : plot.state === "growing" ? "🌱" : "▫️"}</span>)}
+        </div>
+      </div>
       <h2>乾坤福田</h2>
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
