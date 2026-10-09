@@ -11,10 +11,20 @@ import { CROP_DATA } from '../types';
  * Intentionally separate from the legacy scene until platform routing is
  * approved. No simulated wallet, entitlement or success messages.
  */
+const PLOT_HOTSPOTS = [
+  { left: '4%', top: '43%', width: '30%', height: '15%' },
+  { left: '35%', top: '42%', width: '30%', height: '15%' },
+  { left: '63%', top: '42%', width: '29%', height: '15%' },
+  { left: '2%', top: '59%', width: '33%', height: '12%' },
+  { left: '34%', top: '58%', width: '32%', height: '12%' },
+  { left: '65%', top: '58%', width: '31%', height: '12%' },
+] as const;
+
 export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken: string }) {
   const { data, error, loading, busy, refresh, mutate } =
     useFarmV2Scene(props.apiBaseUrl, props.launchToken);
   const [notice, setNotice] = useState<string | null>(null);
+  const [selectedLand, setSelectedLand] = useState<number | null>(null);
 
   async function execute(operation: 'sow' | 'harvest' | 'purchaseSeeds' | 'exchangeCrops', landId: number, quantity?: number) {
     setNotice(null);
@@ -35,6 +45,22 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
     <section aria-label="乾坤福田正式農田" style={{ maxWidth: 720, margin: "0 auto" }}>
       <div style={{ position: "relative", aspectRatio: "390 / 843", maxHeight: "65vh", overflow: "hidden" }}>
         <img src={farmBackground} alt="乾坤福田六田場景" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+        {data.plots.map((plot, index) => (
+          <button
+            key={plot.id}
+            type="button"
+            aria-label={`${plot.name}，${!plot.unlocked ? '尚未解鎖' : plot.state === 'ready' ? '已成熟' : plot.state === 'growing' ? '生長中' : '待播種'}`}
+            aria-pressed={selectedLand === plot.id + 1}
+            disabled={busy || loading}
+            onClick={() => setSelectedLand(plot.id + 1)}
+            style={{
+              position: 'absolute', ...PLOT_HOTSPOTS[index],
+              border: selectedLand === plot.id + 1 ? '2px solid #f8d58a' : '1px solid transparent',
+              background: selectedLand === plot.id + 1 ? 'rgba(255,215,130,.2)' : 'transparent',
+              cursor: 'pointer',
+            }}
+          />
+        ))}
         <div aria-label="正式農田狀態" style={{ position: "absolute", bottom: 12, left: 12, right: 12, background: "rgba(16, 27, 20, .85)", color: "white", padding: 12, borderRadius: 12, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
           {data.plots.map(plot => <span key={plot.id}>{plot.name}：{!plot.unlocked ? "🔒" : plot.state === "ready" ? "🌾" : plot.state === "growing" ? "🌱" : "▫️"}</span>)}
         </div>
@@ -45,8 +71,9 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
       <button type="button" disabled={busy || loading} onClick={() => { void refresh(); }}>
         更新農田
       </button>
+      {selectedLand === null && <p>請點選 2D 場景中的農田查看操作。</p>}
       <div>
-        {data.plots.map(plot => {
+        {data.plots.filter(plot => selectedLand === plot.id + 1).map(plot => {
           const seeds = data.seedInventory[plot.cropId];
           const crops = data.cropInventory[plot.cropId];
           const canSow = plot.unlocked && plot.state === 'empty' && seeds >= plot.maxSeeds;
