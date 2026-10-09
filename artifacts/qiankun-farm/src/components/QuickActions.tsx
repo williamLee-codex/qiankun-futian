@@ -63,7 +63,9 @@ export default function QuickActions() {
       const lacking = Math.max(0, plot.maxSeeds - state.seedInventory[plot.cropId]);
       if (lacking <= 0) continue;
       const data  = SEED_SHOP_DATA[plot.cropId];
-      // Chaos seeds are granted every 72 hours, never bought. Do not divide by zero.\n      if (data.unitQty <= 0 || plot.cropId === 'heijin') continue;\n      const units = Math.ceil(lacking / data.unitQty);
+      // Chaos seeds are granted every 72 hours, never bought. Do not divide by zero.
+      if (data.unitQty <= 0 || plot.cropId === 'heijin') continue;
+      const units = Math.ceil(lacking / data.unitQty);
       purchases.push({
         cropId: plot.cropId,
         seeds: units * data.unitQty,

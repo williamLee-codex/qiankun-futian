@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { farmV2PlatformConnection } from "../lib/farm-v2-platform";
 
 type LaunchValidationResponse = {
   userId?: string;
@@ -31,6 +32,7 @@ export async function requireFarmV2LaunchIdentity(
       res.status(503).json({ error: "LAUNCH_VALIDATE_NOT_CONFIGURED" });
       return;
     }
+    farmV2PlatformConnection();
 
     const response = await fetch(
       new URL("/api/replit/launch/validate", platformBaseUrl),
@@ -46,7 +48,7 @@ export async function requireFarmV2LaunchIdentity(
       },
     );
 
-    const body = await response.json().catch(() => null) as
+    const body = (await response.json().catch(() => null)) as
       | LaunchValidationResponse
       | LaunchValidationError
       | null;

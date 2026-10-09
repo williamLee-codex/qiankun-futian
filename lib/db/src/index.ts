@@ -10,7 +10,16 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema });
+export function createDatabaseConnection(
+  options: Omit<pg.PoolConfig, "connectionString"> = {},
+) {
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ...options,
+  });
+  return { pool, db: drizzle(pool, { schema }) };
+}
+
+export const { pool, db } = createDatabaseConnection();
 
 export * from "./schema";
