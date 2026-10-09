@@ -383,6 +383,8 @@ function reducer(state: GameState, action: Action): GameState {
 
     /* ── 種子商店：直接購買（不播種）── */
     case 'BUY_SEEDS': {
+      // Chaos seeds are time-granted, never sold, even through direct dispatch.
+      if (action.cropId === 'heijin' || action.seeds <= 0) return state;
       if (state.coins < action.coinsUsed || state.crystals < action.crystalsUsed) return state;
       return {
         ...state,
@@ -397,6 +399,7 @@ function reducer(state: GameState, action: Action): GameState {
 
     /* ── 智慧收播：依各田缺少的種子分別補足後播種 ── */
     case 'BUY_SEEDS_AND_PLANT_ALL': {
+      if (action.purchases.some(p => p.cropId === 'heijin' || p.seeds <= 0)) return state;
       const afterCoins    = state.coins    - action.coinsUsed;
       const afterCrystals = state.crystals - action.crystalsUsed;
       if (afterCoins < 0 || afterCrystals < 0) return state;
@@ -406,8 +409,8 @@ function reducer(state: GameState, action: Action): GameState {
       const newPlots = state.plots.map(plot => {
         if (!plot.unlocked || plot.state !== 'empty') return plot;
         const avail = seedInv[plot.cropId];
-        if (avail <= 0) return plot;
-        const qty = Math.min(avail, plot.maxSeeds);
+        if (avail < plot.maxSeeds) return plot;
+        const qty = plot.maxSeeds;
         seedInv[plot.cropId] = avail - qty;
         return { ...plot, state: 'growing' as const, plantCount: qty, growthEndTime: now + growthTimeMs(plot) };
       });
