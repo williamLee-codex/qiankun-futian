@@ -71,8 +71,8 @@ const OVERFLOW_MS = 60 * 60_000;
 /** 好友借運後的因果鎖印冷卻 */
 const FRIEND_COOLDOWN_MS = 24 * 3600_000;
 
-/* ── 測試用成長時間（正式版由 growthHours 顯示）── */
-const GROW_TIME_MS = 10_000;
+/* 前端原型與正式作物成熟時長一致；最終權威仍須由 Farm V2 API 提供。 */
+const growthTimeMs = (plot: Plot) => plot.growthHours * 60 * 60 * 1000;
 
 /* ── 收成動畫間距 ── */
 const ANIM_STAGGER = 130;
@@ -119,7 +119,7 @@ function reducer(state: GameState, action: Action): GameState {
       if (qty <= 0) return state;
       const newPlots = state.plots.map(p =>
         p.id === action.plotId
-          ? { ...p, state: 'growing' as const, plantCount: qty, growthEndTime: Date.now() + GROW_TIME_MS }
+          ? { ...p, state: 'growing' as const, plantCount: qty, growthEndTime: Date.now() + growthTimeMs(plot) }
           : p
       );
       const tasks = state.tasks.map(t => t.id === 'plant' ? { ...t, done: true } : t);
@@ -142,7 +142,7 @@ function reducer(state: GameState, action: Action): GameState {
         if (avail <= 0) return plot;
         const qty = Math.min(avail, plot.maxSeeds);
         seedInv[plot.cropId] = avail - qty;
-        return { ...plot, state: 'growing' as const, plantCount: qty, growthEndTime: now + GROW_TIME_MS };
+        return { ...plot, state: 'growing' as const, plantCount: qty, growthEndTime: now + growthTimeMs(plot) };
       });
       const tasks = state.tasks.map(t => t.id === 'plant' ? { ...t, done: true } : t);
       return { ...state, plots: newPlots, seedInventory: seedInv, tasks };
@@ -232,7 +232,7 @@ function reducer(state: GameState, action: Action): GameState {
             if (seedStock > 0) {
               const qty = Math.min(seedStock, p.maxSeeds);
               seedInv[p.cropId] = seedStock - qty;
-              return { ...p, state: 'growing' as const, plantCount: qty, growthEndTime: now + GROW_TIME_MS, readyAt: null };
+              return { ...p, state: 'growing' as const, plantCount: qty, growthEndTime: now + growthTimeMs(p), readyAt: null };
             }
             return { ...p, state: 'empty' as const, plantCount: 0, growthEndTime: null, readyAt: null };
           }
@@ -408,7 +408,7 @@ function reducer(state: GameState, action: Action): GameState {
         if (avail <= 0) return plot;
         const qty = Math.min(avail, plot.maxSeeds);
         seedInv[plot.cropId] = avail - qty;
-        return { ...plot, state: 'growing' as const, plantCount: qty, growthEndTime: now + GROW_TIME_MS };
+        return { ...plot, state: 'growing' as const, plantCount: qty, growthEndTime: now + growthTimeMs(plot) };
       });
       const tasks = state.tasks.map(t => t.id === 'plant' ? { ...t, done: true } : t);
       return {
