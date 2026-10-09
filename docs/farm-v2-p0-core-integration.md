@@ -1,6 +1,6 @@
 # Farm V2 P0 integration
 
-> Current release contract: see [P0 release gate](farm-v2-p0-release-gate.md). The new runtime additionally requires platform 0126/0127/0128 and Farm 0001. Every HTTP wallet call supplies an `operationId` UUID from `/api/replit/farm-v2/authorization`; begin derives the verified owner, end settles the durable refund barrier. Credentials and operation IDs are not persisted in immutable wallet intent. The default-off `FARM_V2_ENTRY_ENABLED` flag provides a reversible entry switch. Production remains NO-GO pending target schema, refund retry handling, operator ownership and real-domain acceptance.
+> Current release contract: see [P0 release gate](farm-v2-p0-release-gate.md). The new runtime additionally requires platform 0126/0127/0128/0129 and Farm 0001. Every HTTP wallet call supplies an `operationId` UUID from `/api/replit/farm-v2/authorization`; begin derives the verified owner, end settles the durable refund barrier. Credentials and operation IDs are not persisted in immutable wallet intent. The default-off `FARM_V2_ENTRY_ENABLED` flag provides a reversible entry switch. Production remains NO-GO pending target schema, refund retry handling, operator ownership and real-domain acceptance.
 
 
 Implementation is on `codex/farm-v2-canonical-runtime`; its companion platform

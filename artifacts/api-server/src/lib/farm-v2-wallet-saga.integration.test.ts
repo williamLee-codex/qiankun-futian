@@ -69,10 +69,14 @@ describe.skipIf(!enabled)(
       await storage.pool.query(
         `insert into core.users(id,auth_user_id,status) values('10000000-0000-0000-0000-000000000001','${userId}','active');insert into core.wallets(id,user_id) values('${userId}','10000000-0000-0000-0000-000000000001');insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','credit',600,'payment','fixture-payment');`,
       );
+      await storage.pool.query("create table launch_tokens(id uuid primary key default gen_random_uuid(),user_id uuid,app_id text,token_hash text unique,expires_at timestamptz,used_at timestamptz,revoked_at timestamptz)");
       for (const file of [
+        "0124_farm_v2_sessions.sql",
         "0125_farm_v2_paid_auth_identity.sql",
+        "0126_farm_v2_account_revocation.sql",
         "0127_farm_v2_paid_operation_authority.sql",
         "0128_farm_v2_operator_reconciliation.sql",
+        "0129_farm_v2_wallet_creation_and_historical_revocation.sql",
       ]) {
         await storage.pool.query(
           readFileSync(`${root}/supabase/migrations/${file}`, "utf8"),

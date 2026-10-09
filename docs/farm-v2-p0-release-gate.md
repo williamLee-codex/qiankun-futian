@@ -54,7 +54,8 @@ Apply forward in the normal separately authorized release process:
 2. Platform 0126 lifecycle revocation (depends on 0124, auth/Core lifecycle columns).
 3. Platform 0127 permits/refund guard (depends on 0123/0125 and canonical identity/wallet/ledger columns).
 4. Platform 0128 reconciliation (depends on public Core wallet authority/0123; retains the 0127 authorized wrapper calling the replaced wallet function).
-5. Farm existing V2 tables/journal columns plus `lib/db/migrations/0001_farm_v2_authority_reconciliation.sql`, before running the new API code. Drizzle definitions match the new tables; audit triggers require explicit SQL migration.
+5. Platform 0129 forward repair, retaining the 0128 closure-aware function and audited historical session revocation.
+6. Farm existing V2 tables/journal columns plus `lib/db/migrations/0001_farm_v2_authority_reconciliation.sql`, before running the new API code. Drizzle definitions match the new tables; audit triggers require explicit SQL migration.
 
 0123/0125 use replaceable function definitions and can be replayed in a controlled forward sequence before 0128. **Never reapply 0123 alone after 0128**: it would replace the newer closure-aware wrapper. The independent closure trigger still prevents late primary ledger writes, but this is defense in depth, not an endorsed downgrade procedure.
 
@@ -159,3 +160,17 @@ supabase/migrations/0126_farm_v2_account_revocation.sql
 supabase/migrations/0127_farm_v2_paid_operation_authority.sql
 supabase/migrations/0128_farm_v2_operator_reconciliation.sql
 ```
+
+## Forward correction 0129 — local verification
+
+The newly reserved `0129_farm_v2_wallet_creation_and_historical_revocation.sql` follows 0128. Historical 0123–0128 files remain unchanged. It replaces the final 0128 closure-aware wallet function with only a Core get-or-create call before the existing wallet row lock/status check. This closes the absent-row suspension race without changing amount/source validation, idempotency, compensation or closure protection.
+
+The same transaction uses existing identity validation and audited user-session revocation to revoke outstanding Farm roots/sessions of currently disabled identities missed by 0126's later-update triggers. Healthy identities and already-revoked credentials are excluded. Affected auth rows are locked until commit. Controlled 0129 replay repeats the function definition but produces no duplicate historical revocation audits in the tested state. Never replay old 0123 after this forward correction.
+
+Release sequence is now **0123 → 0124 → 0125 → 0126 → 0127 → 0128 → 0129**, with all existing prerequisites and Farm 0001 still mandatory. Missing prerequisite, privilege or lock-timeout errors must roll back the whole transaction; investigate target metadata/history before retry, never drop records or force a partial application. Review affected credential counts, auth-table locking, current lifecycle status and migration-owner privileges before authorized production execution.
+
+Both reproduced defects changed from FAIL to PASS in isolated PostgreSQL. New regression cases include historical auth ban and Core archival, reactivation, healthy Session preservation, first-wallet suspension creation, compensation under suspension/reactivation, duplicates, closures, refund barriers and audited replay. Farm integration fixtures now apply the complete Session/wallet forward sequence through 0129.
+
+Local result: PostgreSQL suites **27 passed** (original 21 plus 6 focused forward-repair cases); Farm **38 files / 160 passed**, including 17 wallet integration cases using 0129; both TypeScript checks and platform architecture check passed. Platform full suite **611 files / 2,530 passed**; existing jsdom scrollTo warnings did not fail tests. Independent read-only review found no critical/important issues. No production migration, data changes, push, PR, merge, deployment or hosted CI was performed.
+
+**Eligible to enter production Migration preparatory review; production release remains NO-GO.** Target schema/history/grants, production refund 55P03 retry handling, operator ownership/SLA and deployed acceptance remain unverified. The backfill can identify identities inactive when 0129 executes. Accounts already reactivated before repair require trusted lifecycle audit evidence and a separately authorized targeted revocation decision; healthy sessions cannot be indiscriminately revoked to guess historical state.
