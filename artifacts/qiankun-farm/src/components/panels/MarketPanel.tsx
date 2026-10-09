@@ -23,6 +23,7 @@ function SeedBuyRow({ cropId }: { cropId: CropId }) {
   const needsConfirm = balance > 0 && cost > balance * SEED_BIG_SPEND_RATIO;
 
   function commitBuy() {
+    if (cropId === 'heijin') return;
     dispatch({
       type: 'BUY_SEEDS',
       cropId,
@@ -37,7 +38,7 @@ function SeedBuyRow({ cropId }: { cropId: CropId }) {
   }
 
   function handleBuyClick() {
-    if (!canAfford) return;
+    if (cropId === 'heijin' || !canAfford) return;
     if (needsConfirm) {
       setConfirming(true);
       return;
@@ -55,7 +56,8 @@ function SeedBuyRow({ cropId }: { cropId: CropId }) {
         <span className="seed-buy-stock">目前：{stock} 顆</span>
       </div>
 
-      {isUnlocked && (
+      {isUnlocked && cropId === 'heijin' && <p className="panel-note">混沌種子每 72 小時領取一次，不可購買。</p>}
+      {isUnlocked && cropId !== 'heijin' && (
         <>
           <div className="seed-buy-info">
             <span>本次：<strong>{seeds}</strong> 顆</span>
@@ -223,7 +225,7 @@ export default function MarketPanel() {
             <span className="market-crop-emoji">💎</span>
             <div className="market-crop-info">
               <span className="market-crop-name">混沌晶華</span>
-              <span className="market-crop-sub">黑金晶土（每日）</span>
+              <span className="market-crop-sub">黑金晶土（種子每 72 小時領取）</span>
             </div>
             <span className="market-rate market-rate--crystal">
               1 株 = 1 💎 水晶
