@@ -22,6 +22,23 @@ export type FarmWalletMutationResult = {
 export async function mutateFarmV2Wallet(
   input: FarmWalletMutationInput,
 ): Promise<FarmWalletMutationResult> {
+  // Defense in depth: Farm may only request its frozen economy operations.
+  // Core must independently authorize the user and enforce idempotency.
+  const allowed =
+    (input.reason === "farm_seed_purchase" &&
+      input.referenceType === "farm_seed_pack" &&
+      input.currency === "coin" &&
+      input.direction === "debit") ||
+    (input.reason === "farm_crop_exchange" &&
+      input.referenceType === "farm_crop_exchange" &&
+      input.direction === "credit" &&
+      (input.currency === "coin" || input.currency === "crystal")) ||
+    (input.reason === "farm_wallet_compensation" &&
+      input.referenceType === "farm_wallet_compensation" &&
+      input.idempotencySuffix === "compensation");
+  if (!allowed || !Number.isSafeInteger(input.amount) || input.amount <= 0) {
+    throw new Error("INVALID_FARM_WALLET_OPERATION");
+  }
   const platformBaseUrl = process.env.PLATFORM_BASE_URL;
   const sharedSecret = process.env.REPLIT_APP_SHARED_SECRET;
   if (!platformBaseUrl || !sharedSecret || !input.launchToken) {
