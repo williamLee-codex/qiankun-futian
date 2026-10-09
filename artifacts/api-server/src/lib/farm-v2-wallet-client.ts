@@ -24,7 +24,19 @@ export async function mutateFarmV2Wallet(
 ): Promise<FarmWalletMutationResult> {
   const platformBaseUrl = process.env.PLATFORM_BASE_URL;
   const sharedSecret = process.env.REPLIT_APP_SHARED_SECRET;
-  if (!platformBaseUrl || !sharedSecret) throw new Error("FARM_WALLET_BRIDGE_NOT_CONFIGURED");
+  if (!platformBaseUrl || !sharedSecret || !input.launchToken) {
+    throw new Error("FARM_WALLET_BRIDGE_NOT_CONFIGURED");
+  }
+  const base = new URL(platformBaseUrl);
+  if (
+    (base.protocol !== "https:" && !(base.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(base.hostname))) ||
+    base.username ||
+    base.password ||
+    base.search ||
+    base.hash
+  ) {
+    throw new Error("INVALID_FARM_PLATFORM_BASE_URL");
+  }
 
   const response = await fetch(new URL("/api/replit/farm-v2/wallet", platformBaseUrl), {
     method: "POST",
