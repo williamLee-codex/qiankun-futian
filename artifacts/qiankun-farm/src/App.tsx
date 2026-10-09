@@ -27,6 +27,7 @@ import QuickActions     from './components/QuickActions';
 import BottomMenu       from './components/BottomMenu';
 import PanelOverlay     from './components/PanelOverlay';
 import PetOverlay        from './components/PetOverlay';
+import { FarmV2AuthenticatedView } from './game/v2/FarmV2AuthenticatedView';
 
 /* ── 設計稿尺寸（與底圖寬高比一致）──────────────────────────
    底圖原始：853 × 1844 px  →  比例 ≈ 390 / 843
@@ -102,7 +103,12 @@ function Game() {
   );
 }
 
-export default function App() {
+export default function App(props: { farmV2Session?: { apiBaseUrl: string; launchToken: string } }) {
+  // Only the authenticated platform host may supply a V2 session.
+  // Do not infer it from query parameters or prototype local storage.
+  if (props.farmV2Session) {
+    return <FarmV2AuthenticatedView {...props.farmV2Session} />;
+  }
   return (
     <GameProvider>
       <Game />
