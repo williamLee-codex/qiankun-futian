@@ -43,8 +43,8 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
 
   return (
     <section aria-label="乾坤福田正式農田" style={{ maxWidth: 720, margin: "0 auto" }}>
-      <div style={{ position: "relative", aspectRatio: "390 / 843", maxHeight: "65vh", overflow: "hidden" }}>
-        <img src={farmBackground} alt="乾坤福田六田場景" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+      <div style={{ position: "relative", width: "min(100%, 390px)", aspectRatio: "390 / 843", margin: "0 auto", overflow: "hidden" }}>
+        <img src={farmBackground} alt="乾坤福田六田場景" style={{ display: "block", width: "100%", height: "100%", objectFit: "fill" }} />
         {data.plots.map((plot, index) => (
           <button
             key={plot.id}
@@ -61,7 +61,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
             }}
           />
         ))}
-        <div aria-label="正式農田狀態" style={{ position: "absolute", bottom: 12, left: 12, right: 12, background: "rgba(16, 27, 20, .85)", color: "white", padding: 12, borderRadius: 12, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+        <div aria-label="正式農田狀態" style={{ position: "absolute", top: "75%", left: 12, right: 12, pointerEvents: "none", background: "rgba(16, 27, 20, .85)", color: "white", padding: 12, borderRadius: 12, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
           {data.plots.map(plot => <span key={plot.id}>{plot.name}：{!plot.unlocked ? "🔒" : plot.state === "ready" ? "🌾" : plot.state === "growing" ? "🌱" : "▫️"}</span>)}
         </div>
       </div>
@@ -74,8 +74,8 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
       {selectedLand === null && <p>請點選 2D 場景中的農田查看操作。</p>}
       <div>
         {data.plots.filter(plot => selectedLand === plot.id + 1).map(plot => {
-          const seeds = data.seedInventory[plot.cropId];
-          const crops = data.cropInventory[plot.cropId];
+          const seeds = data.seedInventory[plot.cropId] ?? 0;
+          const crops = data.cropInventory[plot.cropId] ?? 0;
           const canSow = plot.unlocked && plot.state === 'empty' && seeds >= plot.maxSeeds;
           const canHarvest = plot.unlocked && plot.state === 'ready';
           const exchangeUnit = CROP_DATA[plot.cropId].sellQty;
