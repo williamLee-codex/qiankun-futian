@@ -55,7 +55,10 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     }
   }, [baseUrl, launchToken]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    void refresh();
+    return () => { readSequence.current += 1; };
+  }, [refresh]);
 
   const mutate = useCallback(async (
     operation: 'sow' | 'harvest' | 'purchaseSeeds' | 'exchangeCrops',
@@ -78,6 +81,8 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       // Always re-read committed server state, including inventory and access.
       return await refresh();
     } catch (cause) {
+      // A failed mutation must not leave the previously loaded state looking current.
+      setData(null);
       setError(cause instanceof Error ? cause.message : 'FARM_V2_MUTATION_FAILED');
       return false;
     } finally {
