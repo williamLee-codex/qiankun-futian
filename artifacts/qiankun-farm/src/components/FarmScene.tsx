@@ -52,6 +52,18 @@ const ICON_POS = [
   { x: '81%', y: ICON_Y2 }, // 黑金晶土
 ];
 
+/** Visual-only stages; maturity and inventory remain controlled by game state. */
+function growthStage(plot: Plot, now: number): { icon: string; label: string } {
+  if (!plot.growthEndTime) return { icon: '🌱', label: '萌芽' };
+  const duration = plot.growthHours * 60 * 60 * 1000;
+  const plantedAt = plot.growthEndTime - duration;
+  const progress = Math.max(0, Math.min(1, (now - plantedAt) / duration));
+  if (progress < 0.25) return { icon: '🌱', label: '萌芽' };
+  if (progress < 0.5) return { icon: '🌿', label: '幼苗' };
+  if (progress < 0.75) return { icon: '🌳', label: '生長' };
+  return { icon: plot.cropEmoji, label: '將熟' };
+}
+
 function fmt(ms: number) {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -109,6 +121,7 @@ export default function FarmScene() {
       {state.plots.map((plot: Plot, i: number) => {
         if (!plot.unlocked || plot.state !== 'growing') return null;
         const remaining = plot.growthEndTime ? plot.growthEndTime - now : 0;
+        const stage = growthStage(plot, now);
         return (
           <span
             key={`crop-growing-${plot.id}`}
@@ -116,8 +129,8 @@ export default function FarmScene() {
             style={{ left: ICON_POS[i].x, top: ICON_POS[i].y }}
             aria-hidden="true"
           >
-            <span className="ph-crop ph-crop--sway">{plot.cropEmoji}</span>
-            <span className="ph-timer">{fmt(remaining)}</span>
+            <span className="ph-crop ph-crop--sway">{stage.icon}</span>
+            <span className="ph-timer">{stage.label} · {fmt(remaining)}</span>
           </span>
         );
       })}
