@@ -41,7 +41,11 @@ export class FarmV2ApiError extends Error {
 export function createFarmV2Api(input: { baseUrl: string; launchToken: string }) {
   const { baseUrl, launchToken } = input;
   if (!launchToken.trim()) throw new Error('FARM_V2_LAUNCH_TOKEN_REQUIRED');
-  const endpoint = (path: string) => new URL(path.replace(/^\\//, ''), baseUrl.endsWith('/') ? baseUrl : baseUrl + '/').toString();
+  const endpoint = (path: string) => {
+    const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+    const normalizedBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+    return new URL(normalizedPath, normalizedBase).toString();
+  };
 
   async function request<T>(path: string, method: 'GET' | 'POST', body?: unknown): Promise<T> {
     const requestId = method === 'POST' ? crypto.randomUUID() : undefined;
