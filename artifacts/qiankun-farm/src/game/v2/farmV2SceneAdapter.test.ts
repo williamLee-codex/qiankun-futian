@@ -28,6 +28,18 @@ describe('Farm V2 scene adapter', () => {
     expect(() => mapServerLands([...lands.slice(0, 5), { ...lands[5], landId: 7 }])).toThrow('MISSING_FARM_LAND');
   });
 
+  it('rejects impossible land quantities, lifecycles and missing maturity', () => {
+    expect(() => mapServerLands(lands.map((land, index) =>
+      index === 0 ? { ...land, plantedQuantity: 21 } : land,
+    ))).toThrow('INVALID_PLANTED_QUANTITY');
+    expect(() => mapServerLands(lands.map((land, index) =>
+      index === 0 ? { ...land, lifecycle: 'UNKNOWN' } : land,
+    ))).toThrow('INVALID_LAND_LIFECYCLE');
+    expect(() => mapServerLands(lands.map((land, index) =>
+      index === 0 ? { ...land, maturesAt: null } : land,
+    ))).toThrow('MISSING_MATURITY');
+  });
+
   it('maps warehouse quantities by authoritative land ID', () => {
     const seeds = { '1': 20, '2': 10, '3': 6, '4': 4, '5': 3, '6': 1 };
     const crops = { '1': 100, '2': 10, '3': 6, '4': 4, '5': 3, '6': 6 };
