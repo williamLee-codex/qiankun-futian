@@ -41,6 +41,10 @@ export class FarmV2ApiError extends Error {
 export function createFarmV2Api(input: { baseUrl: string; launchToken: string }) {
   const { baseUrl, launchToken } = input;
   if (!launchToken.trim()) throw new Error('FARM_V2_LAUNCH_TOKEN_REQUIRED');
+  const normalizedApiBase = new URL(baseUrl);
+  const localDev = normalizedApiBase.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(normalizedApiBase.hostname);
+  if (normalizedApiBase.protocol !== 'https:' && !localDev) throw new Error('FARM_V2_SECURE_API_REQUIRED');
+  if (normalizedApiBase.username || normalizedApiBase.password || normalizedApiBase.search || normalizedApiBase.hash) throw new Error('FARM_V2_INVALID_API_BASE');
   const endpoint = (path: string) => {
     const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
     const normalizedBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
@@ -58,6 +62,7 @@ export function createFarmV2Api(input: { baseUrl: string; launchToken: string })
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
       cache: 'no-store',
+      redirect: 'error',
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => null) as { error?: string } | null;
