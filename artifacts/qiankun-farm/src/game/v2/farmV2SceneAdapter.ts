@@ -26,6 +26,9 @@ export function mapServerLands(lands: ServerLand[]): Plot[] {
     const maturity = land.maturesAt === null ? null :
       typeof land.maturesAt === 'number' ? land.maturesAt : Date.parse(land.maturesAt);
     if (maturity !== null && !Number.isFinite(maturity)) throw new Error('INVALID_MATURITY');
+    if (!Number.isSafeInteger(land.plantedQuantity) || land.plantedQuantity < 0 || land.plantedQuantity > plot.maxSeeds) throw new Error('INVALID_PLANTED_QUANTITY');
+    if (!['LOCKED', 'EMPTY', 'GROWING', 'MATURE'].includes(land.lifecycle)) throw new Error('INVALID_LAND_LIFECYCLE');
+    if ((land.lifecycle === 'GROWING' || land.lifecycle === 'MATURE') && maturity === null) throw new Error('MISSING_MATURITY');
     const ready = land.lifecycle === 'MATURE' ||
       (land.lifecycle === 'GROWING' && maturity !== null && maturity <= Date.now());
     return {
