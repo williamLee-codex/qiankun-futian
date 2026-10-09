@@ -50,7 +50,7 @@ export default function QuickActions() {
   const smartUnlocked    = state.plots[5]?.unlocked ?? false; // 黑金晶土
 
   /* ── 動作可執行旗標 ── */
-  const canPlant   = state.plots.some(p => p.unlocked && p.state === 'empty' && state.seedInventory[p.cropId] > 0);
+  const canPlant   = state.plots.some(p => p.unlocked && p.state === 'empty' && state.seedInventory[p.cropId] >= p.maxSeeds);
   const canHarvest = state.plots.some(p => p.state === 'ready');
 
   /* ── 智慧收播：依各田缺少的種子分別計算補種費用（用種子商店牌價，整單位購買）── */
@@ -63,7 +63,7 @@ export default function QuickActions() {
       const lacking = Math.max(0, plot.maxSeeds - state.seedInventory[plot.cropId]);
       if (lacking <= 0) continue;
       const data  = SEED_SHOP_DATA[plot.cropId];
-      const units = Math.ceil(lacking / data.unitQty);
+      // Chaos seeds are granted every 72 hours, never bought. Do not divide by zero.\n      if (data.unitQty <= 0 || plot.cropId === 'heijin') continue;\n      const units = Math.ceil(lacking / data.unitQty);
       purchases.push({
         cropId: plot.cropId,
         seeds: units * data.unitQty,
