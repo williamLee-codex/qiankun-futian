@@ -8,6 +8,17 @@ export async function fetchFarmV2CorePaidQualification(launchToken: string): Pro
   if (!sharedSecret || !platformBaseUrl || !launchToken) {
     throw new Error("FARM_PAID_VALUE_SYNC_NOT_CONFIGURED");
   }
+  const base = new URL(platformBaseUrl);
+  if (
+    (base.protocol !== "https:" &&
+      !(base.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(base.hostname))) ||
+    base.username ||
+    base.password ||
+    base.search ||
+    base.hash
+  ) {
+    throw new Error("INVALID_FARM_PLATFORM_BASE_URL");
+  }
   const response = await fetch(new URL("/api/replit/farm-v2/paid-value", platformBaseUrl), {
     method: "POST",
     redirect: "error",
