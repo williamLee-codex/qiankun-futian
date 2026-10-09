@@ -115,8 +115,9 @@ function reducer(state: GameState, action: Action): GameState {
       const plot = state.plots.find(p => p.id === action.plotId);
       if (!plot || !plot.unlocked || plot.state !== 'empty') return state;
       const seedStock = state.seedInventory[plot.cropId];
-      const qty = Math.min(action.quantity, plot.maxSeeds, seedStock);
-      if (qty <= 0) return state;
+      // V1.1: 播種必須一次使用整批種子，不允許部分播種。
+      if (action.quantity < plot.maxSeeds || seedStock < plot.maxSeeds) return state;
+      const qty = plot.maxSeeds;
       const newPlots = state.plots.map(p =>
         p.id === action.plotId
           ? { ...p, state: 'growing' as const, plantCount: qty, growthEndTime: Date.now() + growthTimeMs(plot) }
@@ -139,8 +140,8 @@ function reducer(state: GameState, action: Action): GameState {
       const newPlots = state.plots.map(plot => {
         if (!plot.unlocked || plot.state !== 'empty') return plot;
         const avail = seedInv[plot.cropId];
-        if (avail <= 0) return plot;
-        const qty = Math.min(avail, plot.maxSeeds);
+        if (avail < plot.maxSeeds) return plot;
+        const qty = plot.maxSeeds;
         seedInv[plot.cropId] = avail - qty;
         return { ...plot, state: 'growing' as const, plantCount: qty, growthEndTime: now + growthTimeMs(plot) };
       });
@@ -229,8 +230,8 @@ function reducer(state: GameState, action: Action): GameState {
 
             /* 農夫自動補種：種子足夠才播種同一作物，否則保持空地 */
             const seedStock = seedInv[p.cropId];
-            if (seedStock > 0) {
-              const qty = Math.min(seedStock, p.maxSeeds);
+            if (seedStock >= p.maxSeeds) {
+              const qty = p.maxSeeds;
               seedInv[p.cropId] = seedStock - qty;
               return { ...p, state: 'growing' as const, plantCount: qty, growthEndTime: now + growthTimeMs(p), readyAt: null };
             }
