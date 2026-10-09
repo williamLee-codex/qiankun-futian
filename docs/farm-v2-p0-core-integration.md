@@ -32,8 +32,10 @@ The platform migration wraps the **existing**
 `public.core_wallet_apply_transaction` authority and immutable
 `public.core_wallet_ledger`, rather than creating another balance store. The
 wrapper validates the canonical economy and serializes Farm requests per owner.
-Actual-paid qualification remains the existing `core.wallet_ledgers`
+Actual-paid qualification uses the existing `core.wallet_ledgers`
 `paid_crystal` credit/refund projection via `farm_v2_effective_paid_crystals`.
+Gate migration `0125` resolves verified auth IDs through `core.users.auth_user_id`
+before selecting canonical wallets; auth and Core aggregate IDs are distinct.
 Earned crop rewards never write payment qualification credits.
 
 Successful responses contain `{duplicate,transaction,wallet}` using the Core
@@ -91,8 +93,9 @@ After expiry/revocation, the UI stops actions and offers
 `/api/apps/qiankun-futian/launch?farmV2=1` on the configured platform. This opt-in
 route uses `FARM_V2_LAUNCH_URL` and preserves its query through account login;
 default V1 routing remains unchanged. An unset/invalid external launch URL fails
-closed. The configured URL should target this frontend and include a trusted
-`apiBaseUrl` pointing at the Farm API. Never place credentials in this setting.
+closed. The configured URL should target this frontend. The build must set trusted
+`VITE_FARM_API_BASE_URL` pointing at the Farm API, including `/api`; an
+`apiBaseUrl` query parameter is ignored by the actual entry code. Never place credentials in this setting.
 
 ## Local verification
 
@@ -116,14 +119,14 @@ FARM_V2_PLATFORM_CHECKOUT=/workspace/imperial-compass-platform pnpm test
 
 SQL tests create/drop PID-named databases inside the explicitly selected test
 container. The Farm integration test requires an empty localhost database with
-a `farm_v2_` prefix. Without these explicit opt-ins the seven Farm DB integration
+a `farm_v2_` prefix. Without these explicit opt-ins the eight Farm DB integration
 tests are skipped, not passed. The integration fixture exercises real PostgreSQL
 locks, Core Wallet RPCs, Farm transactions and rollback triggers; network-loss
 injection replaces the external platform transport only.
 
 ## Release prerequisites and boundaries
 
-Platform changes must be reviewed and its `0123`/`0124` migrations applied through
+Platform changes must be reviewed and its `0123`/`0124`/`0125` migrations applied through
 the normal authorized release process. Check the target's existing
 `public.launch_tokens` schema (not defined in this checkout's migration history),
 Core Wallet RPC/ledger and `0122` paid qualification RPC before release. These
@@ -166,3 +169,23 @@ or canonical economy constants were changed.
 - `package.json`
 - `pnpm-lock.yaml`
 - `vitest.config.ts`
+
+## Pre-release gate review
+
+**NO-GO for production release.** The companion platform report is
+`docs/farm-v2-p0-release-gate.md` on `codex/farm-v2-paid-value-authority`.
+Its G1–G6 table names each repository, operation and acceptance criterion.
+
+This gate fixes unresolved 409 request-ID retention, adds entry HTML
+`no-referrer`, and removes automatic post-merge database push. Existing six-land
+rules remain unchanged. Farm full suite passed 151 tests (eight isolated DB saga
+cases), typechecks/full build passed, and local bearer-CORS preflight passed.
+Platform additionally fixes auth/Core paid qualification mapping with 0125 and
+checks wallet lifecycle under the authoritative row lock in 0123.
+
+Open gates: verify actual target schema/privileges; separately authorize migrations
+and bindings; decide refund ordering semantics; implement/rehearse orphan and
+manual reconciliation; define and enforce account lifecycle revocation; validate
+approved V2 entry, real browser login/cookies/CORS and transaction behavior.
+Platform account logout currently does not revoke Farm sessions; default platform
+home entry still opens V1. No production work, push, hosted CI or deployment ran.

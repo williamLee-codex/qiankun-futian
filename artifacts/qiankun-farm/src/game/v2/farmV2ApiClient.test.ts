@@ -178,6 +178,24 @@ describe("Farm V2 API contract", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it.each(["INSUFFICIENT_FUNDS", "CONCURRENT_WALLET_OPERATION", "DUPLICATE_IDEMPOTENCY_KEY"])(
+    "retains the original request ID after an unresolved wallet conflict: %s",
+    async (code) => {
+      let count = 0;
+      vi.stubGlobal("crypto", { randomUUID: () => `conflict-${++count}` });
+      const transport = vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => session })
+        .mockResolvedValueOnce({ ok: false, status: 409, json: async () => ({ error: code }) })
+        .mockResolvedValue({ ok: true, json: async () => ({}) });
+      vi.stubGlobal("fetch", transport);
+      const api = createFarmV2Api({ baseUrl: "https://example.test/api", launchToken: "launch" });
+      await expect(api.exchangeCrops(6, 6)).rejects.toMatchObject({ code });
+      await api.exchangeCrops(6, 6);
+      expect(transport.mock.calls[2][1].headers["x-request-id"])
+        .toBe(transport.mock.calls[1][1].headers["x-request-id"]);
+    },
+  );
+
   it("retains only non-secret pending request IDs across a platform re-login", async () => {
     const values = new Map<string, string>();
     vi.stubGlobal("sessionStorage", {

@@ -270,6 +270,21 @@ describe.skipIf(!enabled)(
         ).rows[0].count,
       ).toBe(2);
     });
+    it("spent crop rewards leave compensation pending until the exact inverse can settle", async () => {
+      const input = { userId, launchToken: "test-launch", requestId: "spent-reward", landId: 6, cropQuantity: 6 };
+      dropFarmCommit = true;
+      await expect(exchange(input)).rejects.toMatchObject({ cause: { message: "TEST_FARM_COMMIT_FAILURE" } });
+      await storage.pool.query("delete from farm_test_failures; delete from farm_v2_player_state; update core_wallets set crystal_balance=0");
+      await expect(exchange(input)).rejects.toThrow("insufficient_funds");
+      expect((await storage.pool.query("select transaction_state from farm_v2_mutation")).rows[0].transaction_state).toBe("COMPENSATING");
+      expect((await storage.pool.query("select count(*)::int as count from core_wallet_ledger")).rows[0].count).toBe(1);
+      // Test-only available-funds restoration; production resolution needs an
+      // approved authority operation, never a balance/journal edit.
+      await storage.pool.query("update core_wallets set crystal_balance=6");
+      await expect(exchange(input)).rejects.toThrow("FARM_MUTATION_COMPENSATED");
+      expect((await storage.pool.query("select crystal_balance from core_wallets")).rows[0].crystal_balance).toBe(0);
+      expect((await storage.pool.query("select transaction_state from farm_v2_mutation")).rows[0].transaction_state).toBe("COMPENSATED");
+    });
     it("never changes a reserved request payload and does not grant assets on insufficient funds", async () => {
       await purchase(seedInput());
       await expect(purchase({ ...seedInput(), packs: 3 })).rejects.toThrow(

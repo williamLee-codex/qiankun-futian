@@ -204,7 +204,9 @@ export function createFarmV2Api(input: {
           error instanceof FarmV2ApiError &&
           error.status < 500 &&
           ![401, 403].includes(error.status) &&
-          error.code !== "MUTATION_IN_PROGRESS"
+          // A 409 may describe an unresolved primary or compensation, rather
+          // than a rejected operation. Preserve its identity until confirmed.
+          (error.status !== 409 || error.code === "FARM_MUTATION_COMPENSATED")
         ) {
           pendingRequests.delete(operation);
           savePendingRequests();

@@ -1,4 +1,5 @@
 #!/bin/bash
 set -e
 pnpm install --frozen-lockfile
-pnpm --filter db push
+# Schema changes require a separately reviewed, authorized release.
+# Never mutate a bound database automatically after a merge.
