@@ -28,6 +28,7 @@ export async function mutateFarmV2Wallet(
 
   const response = await fetch(new URL("/api/replit/farm-v2/wallet", platformBaseUrl), {
     method: "POST",
+    redirect: "error",
     headers: {
       "content-type": "application/json",
       "x-replit-shared-secret": sharedSecret,
