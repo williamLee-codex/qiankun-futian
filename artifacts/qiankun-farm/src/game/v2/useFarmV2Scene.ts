@@ -29,7 +29,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       setData(null);
       setError('FARM_V2_LAUNCH_TOKEN_REQUIRED');
       setLoading(false);
-      return;
+      return false;
     }
     setLoading(true);
     try {
@@ -39,9 +39,11 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         ...mapServerWarehouse(snapshot.player.warehouseState),
       });
       setError(null);
+      return true;
     } catch (cause) {
       setData(null);
       setError(cause instanceof Error ? cause.message : 'FARM_V2_STATE_FAILED');
+      return false;
     } finally {
       setLoading(false);
     }
@@ -67,8 +69,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         else await api.exchangeCrops(landId, quantity!);
       }
       // Always re-read committed server state, including inventory and access.
-      await refresh();
-      return true;
+      return await refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'FARM_V2_MUTATION_FAILED');
       return false;
