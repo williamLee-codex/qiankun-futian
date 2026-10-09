@@ -55,6 +55,19 @@ export async function mutateFarmV2Wallet(
     const code = body && "error" in body && body.error ? body.error : "FARM_WALLET_BRIDGE_FAILED";
     throw new Error(code);
   }
-  if (!body || !("duplicate" in body)) throw new Error("INVALID_FARM_WALLET_BRIDGE_RESPONSE");
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("duplicate" in body) ||
+    typeof body.duplicate !== "boolean" ||
+    !("transaction" in body) ||
+    !body.transaction ||
+    typeof body.transaction !== "object" ||
+    !("wallet" in body) ||
+    !body.wallet ||
+    typeof body.wallet !== "object"
+  ) {
+    throw new Error("INVALID_FARM_WALLET_BRIDGE_RESPONSE");
+  }
   return body;
 }
