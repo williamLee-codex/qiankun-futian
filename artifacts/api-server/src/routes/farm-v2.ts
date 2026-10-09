@@ -12,6 +12,17 @@ import { reconcileFarmV2PaidAccessFromCore } from "../lib/farm-v2-paid-access";
 import { requestFarmV2PlatformSession } from "../lib/farm-v2-platform";
 
 const router: IRouter = Router();
+// Fail closed before identity validation, database access or session creation.
+// Revocation is cleanup only and still passes the existing platform verification.
+router.use("/farm/v2", (req, res, next) => {
+  const revoking = req.method === "POST" && req.path === "/session" && req.body?.action === "revoke";
+  if (process.env.FARM_V2_ENTRY_ENABLED === "1" || revoking) {
+    next();
+    return;
+  }
+  res.setHeader("Cache-Control", "no-store");
+  res.status(503).json({ error: "FARM_V2_ENTRY_DISABLED" });
+});
 const authorizedRoute = (handler: RequestHandler): RequestHandler => async (req, res, next) => {
   try {
     const requestId = req.header("x-request-id") ?? (req.method === "GET" ? randomUUID() : "");

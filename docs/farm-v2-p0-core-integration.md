@@ -192,3 +192,31 @@ manual reconciliation; define and enforce account lifecycle revocation; validate
 approved V2 entry, real browser login/cookies/CORS and transaction behavior.
 Platform account logout currently does not revoke Farm sessions; default platform
 home entry still opens V1. No production work, push, hosted CI or deployment ran.
+
+
+## Default-off server entry gate
+
+The Farm API now requires server-side `FARM_V2_ENTRY_ENABLED=1`. Unset or other
+values close every `/api/farm/v2/*` gameplay/state endpoint and Session exchange
+with 503 `FARM_V2_ENTRY_DISABLED`, regardless of URL parameters or credentials.
+The platform must also independently enable the same flag; Farm identity
+validation sends a V2 marker so a closed platform rejects a previously issued
+launch even when Farm's flag is enabled. This setting is not a Vite/browser flag.
+
+Authenticated Session revocation remains available while closed. Platform permit
+settlement and existing Core-authorized compensation also remain available to
+finish admitted work. No Core Wallet, paid qualification, game rules, migrations
+or V1 routes are changed. Direct production SPA links still need Session exchange
+and server API validation; loading the static shell grants no gameplay access.
+Both flags must remain closed during production Migration review. Local router
+HTTP tests use isolated dependency stubs; production routing/configuration has
+not been verified by these tests.
+
+Changed Farm files for this entry correction:
+
+- `artifacts/api-server/src/middlewares/farm-v2-launch-auth.ts`
+- `artifacts/api-server/src/routes/farm-v2-entry.test.ts`
+- `artifacts/api-server/src/routes/farm-v2.ts`
+- `docs/farm-v2-p0-core-integration.md`
+
+Local results: entry HTTP router **15/15 passed**, full Farm suite **39 files / 175 passed** (including all 17 isolated PostgreSQL saga cases), paid-route guard **4/4 passed**, and workspace TypeScript passed. No tests skipped in the full configured run. Entry gate passes locally; production settings and deployed acceptance are not established by this result.

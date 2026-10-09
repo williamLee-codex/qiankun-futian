@@ -43,7 +43,7 @@ export async function requireFarmV2LaunchIdentity(
           "content-type": "application/json",
           "x-replit-shared-secret": sharedSecret,
         },
-        body: JSON.stringify({ launchToken }),
+        body: JSON.stringify({ launchToken, farmV2: true }),
         signal: AbortSignal.timeout(5_000),
       },
     );
@@ -54,7 +54,14 @@ export async function requireFarmV2LaunchIdentity(
       | null;
     if (!response.ok) {
       if (response.status === 503) {
-        res.status(503).json({ error: "LAUNCH_VALIDATE_NOT_CONFIGURED" });
+        res
+          .status(503)
+          .json({
+            error:
+              body && "error" in body && body.error === "FARM_V2_ENTRY_DISABLED"
+                ? "FARM_V2_ENTRY_DISABLED"
+                : "LAUNCH_VALIDATE_NOT_CONFIGURED",
+          });
         return;
       }
       if (response.status === 404) {
