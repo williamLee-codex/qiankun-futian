@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import App from "./App";
+import { FarmV2AuthenticatedView } from "./game/v2/FarmV2AuthenticatedView";
 import "./index.css";
 
 // The platform issues a short-lived launch token in the redirect URL.
@@ -7,7 +7,11 @@ import "./index.css";
 // by the API server against the platform before any state is returned.
 const params = new URLSearchParams(window.location.search);
 const launchToken = params.get("launchToken")?.trim() ?? "";
-const apiBaseUrl = import.meta.env.VITE_FARM_API_BASE_URL?.trim() ?? "";
+const configuredApiBase = import.meta.env.VITE_FARM_API_BASE_URL?.trim() ?? "";
+// A trusted build-time relative path supports the main site's same-origin proxy.
+const apiBaseUrl = configuredApiBase
+  ? new URL(configuredApiBase, window.location.origin).toString()
+  : "";
 
 // Remove the credential from the address bar and browser history immediately.
 // Never persist it to localStorage or log it.
@@ -17,16 +21,23 @@ if (params.has("launchToken")) {
   window.history.replaceState(
     window.history.state,
     "",
-    window.location.pathname + (remaining ? "?" + remaining : "") + window.location.hash,
+    window.location.pathname +
+      (remaining ? "?" + remaining : "") +
+      window.location.hash,
   );
 }
 
 const root = createRoot(document.getElementById("root")!);
 if (launchToken && apiBaseUrl) {
-  root.render(<App farmV2Session={{ apiBaseUrl, launchToken }} />);
+  root.render(
+    <FarmV2AuthenticatedView
+      apiBaseUrl={apiBaseUrl}
+      launchToken={launchToken}
+    />,
+  );
 } else if (import.meta.env.DEV && !launchToken) {
   // Legacy demo is permitted only for local development, never production.
-  root.render(<App />);
+  void import("./App").then(({ default: App }) => root.render(<App />));
 } else {
   root.render(
     <main role="alert">

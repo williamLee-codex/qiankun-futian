@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema";
+import { farmDatabaseConfig } from "./connection-config";
 
 const { Pool } = pg;
 
@@ -13,9 +14,12 @@ if (!process.env.DATABASE_URL) {
 export function createDatabaseConnection(
   options: Omit<pg.PoolConfig, "connectionString"> = {},
 ) {
+  const config = farmDatabaseConfig(process.env);
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    ...config,
     ...options,
+    // Callers may adjust pool sizes, but cannot weaken production TLS.
+    ...(process.env.NODE_ENV === "production" ? { ssl: config.ssl } : {}),
   });
   // pg removes failed clients itself. Active-client and idle-pool error
   // listeners keep a broken connection from crashing the API after rollback.
