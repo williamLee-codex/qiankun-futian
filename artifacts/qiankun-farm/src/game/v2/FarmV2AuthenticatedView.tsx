@@ -1,5 +1,8 @@
 import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
-import farmBackground from "@assets/file_00000000095072069ef62748d273ae91_1783571778589.png";
+import { FarmSceneInteractionLayer } from "./FarmSceneInteractionLayer";
+import { workshopState } from "./workshopRuntime";
+import { mapServerLands } from "./farmV2SceneAdapter";
+import type { FarmV2PublicCave } from "./publicCave";
 import { useState } from "react";
 import { useFarmV2Scene } from "./useFarmV2Scene";
 import { CROP_DATA } from "../types";
@@ -12,15 +15,6 @@ import { CROP_DATA } from "../types";
  * Intentionally separate from the legacy scene until platform routing is
  * approved. No simulated wallet, entitlement or success messages.
  */
-const PLOT_HOTSPOTS = [
-  { left: "4%", top: "43%", width: "30%", height: "15%" },
-  { left: "35%", top: "42%", width: "30%", height: "15%" },
-  { left: "63%", top: "42%", width: "29%", height: "15%" },
-  { left: "2%", top: "59%", width: "33%", height: "12%" },
-  { left: "34%", top: "58%", width: "32%", height: "12%" },
-  { left: "65%", top: "58%", width: "31%", height: "12%" },
-] as const;
-
 export function FarmV2AuthenticatedView(props: {
   apiBaseUrl: string;
   launchToken: string;
@@ -38,7 +32,11 @@ export function FarmV2AuthenticatedView(props: {
     pendingWorkshop,
     readFriends,
     visitCave,
+    friendAction,
+    pendingFriends,
   } = useFarmV2Scene(props.apiBaseUrl, props.launchToken);
+  const [visited, setVisited] = useState<FarmV2PublicCave | null>(null);
+  const [panelTab, setPanelTab] = useState("盆栽");
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
 
@@ -88,88 +86,85 @@ export function FarmV2AuthenticatedView(props: {
       </section>
     );
 
+  const friendRetries = pendingFriends.map((p, i) => (
+    <button
+      key={i}
+      disabled={busy || loading}
+      onClick={() => void friendAction(p.targetId, p.kind, p.landId)}
+    >
+      查核／重試原好友交易：{p.kind}・第{p.landId}田
+    </button>
+  ));
+  if (visited)
+    return (
+      <>
+        {friendRetries}
+        <FarmSceneInteractionLayer
+          plots={mapServerLands(visited.lands)}
+          state={visited}
+          ownerLabel="好友"
+          readOnly
+          busy={busy || loading}
+          onRefresh={() => {
+            void visitCave(visited.ownerId)
+              .then(setVisited)
+              .catch(() => setVisited(null));
+          }}
+          onReturnHome={() => setVisited(null)}
+          onFriendAction={async (kind, landId) => {
+            const ok = await friendAction(visited.ownerId, kind, landId);
+            setNotice(
+              ok
+                ? "好友操作已由伺服器確認。"
+                : "此次未取得作物，請查看錯誤或田地狀態。",
+            );
+            try {
+              setVisited(await visitCave(visited.ownerId));
+            } catch {
+              setVisited(null);
+            }
+          }}
+        />
+        {notice && <p role="status">{notice}</p>}
+        {error && <p role="alert">{error}</p>}
+      </>
+    );
   return (
     <section
       aria-label="乾坤福田正式農田"
-      style={{ maxWidth: 720, margin: "0 auto" }}
+      style={{ maxWidth: 1200, margin: "0 auto" }}
     >
-      <div
-        style={{
-          position: "relative",
-          width: "min(100%, 390px)",
-          aspectRatio: "390 / 843",
-          margin: "0 auto",
-          overflow: "hidden",
+      <FarmSceneInteractionLayer
+        plots={data.plots}
+        state={{
+          pots: workshopState(data.warehouse).pots.filter((p) => p.displayed),
+          decor: workshopState(data.warehouse).decor,
+          activeFormation:
+            workshopState(data.warehouse).activeFormation ?? null,
+          activeFormationExpiresAt:
+            workshopState(data.warehouse).formations?.find(
+              (f) => f.id === workshopState(data.warehouse).activeFormation,
+            )?.expiresAt ?? null,
+          pets: data.pets,
         }}
-      >
-        <img
-          src={farmBackground}
-          alt="乾坤福田六田場景"
-          style={{
-            display: "block",
-            width: "100%",
-            height: "100%",
-            objectFit: "fill",
-          }}
-        />
-        {data.plots.map((plot, index) => (
-          <button
-            key={plot.id}
-            type="button"
-            aria-label={`${plot.name}，${!plot.unlocked ? "尚未解鎖" : plot.state === "ready" ? "已成熟" : plot.state === "growing" ? "生長中" : "待播種"}`}
-            aria-pressed={selectedLand === plot.id + 1}
-            disabled={busy || loading}
-            onClick={() => setSelectedLand(plot.id + 1)}
-            style={{
-              position: "absolute",
-              ...PLOT_HOTSPOTS[index],
-              border:
-                selectedLand === plot.id + 1
-                  ? "2px solid #f8d58a"
-                  : "1px solid transparent",
-              background:
-                selectedLand === plot.id + 1
-                  ? "rgba(255,215,130,.2)"
-                  : "transparent",
-              cursor: "pointer",
-            }}
-          />
-        ))}
-        <div
-          aria-label="正式農田狀態"
-          style={{
-            position: "absolute",
-            top: "75%",
-            left: 12,
-            right: 12,
-            pointerEvents: "none",
-            background: "rgba(16, 27, 20, .85)",
-            color: "white",
-            padding: 12,
-            borderRadius: 12,
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 8,
-          }}
-        >
-          {data.plots.map((plot) => (
-            <span key={plot.id}>
-              {plot.name}：
-              {!plot.unlocked
-                ? "🔒"
-                : plot.state === "ready"
-                  ? "🌾"
-                  : plot.state === "growing"
-                    ? "🌱"
-                    : "▫️"}
-            </span>
-          ))}
-        </div>
-      </div>
+        ownerLabel="我的福田"
+        busy={busy || loading}
+        onRefresh={refresh}
+        onLandSelect={setSelectedLand}
+        onLandAction={execute}
+        onSection={setPanelTab}
+      />
       <h2>乾坤福田</h2>
+      {friendRetries}
       <FarmWorkshopPanel
+        tab={panelTab}
+        onTabChange={setPanelTab}
         readFriends={readFriends}
-        visitCave={visitCave}
+        visitCave={async (id) => {
+          const view = await visitCave(id);
+          setVisited(view);
+          return view;
+        }}
         warehouse={data.warehouse}
         missions={data.missions}
         pets={data.pets}

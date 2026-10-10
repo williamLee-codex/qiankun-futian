@@ -1,3 +1,5 @@
+import { mutateFarmV2Friend } from "../lib/farm-v2-friend-actions";
+import { withFarmFriendAuthority } from "../lib/farm-v2-friend-authority";
 import { readFarmV2Friends, visitFarmV2Cave } from "../lib/farm-v2-friends";
 import { mutateFarmV2Workshop } from "../lib/farm-v2-workshop";
 import {
@@ -189,6 +191,28 @@ router.post(
     );
   }),
 );
+
+router.post("/farm/v2/friends/:targetId/actions", async (req, res, next) => {
+  try {
+    const kind = req.body?.kind;
+    if (!["BORROW", "ASSIST"].includes(kind))
+      throw new Error("INVALID_FRIEND_REQUEST");
+    const input = {
+      userId: String(res.locals.authenticatedUserId),
+      launchToken: String(res.locals.launchToken),
+      targetId: String(req.params.targetId).toLowerCase(),
+      requestId: req.header("x-request-id") ?? "",
+      kind,
+      landId: Number(req.body?.landId),
+    };
+    const result = await withFarmFriendAuthority(input, () =>
+      mutateFarmV2Friend(input),
+    );
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.post(
   "/farm/v2/lands/:landId/sow",

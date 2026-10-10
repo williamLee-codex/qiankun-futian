@@ -1,15 +1,10 @@
-import type { FarmLandId } from './canonicalLandData';
-import type { FarmerState } from './farmerRuntime';
-import { targetFarmerBlocksLandInteraction } from './farmerInteractionBridge';
-
-/**
- * Resolves the farmer guard for a concrete set of requested target lands.
- * A request is blocked when any requested land is currently automated.
- * Entitlement alone never blocks friend interaction.
- */
+import type { FarmLandId } from "./canonicalLandData";
+import type { FarmerState } from "./farmerRuntime";
+import { isFarmerActiveOnAnyLand } from "./farmerInteractionBridge";
+/** FARMER-FRIEND-001: any effective farmer blocks friend actions before land checks. */
 export function targetFarmerBlocksRequestedLands(
   farmer: FarmerState,
-  landIds: readonly FarmLandId[],
+  _landIds: readonly FarmLandId[],
 ): boolean {
-  return landIds.some((landId) => targetFarmerBlocksLandInteraction(farmer, landId));
+  return isFarmerActiveOnAnyLand(farmer);
 }

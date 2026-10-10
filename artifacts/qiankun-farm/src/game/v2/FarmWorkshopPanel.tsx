@@ -1,3 +1,5 @@
+import { FORMATION_NAMES } from "./formationSourcesRuntime";
+import { nextFarmMonthReset } from "./timeRuntime";
 import { useState } from "react";
 import {
   workshopState,
@@ -15,6 +17,8 @@ import { FARM_V2_MISSIONS, type MissionState } from "./missionRuntime";
 import { RELEASED_DECOR } from "./decorCatalog";
 import { FARM_V2_LANDS } from "./canonicalLandData";
 export function FarmWorkshopPanel(props: {
+  tab?: string;
+  onTabChange?: (tab: string) => void;
   readFriends?: () => Promise<{ friends: { id: string }[] }>;
   visitCave?: (id: string) => Promise<{
     readOnly: boolean;
@@ -40,8 +44,10 @@ export function FarmWorkshopPanel(props: {
       decor: unknown[];
     } | null>(null),
     [friendError, setFriendError] = useState("");
-  const [tab, setTab] = useState("盆栽"),
-    [species, setSpecies] = useState(1),
+  const [localTab, setLocalTab] = useState("盆栽");
+  const [festivalCode, setFestivalCode] = useState("");
+  const tab = props.tab ?? localTab;
+  const [species, setSpecies] = useState(1),
     [grade, setGrade] = useState<PotGrade>("黃"),
     [useDisplayed, setUseDisplayed] = useState(false);
   const state = workshopState(props.warehouse),
@@ -64,7 +70,11 @@ export function FarmWorkshopPanel(props: {
     <section aria-label="福田倉庫與洞府管理">
       <nav>
         {["盆栽", "洞府", "任務", "靈寵", "護陣", "好友"].map((t) => (
-          <button key={t} onClick={() => setTab(t)} aria-pressed={tab === t}>
+          <button
+            key={t}
+            onClick={() => (props.onTabChange ?? setLocalTab)(t)}
+            aria-pressed={tab === t}
+          >
             {t}
           </button>
         ))}
@@ -304,6 +314,54 @@ export function FarmWorkshopPanel(props: {
         )}
         {tab === "護陣" && (
           <>
+            <p>
+              當月登入 {state.attendance?.days.length ?? 0} 天・門檻{" "}
+              {state.attendance
+                ? Math.ceil(
+                    Math.round(
+                      (nextFarmMonthReset(state.attendance.monthStart) -
+                        state.attendance.monthStart) /
+                        86400000,
+                    ) * 0.9,
+                  )
+                : "依月份計算"}{" "}
+              天；達標後次月可手動啟用天道酬勤。
+            </p>
+            <label>
+              官方節慶碼
+              <input
+                value={festivalCode}
+                maxLength={128}
+                autoComplete="off"
+                onChange={(e) => setFestivalCode(e.target.value)}
+              />
+            </label>
+            <button
+              disabled={!festivalCode.trim()}
+              onClick={() => {
+                const code = festivalCode.trim();
+                setFestivalCode("");
+                void crypto.subtle
+                  .digest("SHA-256", new TextEncoder().encode(code))
+                  .then((hash) =>
+                    props.transact({
+                      kind: "redeemFormationCode",
+                      codeHash: Array.from(new Uint8Array(hash))
+                        .map((b) => b.toString(16).padStart(2, "0"))
+                        .join(""),
+                    }),
+                  );
+              }}
+            >
+              兌換節慶護陣
+            </button>
+            <button
+              onClick={() =>
+                void props.transact({ kind: "claimAchievementFormations" })
+              }
+            >
+              領取已達成的成就護陣
+            </button>
             <h3>洞府護陣</h3>
             <p>同時最多一個・純視覺</p>
             <button
@@ -341,7 +399,7 @@ export function FarmWorkshopPanel(props: {
                     })
                   }
                 >
-                  {f.id === "FORMATION_PREMIUM_V2" ? "太虛星河大陣" : f.id}
+                  {FORMATION_NAMES[f.id] ?? "洞府護陣"}
                   {state.activeFormation === f.id ? "（啟用中）" : ""}
                 </button>
               ))}

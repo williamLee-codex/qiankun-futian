@@ -1,4 +1,12 @@
 import {
+  findOfficialFestivalCode,
+  readTrustedFormationGrants,
+} from "./farm-v2-formation-sources";
+import {
+  redeemFestivalFormation,
+  grantAchievementFormations,
+} from "../../../qiankun-farm/src/game/v2/formationSourcesRuntime";
+import {
   claimMissionReward,
   type MissionState,
 } from "../../../qiankun-farm/src/game/v2/missionRuntime";
@@ -37,6 +45,8 @@ export function mutateFarmV2Workshop(input: Input) {
     !input.command ||
     typeof input.command !== "object" ||
     ![
+      "redeemFormationCode",
+      "claimAchievementFormations",
       "synthesize",
       "displayPot",
       "removePot",
@@ -109,7 +119,31 @@ export function mutateFarmV2Workshop(input: Input) {
         missions: player.missionState,
         pets: player.petState,
       };
-      if (input.command.kind === "buyPet") {
+      if (
+        input.command.kind === "redeemFormationCode" ||
+        input.command.kind === "claimAchievementFormations"
+      ) {
+        const warehouse =
+          input.command.kind === "redeemFormationCode"
+            ? redeemFestivalFormation(
+                before,
+                findOfficialFestivalCode(input.command.codeHash),
+                now,
+              )
+            : grantAchievementFormations(
+                before,
+                await readTrustedFormationGrants(input.launchToken),
+                now,
+              );
+        plan = {
+          warehouse,
+          cost: 0,
+          reward: 0,
+          referenceId: "",
+          ...workshopPublicState(warehouse),
+          ...snapshots,
+        };
+      } else if (input.command.kind === "buyPet") {
         const pet = input.command.petId;
         if (!["尋星犬", "辟邪狻猊"].includes(pet))
           throw new Error("UNKNOWN_PET");

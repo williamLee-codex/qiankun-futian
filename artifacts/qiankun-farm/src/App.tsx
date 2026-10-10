@@ -107,7 +107,7 @@ export default function App(props: { farmV2Session?: { apiBaseUrl: string; launc
   // Only the authenticated platform host may supply a V2 session.
   // Do not infer it from query parameters or prototype local storage.
   if (props.farmV2Session) {
-    return <FarmV2AuthenticatedView {...props.farmV2Session} />;
+    return <FarmV2AuthenticatedView key={props.farmV2Session.launchToken} {...props.farmV2Session} />;
   }
   return (
     <GameProvider>

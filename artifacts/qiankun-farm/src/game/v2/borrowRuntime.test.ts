@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 import {
   applySuanniProtection,
   baseBorrowQuantity,
   settleBorrow,
-} from './borrowRuntime';
+} from "./borrowRuntime";
 
 const HOUR = 60 * 60 * 1000;
 const rng = (...values: number[]) => {
@@ -11,15 +11,15 @@ const rng = (...values: number[]) => {
   return { next: () => values[i++] ?? 0.99 };
 };
 
-describe('Farm V2 borrow settlement', () => {
-  it('uses 30% ceil formula and always leaves at least one crop', () => {
+describe("Farm V2 borrow settlement", () => {
+  it("uses 30% ceil formula and always leaves at least one crop", () => {
     expect(baseBorrowQuantity(10)).toBe(3);
     expect(baseBorrowQuantity(4)).toBe(2);
     expect(baseBorrowQuantity(2)).toBe(1);
     expect(baseBorrowQuantity(1)).toBe(0);
   });
 
-  it('requires fields 2-5 and exact one-hour mature protection', () => {
+  it("requires fields 2-5 and exact one-hour mature protection", () => {
     const maturesAt = 1000;
     const targets = [
       { landId: 1 as const, currentQuantity: 20, maturesAt },
@@ -27,12 +27,14 @@ describe('Farm V2 borrow settlement', () => {
       { landId: 6 as const, currentQuantity: 2, maturesAt },
     ];
 
-    expect(settleBorrow({
-      targets,
-      now: maturesAt + HOUR - 1,
-      pets: { suanniActive: false, tingActive: false, qilinActive: false },
-      rng: rng(),
-    }).successful).toBe(false);
+    expect(
+      settleBorrow({
+        targets,
+        now: maturesAt + HOUR - 1,
+        pets: { suanniActive: false, tingActive: false, qilinActive: false },
+        rng: rng(),
+      }).successful,
+    ).toBe(false);
 
     const result = settleBorrow({
       targets,
@@ -44,7 +46,7 @@ describe('Farm V2 borrow settlement', () => {
     expect(result.totalBorrowed).toBe(3);
   });
 
-  it('applies Suanni 30% protection after calculating base quantity', () => {
+  it("applies Suanni 30% protection after calculating base quantity", () => {
     expect(applySuanniProtection(3, true)).toBe(2);
     expect(applySuanniProtection(2, true)).toBe(1);
     expect(applySuanniProtection(1, true)).toBe(0);
@@ -59,7 +61,7 @@ describe('Farm V2 borrow settlement', () => {
     expect(result.fields[0].remainingQuantity).toBe(8);
   });
 
-  it('lets Qilin independently block each attempted target at 50%', () => {
+  it("lets Qilin independently block each attempted target at 50%", () => {
     const result = settleBorrow({
       targets: [
         { landId: 2, currentQuantity: 10, maturesAt: 0 },
@@ -77,7 +79,7 @@ describe('Farm V2 borrow settlement', () => {
     expect(result.successful).toBe(true);
   });
 
-  it('Ting can add only one different second field and the action stays one settlement', () => {
+  it("Ting can add only one different second field and the action stays one settlement", () => {
     const result = settleBorrow({
       targets: [
         { landId: 2, currentQuantity: 10, maturesAt: 0 },
@@ -92,7 +94,7 @@ describe('Farm V2 borrow settlement', () => {
     expect(result.totalBorrowed).toBe(5);
   });
 
-  it('a fully blocked attempt is not a successful borrow', () => {
+  it("a fully blocked attempt is not a successful borrow", () => {
     const result = settleBorrow({
       targets: [{ landId: 2, currentQuantity: 10, maturesAt: 0 }],
       now: HOUR,
@@ -102,4 +104,19 @@ describe('Farm V2 borrow settlement', () => {
     expect(result.successful).toBe(false);
     expect(result.totalBorrowed).toBe(0);
   });
+});
+it("BORROW-TING-001: first field Qilin resolution precedes the second-field Ting roll", () => {
+  const result = settleBorrow({
+    targets: [
+      { landId: 2, currentQuantity: 10, maturesAt: 0 },
+      { landId: 3, currentQuantity: 6, maturesAt: 0 },
+    ],
+    now: HOUR,
+    pets: { suanniActive: false, tingActive: true, qilinActive: true },
+    rng: rng(0.8, 0.1, 0.2),
+  });
+  expect(result.fields).toHaveLength(2);
+  expect(result.fields[0].blockedByQilin).toBe(false);
+  expect(result.fields[1].blockedByQilin).toBe(true);
+  expect(result.totalBorrowed).toBe(3);
 });

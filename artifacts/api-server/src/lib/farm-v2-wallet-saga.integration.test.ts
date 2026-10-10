@@ -83,6 +83,7 @@ describe.skipIf(!enabled)(
         "0128_farm_v2_operator_reconciliation.sql",
         "0129_farm_v2_wallet_creation_and_historical_revocation.sql",
         "0130_farm_v2_workshop_wallet_contract.sql",
+        "0131_farm_v2_friend_operation_barrier.sql",
       ]) {
         await storage.pool.query(
           readFileSync(`${root}/supabase/migrations/${file}`, "utf8"),
@@ -780,6 +781,9 @@ describe.skipIf(!enabled)(
         pots: [{ species: 1, grade: "黃" }],
         decor: [],
         activeFormation: null,
+        activeFormationExpiresAt: null,
+        lands: [],
+        pets: { owned: [], activePetId: null, activeUntil: null },
       });
       const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
       await expect(
@@ -790,7 +794,7 @@ describe.skipIf(!enabled)(
           command: { kind: "displayPot", potId: "private-instance" },
         }),
       ).rejects.toThrow("POT_NOT_OWNED");
-      expect(await read()).toEqual({ allowed: true });
+      expect(await read()).toEqual({ allowed: true, targetPaidCrystals: 0 });
       await storage.pool.query(
         "UPDATE platform_friendships SET status='blocked' WHERE user_b_id=$1",
         [target],
@@ -972,11 +976,447 @@ describe.skipIf(!enabled)(
       },
       20000,
     );
+    it.skipIf(!process.env.FARM_V2_BROWSER_ACCEPTANCE)(
+      "real isolated API scene: desktop/mobile sow, harvest and owner-preserving cave navigation",
+      async () => {
+        await storage.pool.query(
+          "UPDATE farm_v2_player_state SET first_farm_entered_at=now()-interval '10 days',warehouse_state=jsonb_set(warehouse_state,'{seeds,1}','20') WHERE user_id=$1",
+          [userId],
+        );
+        await storage.pool.query(
+          "INSERT INTO farm_v2_land(user_id,land_id,lifecycle,access_active,planted_quantity,planted_at,matures_at) SELECT $1,n,CASE WHEN n IN(2,3) THEN 'MATURE' ELSE 'EMPTY' END,true,CASE WHEN n=2 THEN 10 WHEN n=3 THEN 6 ELSE 0 END,now()-interval '2 days',CASE WHEN n IN(2,3) THEN now()-interval '2 hours' ELSE NULL END FROM generate_series(1,6)n",
+          [userId],
+        );
+        const express = (await import("express")).default,
+          { build } = await import("esbuild"),
+          { fileURLToPath } = await import("node:url");
+        const { sowFarmV2Land } = await import("./farm-v2-sow"),
+          { harvestFarmV2Land } = await import("./farm-v2-harvest");
+        const { chromium } = await import(
+          process.env.FARM_V2_PLATFORM_CHECKOUT +
+            "/node_modules/@playwright/test/index.mjs"
+        );
+        const bundle = await build({
+          stdin: {
+            contents: `import React,{useState,useEffect}from'react';import{createRoot}from'react-dom/client';import{FarmSceneInteractionLayer}from'./src/game/v2/FarmSceneInteractionLayer';import{mapServerLands}from'./src/game/v2/farmV2SceneAdapter';function App(){const[d,S]=useState(null),[busy,B]=useState(false);async function read(){S(await(await fetch('/state')).json())}useEffect(()=>{read()},[]);if(!d)return null;return <FarmSceneInteractionLayer plots={mapServerLands(d.lands)} state={d.scene} ownerLabel="測試擁有者" busy={busy} onRefresh={read} onLandAction={async(kind,landId)=>{B(true);try{const r=await fetch('/action',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,landId})});if(!r.ok)throw Error(await r.text());await read()}finally{B(false)}}}/>;}createRoot(document.getElementById('root')).render(<App/>);`,
+            resolveDir: fileURLToPath(
+              new URL("../../../qiankun-farm", import.meta.url),
+            ),
+            loader: "tsx",
+          },
+          bundle: true,
+          write: false,
+          outfile: "/tmp/scene-app.js",
+          platform: "browser",
+          jsx: "automatic",
+        });
+        const app = express();
+        app.use(express.json());
+        app.get("/", (_q, r) =>
+          r
+            .type("html")
+            .send(
+              '<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"><div id="root"></div><script src="/app.js"></script>',
+            ),
+        );
+        app.get("/app.js", (_q, r) =>
+          r
+            .type("js")
+            .send(bundle.outputFiles.find((f) => f.path.endsWith(".js"))!.text),
+        );
+        app.get("/app.css", (_q, r) =>
+          r
+            .type("css")
+            .send(
+              bundle.outputFiles.find((f) => f.path.endsWith(".css"))!.text,
+            ),
+        );
+        app.get("/state", async (_q, r) => {
+          const lands = (
+            await storage.pool.query(
+              'SELECT land_id AS "landId",lifecycle,access_active AS "accessActive",planted_quantity AS "plantedQuantity",matures_at AS "maturesAt" FROM farm_v2_land WHERE user_id=$1 ORDER BY land_id',
+              [userId],
+            )
+          ).rows;
+          r.json({
+            lands,
+            scene: {
+              pots: [],
+              decor: [],
+              activeFormation: null,
+              pets: { owned: [], activePetId: null, activeUntil: null },
+            },
+          });
+        });
+        app.post("/action", async (q, r) => {
+          try {
+            r.json(
+              await (q.body.kind === "sow" ? sowFarmV2Land : harvestFarmV2Land)(
+                {
+                  userId,
+                  requestId: crypto.randomUUID(),
+                  landId: q.body.landId,
+                },
+              ),
+            );
+          } catch (e) {
+            r.status(409).send(String(e));
+          }
+        });
+        const server = await new Promise<import("node:http").Server>(
+          (resolve) => {
+            const s = app.listen(0, "127.0.0.1", () => resolve(s));
+          },
+        );
+        const port = (server.address() as import("node:net").AddressInfo).port;
+        const browser = await chromium.launch({
+          executablePath: "/usr/bin/chromium",
+          headless: true,
+          args: ["--no-sandbox"],
+        });
+        try {
+          for (const [label, width, height, id] of [
+            ["desktop", 1280, 900, 2],
+            ["mobile", 390, 844, 3],
+          ] as const) {
+            const page = await browser.newPage({ viewport: { width, height } });
+            page.setDefaultTimeout(5000);
+            await page.goto("http://127.0.0.1:" + port);
+            await page.locator('[data-layout="' + label + '"]').waitFor();
+            expect(await page.locator(".farm-v2-land").count()).toBe(6);
+            expect(await page.locator(".farm-v2-pot").count()).toBe(6);
+            expect(await page.locator(".farm-v2-pet").count()).toBe(4);
+            if (label === "desktop") {
+              await page
+                .locator(".farm-v2-land")
+                .nth(0)
+                .getByRole("button", { name: "播種", exact: true })
+                .click();
+              await page
+                .locator(".farm-v2-land")
+                .nth(0)
+                .getByRole("button", { name: /生長中/ })
+                .waitFor();
+            }
+            await page
+              .locator(".farm-v2-land")
+              .nth(id - 1)
+              .getByRole("button", { name: "收成", exact: true })
+              .click();
+            await page
+              .locator(".farm-v2-land")
+              .nth(id - 1)
+              .getByRole("button", { name: /待播種/ })
+              .waitFor();
+            await page.screenshot({
+              path: "/tmp/farm-v2-interaction-" + label + ".png",
+              fullPage: true,
+            });
+            await page.getByRole("button", { name: "進入洞府" }).click();
+            expect(await page.locator(".farm-v2-decor").count()).toBe(6);
+            await page
+              .getByRole("button", { name: "離開洞府・回到測試擁有者農場" })
+              .click();
+            await page.getByRole("button", { name: "進入洞府" }).waitFor();
+            await page.close();
+          }
+          expect(
+            (
+              await storage.pool.query(
+                "SELECT warehouse_state->'crops'->>'2' c2,warehouse_state->'crops'->>'3' c3,warehouse_state->'seeds'->>'1' seeds FROM farm_v2_player_state WHERE user_id=$1",
+                [userId],
+              )
+            ).rows[0],
+          ).toEqual({ c2: "30", c3: "26", seeds: "0" });
+        } finally {
+          await browser.close();
+          await new Promise<void>((resolve) => server.close(() => resolve()));
+        }
+      },
+      20000,
+    );
+    it("festival rights persist with workshop idempotency; client cannot choose a right or change a window", async () => {
+      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const now = Date.now(),
+        codeHash = "a".repeat(64);
+      vi.stubEnv(
+        "FARM_V2_FESTIVAL_CODES",
+        JSON.stringify([
+          {
+            codeHash,
+            id: "FORMATION_FESTIVAL_SPRING",
+            startsAt: now - 1000,
+            expiresAt: now + 60000,
+            year: new Date(now + 8 * 3600000).getUTCFullYear(),
+          },
+        ]),
+      );
+      try {
+        const input = {
+          userId,
+          launchToken: "test",
+          requestId: "festival-once",
+          command: { kind: "redeemFormationCode" as const, codeHash },
+        };
+        const r = await Promise.all([
+          mutateFarmV2Workshop(input),
+          mutateFarmV2Workshop(input),
+        ]);
+        expect(r[0]).toEqual(r[1]);
+        const w = (
+          await storage.pool.query(
+            "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+            [userId],
+          )
+        ).rows[0].warehouse_state;
+        expect(w.workshop.formations).toHaveLength(1);
+        expect(w.workshop.formations[0].id).toBe("FORMATION_FESTIVAL_SPRING");
+        await expect(
+          mutateFarmV2Workshop({
+            ...input,
+            requestId: "invalid-code",
+            command: { kind: "redeemFormationCode", codeHash: "b".repeat(64) },
+          }),
+        ).rejects.toThrow(/FORMATION_CODE/);
+      } finally {
+        vi.stubEnv("FARM_V2_FESTIVAL_CODES", "");
+      }
+    });
+    async function friendFixture() {
+      const target = "00000000-0000-0000-0000-000000000002";
+      await storage.pool.query(
+        "INSERT INTO auth.users(id) VALUES($1) ON CONFLICT(id) DO UPDATE SET banned_until=NULL,deleted_at=NULL",
+        [target],
+      );
+      await storage.pool.query(
+        "INSERT INTO core.users(id,auth_user_id,status) VALUES('10000000-0000-0000-0000-000000000002',$1,'active') ON CONFLICT(id) DO UPDATE SET status='active',deleted_at=NULL",
+        [target],
+      );
+      await storage.pool.query(
+        "INSERT INTO platform_friendships VALUES($1,$2,'active') ON CONFLICT(user_a_id,user_b_id) DO UPDATE SET status='active'",
+        [userId, target],
+      );
+      await storage.pool.query(
+        "INSERT INTO farm_v2_player_state(user_id,first_farm_entered_at,access_state,warehouse_state,mission_state,pet_state,farmer_state) SELECT $1,now()-interval '10 days',access_state,warehouse_state,mission_state,pet_state,farmer_state FROM farm_v2_player_state WHERE user_id=$2",
+        [target, userId],
+      );
+      await storage.pool.query(
+        "INSERT INTO farm_v2_land(user_id,land_id,lifecycle,access_active,planted_quantity,planted_at,matures_at) SELECT $1,n,'MATURE',true,(ARRAY[20,10,6,4,3,1])[n],now()-interval '2 days',now()-interval '2 hours' FROM generate_series(1,6)n",
+        [target],
+      );
+      return target;
+    }
+    async function friendMutation(
+      targetId: string,
+      requestId: string,
+      kind: "BORROW" | "ASSIST",
+      landId = 2,
+    ) {
+      const { withFarmFriendAuthority } =
+        await import("./farm-v2-friend-authority");
+      const { mutateFarmV2Friend } = await import("./farm-v2-friend-actions");
+      return withFarmFriendAuthority(
+        { userId, targetId, requestId, kind, launchToken: "test" },
+        () => mutateFarmV2Friend({ userId, targetId, requestId, kind, landId }),
+      );
+    }
+    it("friend borrow: same-key concurrent retry consumes once, cooldown rejects a new key", async () => {
+      const target = await friendFixture();
+      const r = await Promise.all([
+        friendMutation(target, "borrow-once", "BORROW"),
+        friendMutation(target, "borrow-once", "BORROW"),
+      ]);
+      expect(r[0]).toEqual(r[1]);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT planted_quantity FROM farm_v2_land WHERE user_id=$1 AND land_id=2",
+            [target],
+          )
+        ).rows[0].planted_quantity,
+      ).toBe(7);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT warehouse_state->'crops'->>'2' qty FROM farm_v2_player_state WHERE user_id=$1",
+            [userId],
+          )
+        ).rows[0].qty,
+      ).toBe("23");
+      await expect(
+        friendMutation(target, "borrow-again", "BORROW"),
+      ).rejects.toThrow(/COOLDOWN/);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT count(*)::int n FROM farm_v2_friend_operations WHERE state='OPEN'",
+          )
+        ).rows[0].n,
+      ).toBe(0);
+    });
+    it("friend assist: concurrent requests cannot harvest or award twice", async () => {
+      const target = await friendFixture();
+      const r = await Promise.allSettled([
+        friendMutation(target, "assist-1", "ASSIST"),
+        friendMutation(target, "assist-2", "ASSIST"),
+      ]);
+      expect(r.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT warehouse_state->'crops'->>'2' qty FROM farm_v2_player_state WHERE user_id=$1",
+            [target],
+          )
+        ).rows[0].qty,
+      ).toBe("30");
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT warehouse_state->'crops'->>'2' qty FROM farm_v2_player_state WHERE user_id=$1",
+            [userId],
+          )
+        ).rows[0].qty,
+      ).toBe("21");
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT lifecycle FROM farm_v2_land WHERE user_id=$1 AND land_id=2",
+            [target],
+          )
+        ).rows[0].lifecycle,
+      ).toBe("EMPTY");
+    });
+    it("ASSIST-RACE-001: owner harvest and friend assist share a single mature batch", async () => {
+      const target = await friendFixture(),
+        { harvestFarmV2Land } = await import("./farm-v2-harvest");
+      const results = await Promise.allSettled([
+        friendMutation(target, "assist-race", "ASSIST"),
+        harvestFarmV2Land({
+          userId: target,
+          requestId: "owner-race",
+          landId: 2,
+        }),
+      ]);
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT warehouse_state->'crops'->>'2' qty FROM farm_v2_player_state WHERE user_id=$1",
+            [target],
+          )
+        ).rows[0].qty,
+      ).toBe("30");
+      const actorQty = Number(
+        (
+          await storage.pool.query(
+            "SELECT warehouse_state->'crops'->>'2' qty FROM farm_v2_player_state WHERE user_id=$1",
+            [userId],
+          )
+        ).rows[0].qty,
+      );
+      expect(actorQty).toBe(results[0].status === "fulfilled" ? 21 : 20);
+    });
+    it("current target farmer entitlement rejects before quotas and rolls; refund removes that protection", async () => {
+      const target = await friendFixture();
+      await storage.pool.query(
+        "INSERT INTO core.wallets(id,user_id) VALUES($1,'10000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING",
+        [target],
+      );
+      await storage.pool.query(
+        "INSERT INTO core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) VALUES($1,'paid_crystal','credit',999,'payment','target-payment')",
+        [target],
+      );
+      await expect(
+        friendMutation(target, "farmer-block", "BORROW"),
+      ).rejects.toThrow("TARGET_FARMER_ACTIVE");
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT warehouse_state->'workshop'->'friendInteractions' interactions FROM farm_v2_player_state WHERE user_id=$1",
+            [userId],
+          )
+        ).rows[0].interactions,
+      ).toBeNull();
+      await storage.pool.query(
+        "INSERT INTO core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) VALUES($1,'paid_crystal','refund',999,'payment','target-refund')",
+        [target],
+      );
+      expect(
+        (await friendMutation(target, "after-refund", "BORROW")).successful,
+      ).toBe(true);
+    });
+    it("friend cannot consume target assets reserved by an unresolved workshop Saga", async () => {
+      const target = await friendFixture();
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_transaction) VALUES($1,'reserved-workshop','WORKSHOP','WALLET_PENDING',$2)",
+        [target, { assetPlan: { reserved: true } }],
+      );
+      await expect(
+        friendMutation(target, "reserved-friend", "ASSIST"),
+      ).rejects.toThrow("WORKSHOP_RECOVERY_REQUIRED");
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT planted_quantity FROM farm_v2_land WHERE user_id=$1 AND land_id=2",
+            [target],
+          )
+        ).rows[0].planted_quantity,
+      ).toBe(10);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT count(*)::int n FROM farm_v2_friend_operations WHERE state='OPEN'",
+          )
+        ).rows[0].n,
+      ).toBe(0);
+    });
+    it("friend durable permits fence relationship/account changes until domain settlement", async () => {
+      const target = await friendFixture();
+      const { withFarmFriendAuthority } =
+        await import("./farm-v2-friend-authority");
+      await withFarmFriendAuthority(
+        {
+          userId,
+          targetId: target,
+          requestId: "barrier",
+          kind: "BORROW",
+          launchToken: "test",
+        },
+        async () => {
+          await expect(
+            corePool.query(
+              "DELETE FROM platform_friendships WHERE user_b_id=$1",
+              [target],
+            ),
+          ).rejects.toMatchObject({ code: "55P03" });
+          await expect(
+            corePool.query(
+              "UPDATE core.users SET status='archived' WHERE auth_user_id=$1",
+              [target],
+            ),
+          ).rejects.toMatchObject({ code: "55P03" });
+        },
+      );
+      await corePool.query(
+        "DELETE FROM platform_friendships WHERE user_b_id=$1",
+        [target],
+      );
+      await expect(
+        friendMutation(target, "after-removal", "BORROW"),
+      ).rejects.toThrow("MUTUAL_FRIEND_REQUIRED");
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT count(*)::int n FROM farm_v2_paid_operations WHERE state='OPEN'",
+          )
+        ).rows[0].n,
+      ).toBe(0);
+    });
     beforeEach(async () => {
       dropWalletResponse = false;
       dropFarmCommit = false;
       await storage.pool.query(
-        `truncate farm_v2_land, farm_v2_mutation, farm_v2_player_state, farm_test_failures, farm_v2_authorization_attempt, farm_v2_reconciliation_event, farm_v2_reconciliation_case; truncate farm_v2_paid_operations, farm_v2_wallet_closures, farm_v2_wallet_reconciliation_audit; truncate core.wallet_ledgers; insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','credit',600,'payment','fixture-payment'); truncate core_wallet_ledger, core_wallets; select core_wallet_get_or_create('${userId}'); update core_wallets set coin_balance=100;`,
+        `truncate farm_v2_land, farm_v2_mutation, farm_v2_player_state, farm_test_failures, farm_v2_authorization_attempt, farm_v2_reconciliation_event, farm_v2_reconciliation_case; truncate farm_v2_friend_operations, farm_v2_paid_operations, farm_v2_wallet_closures, farm_v2_wallet_reconciliation_audit; truncate core.wallet_ledgers; insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','credit',600,'payment','fixture-payment'); truncate core_wallet_ledger, core_wallets; select core_wallet_get_or_create('${userId}'); update core_wallets set coin_balance=100;`,
       );
       const warehouse = {
         seeds: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
@@ -990,6 +1430,43 @@ describe.skipIf(!enabled)(
       );
       vi.stubGlobal("fetch", async (_url: unknown, init: RequestInit) => {
         const input = JSON.parse(String(init.body));
+        if (String(_url).endsWith("/friends/authorization")) {
+          try {
+            if (input.phase === "begin") {
+              const r = await corePool.query(
+                "SELECT farm_v2_begin_friend_operation($1,$2,$3,$4,$5,$6) result",
+                [
+                  userId,
+                  input.targetId,
+                  input.operationId,
+                  input.targetOperationId,
+                  input.requestId,
+                  input.kind,
+                ],
+              );
+              return Response.json(r.rows[0].result);
+            }
+            await corePool.query(
+              "SELECT farm_v2_end_friend_operation($1,$2,$3,$4)",
+              [
+                userId,
+                input.targetId,
+                input.operationId,
+                input.targetOperationId,
+              ],
+            );
+            return Response.json({ settled: true });
+          } catch (e) {
+            return Response.json(
+              {},
+              {
+                status: String(e).includes("MUTUAL_FRIEND_REQUIRED")
+                  ? 403
+                  : 503,
+              },
+            );
+          }
+        }
         if (String(_url).endsWith("/authorization")) {
           if (input.phase === "begin") {
             const grant = await corePool.query(

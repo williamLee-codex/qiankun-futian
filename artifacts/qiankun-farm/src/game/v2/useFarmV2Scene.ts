@@ -54,6 +54,9 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pendingWorkshop, setPendingWorkshop] = useState<WorkshopCommand[]>([]);
+  const [pendingFriends, setPendingFriends] = useState<
+    { targetId: string; kind: "BORROW" | "ASSIST"; landId: number }[]
+  >([]);
   const mutationInFlight = useRef(false);
   const readSequence = useRef(0);
 
@@ -189,7 +192,31 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     setReauthenticateUrl(api.getReauthenticationUrl());
     setError("FARM_SESSION_NOT_ACTIVE");
   }, [api]);
+  const friendAction = useCallback(
+    async (targetId: string, kind: "BORROW" | "ASSIST", landId: number) => {
+      if (!api || mutationInFlight.current) return false;
+      mutationInFlight.current = true;
+      setBusy(true);
+      try {
+        const result = await api.friendAction(targetId, kind, landId);
+        await refresh();
+        return result.successful;
+      } catch (cause) {
+        setError(
+          cause instanceof Error ? cause.message : "FRIEND_ACTION_FAILED",
+        );
+        return false;
+      } finally {
+        setPendingFriends(api.pendingFriends());
+        mutationInFlight.current = false;
+        setBusy(false);
+      }
+    },
+    [api, refresh],
+  );
   return {
+    friendAction,
+    pendingFriends,
     readFriends: () => {
       if (!api) throw new Error("AUTH_REQUIRED");
       return api.readFriends();

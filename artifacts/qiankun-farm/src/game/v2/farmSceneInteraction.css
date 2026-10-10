@@ -1,0 +1,111 @@
+.farm-v2-interaction {
+  width: 100%;
+  color: #e8e5dc;
+  background: #1b2924;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.farm-v2-interaction header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  align-items: center;
+}
+.farm-v2-interaction header span {
+  font-size: 12px;
+  color: #c2baab;
+}
+.farm-v2-canvas {
+  position: relative;
+  width: 100%;
+  background: linear-gradient(160deg, #243c30, #18261e);
+  isolation: isolate;
+}
+.farm-v2-canvas button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 4px;
+  border: 1px dashed #88896c;
+  border-radius: 8px;
+  background: #293e32;
+  color: #f0e8d6;
+  font-size: 12px;
+  cursor: pointer;
+}
+.farm-v2-canvas button:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+.farm-v2-cave,
+.farm-v2-formation,
+.farm-v2-pot,
+.farm-v2-pet,
+.farm-v2-decor {
+  position: absolute;
+  overflow-wrap: anywhere;
+}
+.farm-v2-formation {
+  border-radius: 50% !important;
+  box-shadow: inset 0 0 16px #bdab5744;
+}
+.farm-v2-land {
+  position: absolute;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  gap: 2px;
+}
+.farm-v2-land > button:first-child {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.farm-v2-land.growing > button:first-child {
+  border-color: #7dad7e;
+  animation: farm-growth 3s infinite;
+}
+.farm-v2-land.ready > button:first-child {
+  border-color: #dfbc59;
+  box-shadow: 0 0 10px #dfbc5950;
+}
+.farm-v2-pet.active {
+  border-color: #7ac9d7;
+}
+.farm-v2-exit {
+  position: absolute;
+  left: 4%;
+  top: 4%;
+  z-index: 2;
+}
+.farm-v2-meditation {
+  position: absolute;
+  top: 45%;
+  left: 35%;
+  width: 30%;
+  text-align: center;
+  padding: 8px;
+  border-radius: 50%;
+  background: #46543a;
+}
+.farm-v2-interaction.desktop {
+  max-width: 1200px;
+}
+.farm-v2-interaction.mobile {
+  max-width: 520px;
+  margin-inline: auto;
+}
+.farm-v2-interaction.desktop .farm-v2-canvas button {
+  font-size: 13px;
+}
+@keyframes farm-growth {
+  50% {
+    box-shadow: inset 0 0 12px #7dad7e33;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .farm-v2-land.growing > button:first-child {
+    animation: none;
+  }
+}

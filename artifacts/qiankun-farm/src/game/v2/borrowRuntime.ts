@@ -1,4 +1,4 @@
-import type { FarmLandId } from './canonicalLandData';
+import type { FarmLandId } from "./canonicalLandData";
 
 export const BORROW_MATURE_PROTECTION_MS = 60 * 60 * 1000;
 export const QILIN_BLOCK_RATE = 0.5;
@@ -36,10 +36,12 @@ export interface BorrowSettlementResult {
 }
 
 export function isBorrowableTarget(target: BorrowTarget, now: number): boolean {
-  return target.landId >= 2 &&
+  return (
+    target.landId >= 2 &&
     target.landId <= 5 &&
     target.currentQuantity > 1 &&
-    now >= target.maturesAt + BORROW_MATURE_PROTECTION_MS;
+    now >= target.maturesAt + BORROW_MATURE_PROTECTION_MS
+  );
 }
 
 /** Canonical base loss = min(ceil(current * 30%), current - 1). */
@@ -52,7 +54,10 @@ export function baseBorrowQuantity(currentQuantity: number): number {
  * 辟邪狻猊 reduces the base borrow loss by 30%.
  * Protection uses ceil(base * 30%); actual loss can never go below zero.
  */
-export function applySuanniProtection(baseQuantity: number, active: boolean): number {
+export function applySuanniProtection(
+  baseQuantity: number,
+  active: boolean,
+): number {
   if (!active || baseQuantity <= 0) return baseQuantity;
   const protectedQuantity = Math.ceil(baseQuantity * 0.3);
   return Math.max(0, baseQuantity - protectedQuantity);
@@ -101,27 +106,32 @@ export function settleBorrow(input: {
 }): BorrowSettlementResult {
   const eligible = input.targets
     .filter((target) => isBorrowableTarget(target, input.now))
-    .filter((target, index, arr) => arr.findIndex((x) => x.landId === target.landId) === index);
+    .filter(
+      (target, index, arr) =>
+        arr.findIndex((x) => x.landId === target.landId) === index,
+    );
 
   if (eligible.length === 0) {
     return { successful: false, fields: [], totalBorrowed: 0 };
   }
 
-  const selected: BorrowTarget[] = [eligible[0]];
+  // BORROW-TING-001: finish the first field before rolling an extra field.
+  const fields = [
+    settleOneField({ target: eligible[0], pets: input.pets, rng: input.rng }),
+  ];
   if (
     input.pets.tingActive &&
     eligible.length > 1 &&
     input.rng.next() < TING_SECOND_FIELD_RATE
   ) {
-    selected.push(eligible[1]);
+    fields.push(
+      settleOneField({ target: eligible[1], pets: input.pets, rng: input.rng }),
+    );
   }
-
-  const fields = selected.map((target) => settleOneField({
-    target,
-    pets: input.pets,
-    rng: input.rng,
-  }));
-  const totalBorrowed = fields.reduce((sum, field) => sum + field.borrowedQuantity, 0);
+  const totalBorrowed = fields.reduce(
+    (sum, field) => sum + field.borrowedQuantity,
+    0,
+  );
 
   return {
     successful: totalBorrowed > 0,

@@ -20,20 +20,20 @@ Remaining: borrow/assist writes, final 2D cave/scene/art, decor gallery images, 
 | PET-FOOD-001 | 靈寵 | Server logic + management UI; isolated local verification, not production acceptance |
 | PET-ACTIVE-001 | 靈寵 | PARTIAL: backend operation delivered; final scene/remaining ownership sources pending |
 | PET-SWAP-001 | 靈寵 | Server logic + management UI; isolated local verification, not production acceptance |
-| FRIEND-BORROW-DAILY-001 | 好友 | Pending integration or focused verification |
-| FRIEND-ASSIST-DAILY-001 | 好友 | Pending integration or focused verification |
-| FRIEND-BORROW-CD-001 | 好友 | Pending integration or focused verification |
-| FRIEND-ASSIST-CD-001 | 好友 | Pending integration or focused verification |
+| FRIEND-BORROW-DAILY-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+| FRIEND-ASSIST-DAILY-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+| FRIEND-BORROW-CD-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+| FRIEND-ASSIST-CD-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
 | FARMER-FRIEND-001 | 專屬農夫 | Pending integration or focused verification |
-| FARMER-FRIEND-002 | 專屬農夫 | Pending integration or focused verification |
+| FARMER-FRIEND-002 | 專屬農夫 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
 | FARMER-SETTLE-001 | 專屬農夫 | Implemented in server/client; local validation |
 | CAVE-POSE-001 | 洞府 | Pending integration or focused verification |
 | CAVE-ALCHEMY-001 | 洞府 | Pending integration or focused verification |
 | CAVE-HONOR-001 | 洞府 | Pending integration or focused verification |
 | FARM-LAND-001 | 福田 | Pending integration or focused verification |
-| FARM-SOW-001 | 福田 | Pending integration or focused verification |
-| FARM-MATURE-001 | 福田 | Pending integration or focused verification |
-| FARM-HARVEST-001 | 福田 | Pending integration or focused verification |
+| FARM-SOW-001 | 福田 | PARTIAL: real API scene interaction delivered; final artwork ASSET BLOCKED |
+| FARM-MATURE-001 | 福田 | PARTIAL: real API scene interaction delivered; final artwork ASSET BLOCKED |
+| FARM-HARVEST-001 | 福田 | PARTIAL: real API scene interaction delivered; final artwork ASSET BLOCKED |
 | FARM-NEWBIE-001 | 福田 | Pending integration or focused verification |
 | FARM-EXCHANGE-001 | 福田 | Pending integration or focused verification |
 | SEED-MARKET-001 | 商店 | Pending integration or focused verification |
@@ -66,13 +66,13 @@ Remaining: borrow/assist writes, final 2D cave/scene/art, decor gallery images, 
 | LINGYUN-001 | 洞府 | Server logic + management UI; isolated local verification, not production acceptance |
 | LINGYUN-SLOT-001 | 洞府 | Server logic + management UI; isolated local verification, not production acceptance |
 | LINGYUN-FX-001 | 洞府 | Pending integration or focused verification |
-| CAVE-VISIT-001 | 洞府 | PARTIAL: backend operation delivered; final scene/remaining ownership sources pending |
-| CAVE-NAV-001 | 洞府 | Pending integration or focused verification |
+| CAVE-VISIT-001 | 洞府 | PARTIAL: real API scene interaction delivered; final artwork ASSET BLOCKED |
+| CAVE-NAV-001 | 洞府 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
 | CAVE-SHOT-001 | 洞府 | Pending integration or focused verification |
 | FORMATION-001 | 洞府護陣 | Pending integration or focused verification |
 | FORMATION-PAID-001 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-FEST-001 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-ATTEND-001 | 洞府護陣 | Pending integration or focused verification |
+| FORMATION-FEST-001 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
+| FORMATION-ATTEND-001 | 洞府護陣 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
 | POT-BONUS-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
 | POT-BONUS-002 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
 | POT-DISPLAY-002 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
@@ -89,7 +89,7 @@ Remaining: borrow/assist writes, final 2D cave/scene/art, decor gallery images, 
 | FORMATION-CORE-002 | 洞府護陣 | PARTIAL: backend operation delivered; final scene/remaining ownership sources pending |
 | FORMATION-CORE-003 | 洞府護陣 | Server logic + management UI; isolated local verification, not production acceptance |
 | FORMATION-SOURCE-001 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-ATTEND-002 | 洞府護陣 | Pending integration or focused verification |
+| FORMATION-ATTEND-002 | 洞府護陣 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
 | FORMATION-HISTORY-001 | 洞府護陣 | Pending integration or focused verification |
 | PAID-MILESTONE-001 | 付費里程碑 | Pending integration or focused verification |
 | PAID-MILESTONE-002 | 付費里程碑 | Pending integration or focused verification |
@@ -116,9 +116,9 @@ Remaining: borrow/assist writes, final 2D cave/scene/art, decor gallery images, 
 | FRIEND-REMOVE-001 | 好友 | Pending integration or focused verification |
 | FRIEND-BLOCK-001 | 好友 | Pending integration or focused verification |
 | FRIEND-CAP-003 | 好友 | Pending integration or focused verification |
-| BORROW-RESULT-001 | 好友 | Pending integration or focused verification |
-| ASSIST-RESULT-001 | 好友 | Pending integration or focused verification |
-| ASSIST-RACE-001 | 好友 | Pending integration or focused verification |
+| BORROW-RESULT-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+| ASSIST-RESULT-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+| ASSIST-RACE-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
 | PET-OWN-001 | 靈寵 | PARTIAL: backend operation delivered; final scene/remaining ownership sources pending |
 | PET-ACTIVE-002 | 靈寵 | Server logic + management UI; isolated local verification, not production acceptance |
 | PET-EFFECT-004 | 靈寵 | Pending integration or focused verification |
@@ -137,12 +137,12 @@ Remaining: borrow/assist writes, final 2D cave/scene/art, decor gallery images, 
 | CAVE-NOSTAT-001 | 洞府 | Pending integration or focused verification |
 | TITLE-001 | RPG稱號 | Pending integration or focused verification |
 | TITLE-002 | RPG稱號 | Pending integration or focused verification |
-| BORROW-ORDER-001 | 好友 | Pending integration or focused verification |
-| BORROW-QILIN-001 | 好友 | Pending integration or focused verification |
-| BORROW-SUANNI-001 | 好友 | Pending integration or focused verification |
-| BORROW-TING-001 | 好友 | Pending integration or focused verification |
-| BORROW-COOLDOWN-002 | 好友 | Pending integration or focused verification |
-| ASSIST-ORDER-001 | 好友 | Pending integration or focused verification |
+| BORROW-ORDER-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+| BORROW-QILIN-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+| BORROW-SUANNI-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+| BORROW-TING-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+| BORROW-COOLDOWN-002 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+| ASSIST-ORDER-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
 | FRIEND-SERVER-001 | 好友 | Pending integration or focused verification |
 | CHAOS-CURSOR-001 | 福田 | Implemented in server/client; local validation |
 | CHAOS-CLAIM-001 | 福田 | Implemented in server/client; local validation |
@@ -181,22 +181,22 @@ Remaining: borrow/assist writes, final 2D cave/scene/art, decor gallery images, 
 | CAVE-POT-VISUAL-001 | 洞府外觀 | Pending integration or focused verification |
 | CAVE-PLAQUE-001 | 洞府外觀 | Pending integration or focused verification |
 | CAVE-OWNER-001 | 洞府 | Pending integration or focused verification |
-| CAVE-VISIT-002 | 洞府 | PARTIAL: backend operation delivered; final scene/remaining ownership sources pending |
-| CAVE-VISIT-003 | 洞府 | PARTIAL: backend operation delivered; final scene/remaining ownership sources pending |
-| FORMATION-ATTEND-003 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-FEST-002 | 洞府護陣 | Pending integration or focused verification |
+| CAVE-VISIT-002 | 洞府 | PARTIAL: real API scene interaction delivered; final artwork ASSET BLOCKED |
+| CAVE-VISIT-003 | 洞府 | PARTIAL: real API scene interaction delivered; final artwork ASSET BLOCKED |
+| FORMATION-ATTEND-003 | 洞府護陣 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+| FORMATION-FEST-002 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
 | FORMATION-EXPIRE-001 | 洞府護陣 | Server logic + management UI; isolated local verification, not production acceptance |
 | FORMATION-EFFECT-001 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-RPG-002 | 洞府護陣 | Pending integration or focused verification |
+| FORMATION-RPG-002 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
 | RULE-PROVENANCE-001 | 治理 | Pending integration or focused verification |
 | RULE-ID-001 | 治理 | Pending integration or focused verification |
 | NEWBIE-ANCHOR-001 | 福田 | Pending integration or focused verification |
 | NEWBIE-SCOPE-001 | 福田 | Pending integration or focused verification |
 | UNLOCK-ATOMIC-001 | 福田 | Pending integration or focused verification |
 | PAID-REWARD-001 | 付費里程碑 | Pending integration or focused verification |
-| BORROW-MATURE-001 | 好友 | Pending integration or focused verification |
-| ASSIST-NOPET-001 | 好友 | Pending integration or focused verification |
-| PET-REST-002 | 靈寵 | Pending integration or focused verification |
+| BORROW-MATURE-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+| ASSIST-NOPET-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+| PET-REST-002 | 靈寵 | PARTIAL: real API scene interaction delivered; final artwork ASSET BLOCKED |
 | POT-SPECIES-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
 | POT-SLOT-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
 | POT-SIZE-001 | 盆栽 | Pending integration or focused verification |
@@ -206,22 +206,24 @@ Remaining: borrow/assist writes, final 2D cave/scene/art, decor gallery images, 
 | DECOR-GALLERY-003 | 洞府陳設 | Pending integration or focused verification |
 | FORMATION-NOUPGRADE-001 | 洞府護陣 | Pending integration or focused verification |
 | FORMATION-PREMIUM-001 | 洞府護陣 | Server logic + management UI; isolated local verification, not production acceptance |
-| FORMATION-ATTEND-004 | 洞府護陣 | Pending integration or focused verification |
+| FORMATION-ATTEND-004 | 洞府護陣 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
 | CAVE-BRAND-001 | 洞府 | Pending integration or focused verification |
 | CAVE-NEXT-001 | 洞府外觀 | Pending integration or focused verification |
 | PET-REFEED-001 | 靈寵 | Server logic + management UI; isolated local verification, not production acceptance |
 | DAILY-TZ-001 | 好友/任務 | Pending integration or focused verification |
 | PET-REFUND-002 | 靈寵 | Pending integration or focused verification |
-| FORMATION-RPG-PROP-001 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-RPG-PROP-002 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-RPG-PROP-003 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-RPG-PROP-004 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-RPG-PROP-005 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-EVENT-PROP-001 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-EVENT-PROP-002 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-EVENT-PROP-003 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-EVENT-PROP-004 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-SOURCE-PROP-001 | 洞府護陣 | Pending integration or focused verification |
+| FORMATION-RPG-PROP-001 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
+| FORMATION-RPG-PROP-002 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
+| FORMATION-RPG-PROP-003 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
+| FORMATION-RPG-PROP-004 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
+| FORMATION-RPG-PROP-005 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
+| FORMATION-EVENT-PROP-001 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
+| FORMATION-EVENT-PROP-002 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
+| FORMATION-EVENT-PROP-003 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
+| FORMATION-EVENT-PROP-004 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
+| FORMATION-SOURCE-PROP-001 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
 | WEEKLY-TZ-001 | 任務 | Pending integration or focused verification |
 | MONTHLY-TZ-001 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-ATTEND-005 | 洞府護陣 | Pending integration or focused verification |
+| FORMATION-ATTEND-005 | 洞府護陣 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
+
+Current delivery evidence and strict atomicity remediation: [friend/scene delivery](farm-v2-friend-scene-delivery.md).

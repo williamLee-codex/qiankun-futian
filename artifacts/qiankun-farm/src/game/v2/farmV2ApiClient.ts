@@ -252,16 +252,37 @@ export function createFarmV2Api(input: {
           ? [command as import("./workshopRuntime").WorkshopCommand]
           : [];
       }),
+    pendingFriends: () =>
+      [...pendingRequests.keys()].flatMap((key) => {
+        const [path, body] = JSON.parse(key);
+        const match = /^farm\/v2\/friends\/([^/]+)\/actions$/.exec(path);
+        return match
+          ? [
+              {
+                targetId: decodeURIComponent(match[1]),
+                kind: body.kind as "BORROW" | "ASSIST",
+                landId: body.landId as number,
+              },
+            ]
+          : [];
+      }),
     readFriends: () =>
       request<{ friends: { id: string }[] }>("farm/v2/friends", "GET"),
     visitCave: (id: string) =>
-      request<{
-        readOnly: boolean;
-        lingyun: number;
-        pots: unknown[];
-        decor: unknown[];
-        activeFormation: string | null;
-      }>(`farm/v2/friends/${encodeURIComponent(id)}/cave`, "GET"),
+      request<import("./publicCave").FarmV2PublicCave>(
+        `farm/v2/friends/${encodeURIComponent(id)}/cave`,
+        "GET",
+      ),
+    friendAction: (
+      targetId: string,
+      kind: "BORROW" | "ASSIST",
+      landId: number,
+    ) =>
+      request<{ successful: boolean }>(
+        `farm/v2/friends/${encodeURIComponent(targetId)}/actions`,
+        "POST",
+        { kind, landId },
+      ),
     readState: () => request<FarmV2State>("farm/v2/state", "GET"),
     sow: (landId: number) =>
       request<FarmV2MutationResult>(`farm/v2/lands/${landId}/sow`, "POST"),

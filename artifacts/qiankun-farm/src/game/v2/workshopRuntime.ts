@@ -22,6 +22,8 @@ export type DecorAsset = {
   acquiredAt: number;
 };
 export type WorkshopState = {
+  attendance?: import("./formationSourcesRuntime").AttendanceState;
+  friendInteractions?: import("./friendInteractionRuntime").FriendInteractionState;
   pots: PotAsset[];
   decor: DecorAsset[];
   potGallery: Record<string, number>;
@@ -33,6 +35,8 @@ export type WorkshopState = {
 };
 export type WorkshopWarehouse = FarmWarehouse & { workshop?: WorkshopState };
 export type WorkshopCommand =
+  | { kind: "redeemFormationCode"; codeHash: string }
+  | { kind: "claimAchievementFormations" }
   | { kind: "buyPet"; petId: "尋星犬" | "辟邪狻猊" }
   | { kind: "buyFormation" }
   | { kind: "switchFormation"; formationId: string | null }

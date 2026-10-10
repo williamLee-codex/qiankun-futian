@@ -178,21 +178,34 @@ describe("Farm V2 API contract", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it.each(["INSUFFICIENT_FUNDS", "CONCURRENT_WALLET_OPERATION", "DUPLICATE_IDEMPOTENCY_KEY"])(
+  it.each([
+    "INSUFFICIENT_FUNDS",
+    "CONCURRENT_WALLET_OPERATION",
+    "DUPLICATE_IDEMPOTENCY_KEY",
+  ])(
     "retains the original request ID after an unresolved wallet conflict: %s",
     async (code) => {
       let count = 0;
       vi.stubGlobal("crypto", { randomUUID: () => `conflict-${++count}` });
-      const transport = vi.fn()
+      const transport = vi
+        .fn()
         .mockResolvedValueOnce({ ok: true, json: async () => session })
-        .mockResolvedValueOnce({ ok: false, status: 409, json: async () => ({ error: code }) })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 409,
+          json: async () => ({ error: code }),
+        })
         .mockResolvedValue({ ok: true, json: async () => ({}) });
       vi.stubGlobal("fetch", transport);
-      const api = createFarmV2Api({ baseUrl: "https://example.test/api", launchToken: "launch" });
+      const api = createFarmV2Api({
+        baseUrl: "https://example.test/api",
+        launchToken: "launch",
+      });
       await expect(api.exchangeCrops(6, 6)).rejects.toMatchObject({ code });
       await api.exchangeCrops(6, 6);
-      expect(transport.mock.calls[2][1].headers["x-request-id"])
-        .toBe(transport.mock.calls[1][1].headers["x-request-id"]);
+      expect(transport.mock.calls[2][1].headers["x-request-id"]).toBe(
+        transport.mock.calls[1][1].headers["x-request-id"],
+      );
     },
   );
 
@@ -227,4 +240,36 @@ describe("Farm V2 API contract", () => {
     expect([...values.values()].join("")).not.toContain("launch-");
     expect([...values.values()].join("")).not.toContain("fvs1.");
   });
+});
+
+it("friend lost response keeps the original target/body/key for explicit recovery", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => session })
+    .mockRejectedValueOnce(new TypeError("lost"))
+    .mockRejectedValueOnce(new TypeError("lost"));
+  vi.stubGlobal("fetch", fetchMock);
+  const api = createFarmV2Api({
+    baseUrl: "https://example.test/api",
+    launchToken: "token",
+  });
+  await expect(api.friendAction("target", "ASSIST", 2)).rejects.toThrow("lost");
+  expect(api.pendingFriends()).toEqual([
+    { targetId: "target", kind: "ASSIST", landId: 2 },
+  ]);
+  const keys = fetchMock.mock.calls
+    .slice(1)
+    .map((c) => (c[1].headers as Record<string, string>)["x-request-id"]);
+  fetchMock.mockResolvedValue({
+    ok: true,
+    json: async () => ({ successful: true }),
+  });
+  await api.friendAction("target", "ASSIST", 2);
+  expect(
+    (fetchMock.mock.calls.at(-1)![1].headers as Record<string, string>)[
+      "x-request-id"
+    ],
+  ).toBe(keys[0]);
+  expect(new Set(keys).size).toBe(1);
+  expect(api.pendingFriends()).toEqual([]);
 });

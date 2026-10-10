@@ -31,6 +31,12 @@ vi.mock("../lib/farm-v2-gameplay", () => ({
   configureFarmV2Farmer: vi.fn(),
   settleFarmV2Farmer: vi.fn(),
 }));
+vi.mock("../lib/farm-v2-friend-actions", () => ({
+  mutateFarmV2Friend: vi.fn(),
+}));
+vi.mock("../lib/farm-v2-friend-authority", () => ({
+  withFarmFriendAuthority: vi.fn(),
+}));
 vi.mock("../lib/farm-v2-workshop", () => ({ mutateFarmV2Workshop: vi.fn() }));
 vi.mock("../lib/farm-v2-friends", () => ({
   readFarmV2Friends: vi.fn(),
@@ -65,6 +71,7 @@ const paths = [
   "workshop",
   "friends",
   "friends/someone/cave",
+  "friends/someone/actions",
   "chaos/claim",
   "farmer/1",
   "session",

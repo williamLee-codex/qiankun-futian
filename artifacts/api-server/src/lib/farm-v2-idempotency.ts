@@ -7,6 +7,7 @@ export async function runFarmV2IdempotentMutation<T>(input: {
   requestId: string;
   userId: string;
   action: string;
+  participantUserIds?: string[];
   execute: (
     tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   ) => Promise<T>;
@@ -35,6 +36,9 @@ export async function runFarmV2IdempotentMutation<T>(input: {
       .onConflictDoNothing();
   }
 
+  const ownerIds = [
+    ...new Set([input.userId, ...(input.participantUserIds ?? [])]),
+  ].sort();
   return db.transaction(async (tx) => {
     await assertFarmAuthorityFence(tx);
     // Serialize retries for the same user/request pair before probing the
@@ -46,15 +50,18 @@ export async function runFarmV2IdempotentMutation<T>(input: {
 
     // Reserve workshop inputs across a lost Core response. Every mutation locks
     // the owner first, so another operation cannot consume reserved assets.
-    await tx
-      .select({ userId: farmV2PlayerStateTable.userId })
-      .from(farmV2PlayerStateTable)
-      .where(eq(farmV2PlayerStateTable.userId, input.userId))
-      .for("update");
-    const reservations = await tx.execute(
-      sql`SELECT 1 FROM farm_v2_mutation WHERE user_id=${input.userId} AND request_id<>${input.requestId} AND transaction_state IN ('PENDING','WALLET_PENDING','WALLET_APPLIED','COMPENSATING') AND wallet_transaction->'assetPlan' IS NOT NULL LIMIT 1`,
-    );
-    if (reservations.rows.length) throw new Error("WORKSHOP_RECOVERY_REQUIRED");
+    for (const ownerId of ownerIds) {
+      await tx
+        .select({ userId: farmV2PlayerStateTable.userId })
+        .from(farmV2PlayerStateTable)
+        .where(eq(farmV2PlayerStateTable.userId, ownerId))
+        .for("update");
+      const reservations = await tx.execute(
+        sql`SELECT 1 FROM farm_v2_mutation WHERE user_id=${ownerId} AND NOT(user_id=${input.userId} AND request_id=${input.requestId}) AND transaction_state IN ('PENDING','WALLET_PENDING','WALLET_APPLIED','COMPENSATING') AND wallet_transaction->'assetPlan' IS NOT NULL LIMIT 1`,
+      );
+      if (reservations.rows.length)
+        throw new Error("WORKSHOP_RECOVERY_REQUIRED");
+    }
 
     const [existing] = await tx
       .select()
