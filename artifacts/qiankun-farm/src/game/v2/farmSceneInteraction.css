@@ -1,4 +1,26 @@
+.farm-v2-authenticated-view {
+  color: #f0e8d6;
+  background: #17271e;
+  padding-bottom: 16px;
+}
+.farm-v2-authenticated-view > nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px;
+}
+.farm-v2-authenticated-view > button,
+.farm-v2-authenticated-view > nav button,
+.farm-v2-operation-dialog button {
+  background: #314539;
+  color: #f0e8d6;
+  border: 1px solid #ad9c6e;
+  border-radius: 6px;
+  padding: 6px 10px;
+  min-height: 44px;
+}
 .farm-v2-interaction {
+  box-sizing: border-box;
   width: 100%;
   color: #e8e5dc;
   background: #1b2924;
@@ -22,16 +44,75 @@
   background: linear-gradient(160deg, #243c30, #18261e);
   isolation: isolate;
 }
+.farm-v2-scene-original {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.farm-v2-operation-dialog {
+  box-sizing: border-box;
+  padding: 20px;
+  color: #f0e8d6;
+  background: #192b24;
+  border: 1px solid #ad9c6e;
+  border-radius: 12px;
+  width: min(680px, calc(100vw - 24px));
+  max-width: none;
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.farm-v2-operation-dialog button:disabled {
+  opacity: 0.5;
+}
+.farm-v2-operation-dialog select,
+.farm-v2-operation-dialog input {
+  color: #f0e8d6;
+  background: #314539;
+}
+.farm-v2-operation-dialog fieldset {
+  min-width: 0;
+}
+.farm-v2-operation-dialog button {
+  min-height: 44px;
+  margin: 3px;
+}
+.farm-v2-operation-dialog nav {
+  display: flex;
+  flex-wrap: wrap;
+}
+.farm-v2-operation-dialog select {
+  max-width: 100%;
+}
 .farm-v2-canvas button {
   min-height: 44px;
   min-width: 44px;
   padding: 4px;
-  border: 1px dashed #88896c;
+  border: 1px solid #ddd1a855;
   border-radius: 8px;
-  background: #293e32;
+  background: #17271d55;
   color: #f0e8d6;
   font-size: 12px;
   cursor: pointer;
+}
+.farm-v2-canvas button:hover,
+.farm-v2-canvas button:focus-visible {
+  background: #17271dbb;
+  outline: 2px solid #e5c879;
+  outline-offset: 1px;
+}
+.farm-v2-canvas .farm-v2-pot {
+  min-width: 0;
+  min-height: 0;
+}
+.farm-v2-hotspot-label {
+  display: block;
+  font-size: 10px;
+  text-shadow: 0 1px 3px #000;
 }
 .farm-v2-canvas button:disabled {
   cursor: default;
@@ -58,9 +139,12 @@
 }
 .farm-v2-land > button:first-child {
   width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
+  justify-content: center;
+  text-shadow: 0 1px 3px #000;
 }
 .farm-v2-land.growing > button:first-child {
   border-color: #7dad7e;

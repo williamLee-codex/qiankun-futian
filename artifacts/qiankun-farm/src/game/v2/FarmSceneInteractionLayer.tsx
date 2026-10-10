@@ -1,14 +1,9 @@
 import { useEffect, useState, useRef } from "react";
-import {
-  SCENE_LAYOUTS,
-  sceneLandAction,
-  type SceneRegion,
-} from "./sceneInteractionRuntime";
+import { SCENE_LAYOUTS, type SceneRegion } from "./sceneInteractionRuntime";
 import { FARM_V2_LANDS } from "./canonicalLandData";
 import { DECOR_CATALOG } from "./decorCatalog";
 import { FORMATION_NAMES } from "./formationSourcesRuntime";
 import type { Plot } from "../types";
-import type { PotGrade } from "./potRuntime";
 import "./farmSceneInteraction.css";
 import type { ScenePublicState } from "./publicCave";
 export function FarmSceneInteractionLayer(props: {
@@ -89,7 +84,7 @@ export function FarmSceneInteractionLayer(props: {
           {props.ownerLabel}
           {interior ? "・洞府" : "・農場"}
         </strong>
-        <span>定版場景原圖待接入</span>
+        <span>點選農田查看操作</span>
         {props.onReturnHome && (
           <button onClick={props.onReturnHome}>返回我的福田</button>
         )}
@@ -98,6 +93,16 @@ export function FarmSceneInteractionLayer(props: {
         className={"farm-v2-canvas " + (interior ? "interior" : "exterior")}
         style={{ aspectRatio: layout.aspectRatio }}
       >
+        {!interior && (
+          <img
+            className="farm-v2-scene-original"
+            src={`${import.meta.env.BASE_URL ?? "/"}images/farm/farm-scene-${desktop ? "desktop" : "mobile"}.png`}
+            alt="乾坤福田定版農場場景"
+            width={desktop ? 1215 : 941}
+            height={desktop ? 1295 : 1672}
+            draggable={false}
+          />
+        )}
         {interior ? (
           <>
             <button className="farm-v2-exit" onClick={() => setInterior(false)}>
@@ -148,7 +153,7 @@ export function FarmSceneInteractionLayer(props: {
             {FARM_V2_LANDS.map((land, i) => {
               const p = plots.find((p) => p.id === i);
               if (!p) return null;
-              const action = sceneLandAction(p);
+
               return (
                 <div
                   className={"farm-v2-land " + p.state}
@@ -178,14 +183,6 @@ export function FarmSceneInteractionLayer(props: {
                             : "待播種"}
                     </span>
                   </button>
-                  {!props.readOnly && action && (
-                    <button
-                      disabled={props.busy}
-                      onClick={() => void props.onLandAction?.(action, land.id)}
-                    >
-                      {action === "sow" ? "播種" : "收成"}
-                    </button>
-                  )}
                   {props.readOnly &&
                     props.onFriendAction &&
                     land.borrowable &&
@@ -218,14 +215,22 @@ export function FarmSceneInteractionLayer(props: {
               return (
                 <button
                   className="farm-v2-pot"
+                  aria-label={
+                    pot
+                      ? `${land.cropName} ${pot.grade}品盆栽`
+                      : `${land.cropName}展示位`
+                  }
+                  title={
+                    pot
+                      ? `${land.cropName} ${pot.grade}品`
+                      : `${land.cropName}展示位`
+                  }
                   key={land.id}
                   style={position(layout.pots[i])}
                   disabled={props.readOnly || props.busy}
                   onClick={() => section("盆栽")}
                 >
-                  {pot
-                    ? `${land.cropName} ${pot.grade}品`
-                    : `${land.cropName}展示位`}
+                  <span className="farm-v2-hotspot-label">{land.cropName}</span>
                 </button>
               );
             })}
@@ -236,17 +241,21 @@ export function FarmSceneInteractionLayer(props: {
               return (
                 <button
                   className={"farm-v2-pet " + (active ? "active" : "")}
+                  aria-label={`${pet}・${active ? "活動中" : props.state.pets?.owned.includes(pet) ? "休息中" : "未取得"}`}
                   key={pet}
                   style={position(layout.pets[i])}
                   disabled={props.readOnly || props.busy}
                   onClick={() => section("靈寵")}
                 >
-                  {pet}・
-                  {active
-                    ? "活動中"
-                    : props.state.pets?.owned.includes(pet)
-                      ? "休息中"
-                      : "未取得"}
+                  <span className="farm-v2-hotspot-label">
+                    {pet}
+                    <br />
+                    {active
+                      ? "活動中"
+                      : props.state.pets?.owned.includes(pet)
+                        ? "休息中"
+                        : "未取得"}
+                  </span>
                 </button>
               );
             })}

@@ -1415,6 +1415,7 @@ describe.skipIf(!enabled)(
             await page.screenshot({
               path: "/tmp/farm-v2-workshop-" + label + ".png",
               fullPage: true,
+              animations: "disabled",
             });
             await page.close();
           }
@@ -1440,47 +1441,57 @@ describe.skipIf(!enabled)(
       },
       20000,
     );
-    it.skipIf(!process.env.FARM_V2_BROWSER_ACCEPTANCE)(
-      "real isolated API scene: desktop/mobile sow, harvest and owner-preserving cave navigation",
+    it.skipIf(process.env.FARM_V2_BROWSER_ACCEPTANCE !== "1")(
+      "approved scene: desktop/mobile real API sow, harvest, hotspots and bounded dialogs",
       async () => {
         await storage.pool.query(
-          "UPDATE farm_v2_player_state SET first_farm_entered_at=now()-interval '10 days',warehouse_state=jsonb_set(warehouse_state,'{seeds,1}','20') WHERE user_id=$1",
+          "UPDATE farm_v2_player_state SET first_farm_entered_at=now()-interval '10 days',warehouse_state=jsonb_set(warehouse_state,'{seeds,1}','40') WHERE user_id=$1",
           [userId],
         );
         await storage.pool.query(
           "INSERT INTO farm_v2_land(user_id,land_id,lifecycle,access_active,planted_quantity,planted_at,matures_at) SELECT $1,n,CASE WHEN n IN(2,3) THEN 'MATURE' ELSE 'EMPTY' END,true,CASE WHEN n=2 THEN 10 WHEN n=3 THEN 6 ELSE 0 END,now()-interval '2 days',CASE WHEN n IN(2,3) THEN now()-interval '2 hours' ELSE NULL END FROM generate_series(1,6)n",
           [userId],
         );
-        const express = (await import("express")).default,
-          { build } = await import("esbuild"),
-          { fileURLToPath } = await import("node:url");
-        const { sowFarmV2Land } = await import("./farm-v2-sow"),
-          { harvestFarmV2Land } = await import("./farm-v2-harvest");
+        const express = (await import("express")).default;
+        const { build } = await import("esbuild");
+        const { fileURLToPath } = await import("node:url");
+        const { readdirSync } = await import("node:fs");
+        const root = fileURLToPath(
+          new URL("../../../qiankun-farm", import.meta.url),
+        );
+        const { sowFarmV2Land } = await import("./farm-v2-sow");
+        const { harvestFarmV2Land } = await import("./farm-v2-harvest");
         const { chromium } = await import(
           process.env.FARM_V2_PLATFORM_CHECKOUT +
             "/node_modules/@playwright/test/index.mjs"
         );
         const bundle = await build({
           stdin: {
-            contents: `import React,{useState,useEffect}from'react';import{createRoot}from'react-dom/client';import{FarmSceneInteractionLayer}from'./src/game/v2/FarmSceneInteractionLayer';import{mapServerLands}from'./src/game/v2/farmV2SceneAdapter';function App(){const[d,S]=useState(null),[busy,B]=useState(false);async function read(){S(await(await fetch('/state')).json())}useEffect(()=>{read()},[]);if(!d)return null;return <FarmSceneInteractionLayer plots={mapServerLands(d.lands)} state={d.scene} ownerLabel="測試擁有者" busy={busy} onRefresh={read} onLandAction={async(kind,landId)=>{B(true);try{const r=await fetch('/action',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,landId})});if(!r.ok)throw Error(await r.text());await read()}finally{B(false)}}}/>;}createRoot(document.getElementById('root')).render(<App/>);`,
-            resolveDir: fileURLToPath(
-              new URL("../../../qiankun-farm", import.meta.url),
-            ),
+            contents: `import React from 'react';import{createRoot}from'react-dom/client';import{FarmV2AuthenticatedView}from'./src/game/v2/FarmV2AuthenticatedView';createRoot(document.getElementById('root')).render(<FarmV2AuthenticatedView apiBaseUrl={location.origin+'/api/'} launchToken="isolated-test-launch"/>);`,
+            resolveDir: root,
             loader: "tsx",
           },
+          alias: { "@": root + "/src" },
+          define: { "import.meta.env.BASE_URL": JSON.stringify("/") },
           bundle: true,
           write: false,
-          outfile: "/tmp/scene-app.js",
+          outfile: "/tmp/approved-scene-app.js",
           platform: "browser",
           jsx: "automatic",
         });
         const app = express();
         app.use(express.json());
+        app.use("/images/farm", express.static(root + "/public/images/farm"));
+        app.use("/assets", express.static(root + "/dist/public/assets"));
+        const css = readdirSync(root + "/dist/public/assets").find((f) =>
+          f.endsWith(".css"),
+        );
+        expect(css).toBeTruthy();
         app.get("/", (_q, r) =>
           r
             .type("html")
             .send(
-              '<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"><div id="root"></div><script src="/app.js"></script>',
+              `<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/${css}"><link rel="stylesheet" href="/app.css"><div id="root"></div><script src="/app.js"></script>`,
             ),
         );
         app.get("/app.js", (_q, r) =>
@@ -1495,36 +1506,49 @@ describe.skipIf(!enabled)(
               bundle.outputFiles.find((f) => f.path.endsWith(".css"))!.text,
             ),
         );
-        app.get("/state", async (_q, r) => {
+        // Only the test identity/session is synthetic. Every game asset/read/write
+        // below uses the real domain API and isolated PostgreSQL; no route mocks.
+        app.post("/api/farm/v2/session", (_q, r) =>
+          r.json({
+            userId,
+            sessionToken: "fvs1.isolated-test",
+            reauthenticateUrl: "https://platform.test/login",
+          }),
+        );
+        app.use("/api/farm/v2", (q, r, next) => {
+          if (q.header("authorization") !== "Bearer fvs1.isolated-test") {
+            r.status(401).json({ error: "AUTH_REQUIRED" });
+            return;
+          }
+          next();
+        });
+        app.get("/api/farm/v2/state", async (_q, r) => {
+          const player = (
+            await storage.pool.query(
+              'SELECT warehouse_state AS "warehouseState",mission_state AS "missionState",first_farm_entered_at AS "firstFarmEnteredAt" FROM farm_v2_player_state WHERE user_id=$1',
+              [userId],
+            )
+          ).rows[0];
           const lands = (
             await storage.pool.query(
-              'SELECT land_id AS "landId",lifecycle,access_active AS "accessActive",planted_quantity AS "plantedQuantity",matures_at AS "maturesAt" FROM farm_v2_land WHERE user_id=$1 ORDER BY land_id',
+              'SELECT land_id AS "landId",lifecycle,access_active AS "accessActive",planted_quantity AS "plantedQuantity",planted_at AS "plantedAt",matures_at AS "maturesAt" FROM farm_v2_land WHERE user_id=$1 ORDER BY land_id',
               [userId],
             )
           ).rows;
-          r.json({
-            lands,
-            scene: {
-              pots: [],
-              decor: [],
-              activeFormation: null,
-              pets: { owned: [], activePetId: null, activeUntil: null },
-            },
-          });
+          r.json({ player, lands });
         });
-        app.post("/action", async (q, r) => {
+        app.post("/api/farm/v2/lands/:landId/:operation", async (q, r) => {
           try {
-            r.json(
-              await (q.body.kind === "sow" ? sowFarmV2Land : harvestFarmV2Land)(
-                {
-                  userId,
-                  requestId: crypto.randomUUID(),
-                  landId: q.body.landId,
-                },
-              ),
-            );
+            const result = await (
+              q.params.operation === "sow" ? sowFarmV2Land : harvestFarmV2Land
+            )({
+              userId,
+              requestId: String(q.header("x-request-id")),
+              landId: Number(q.params.landId),
+            });
+            r.json(result);
           } catch (e) {
-            r.status(409).send(String(e));
+            r.status(409).json({ error: String(e) });
           }
         });
         const server = await new Promise<import("node:http").Server>(
@@ -1539,49 +1563,165 @@ describe.skipIf(!enabled)(
           args: ["--no-sandbox"],
         });
         try {
-          for (const [label, width, height, id] of [
+          for (const [label, width, height, harvestId] of [
             ["desktop", 1280, 900, 2],
             ["mobile", 390, 844, 3],
           ] as const) {
-            const page = await browser.newPage({ viewport: { width, height } });
-            page.setDefaultTimeout(5000);
+            if (label === "mobile")
+              await storage.pool.query(
+                "UPDATE farm_v2_land SET lifecycle='EMPTY',planted_quantity=0,planted_at=NULL,matures_at=NULL WHERE user_id=$1 AND land_id=1",
+                [userId],
+              );
+            const page = await browser.newPage({
+              viewport: { width, height },
+              deviceScaleFactor: 1,
+            });
+            page.setDefaultTimeout(8000);
+            const errors: string[] = [];
+            page.on("pageerror", (e: Error) => errors.push(e.message));
             await page.goto("http://127.0.0.1:" + port);
             await page.locator('[data-layout="' + label + '"]').waitFor();
+            const image = page.locator(".farm-v2-scene-original");
+            await page.waitForFunction(
+              "document.querySelector('.farm-v2-scene-original')?.complete",
+            );
+            const dimensions = await image.evaluate((img: unknown) =>
+              eval(
+                `({width:img.naturalWidth,height:img.naturalHeight,ratio:img.getBoundingClientRect().width/img.getBoundingClientRect().height,fit:getComputedStyle(img).objectFit})`,
+              ),
+            );
+            expect([dimensions.width, dimensions.height]).toEqual(
+              label === "desktop" ? [1215, 1295] : [941, 1672],
+            );
+            expect(dimensions.ratio).toBeCloseTo(
+              dimensions.width / dimensions.height,
+              3,
+            );
+            expect(dimensions.fit).toBe("contain");
             expect(await page.locator(".farm-v2-land").count()).toBe(6);
             expect(await page.locator(".farm-v2-pot").count()).toBe(6);
             expect(await page.locator(".farm-v2-pet").count()).toBe(4);
-            if (label === "desktop") {
+            const bounded = async () => {
+              await expect
+                .poll(async () =>
+                  page
+                    .locator('[role="dialog"]')
+                    .evaluate((el: unknown) =>
+                      eval(
+                        `(()=>{const b=el.getBoundingClientRect();return {left:Math.round(b.left),top:Math.round(b.top),right:Math.round(b.right),bottom:Math.round(b.bottom),viewport:[innerWidth,innerHeight],overflow:el.scrollWidth-el.clientWidth,bounded:b.left>=0&&b.top>=0&&b.right<=innerWidth&&b.bottom<=innerHeight&&el.scrollWidth<=el.clientWidth,opaque:getComputedStyle(el).backgroundColor!=="rgba(0, 0, 0, 0)"};})()`,
+                      ),
+                    ),
+                )
+                .toMatchObject({ bounded: true, opaque: true });
+            };
+            // Click every plot center: the correct land popup must open.
+            const { FARM_V2_LANDS } =
+              await import("../../../qiankun-farm/src/game/v2/canonicalLandData");
+            for (let i = 0; i < 6; i++) {
               await page
                 .locator(".farm-v2-land")
-                .nth(0)
-                .getByRole("button", { name: "播種", exact: true })
+                .nth(i)
+                .getByRole("button")
                 .click();
               await page
-                .locator(".farm-v2-land")
-                .nth(0)
-                .getByRole("button", { name: /生長中/ })
+                .getByRole("dialog")
+                .getByRole("heading", {
+                  name: FARM_V2_LANDS[i].landName,
+                  exact: true,
+                })
                 .waitFor();
+              await bounded();
+              await page.keyboard.press("Escape");
             }
             await page
               .locator(".farm-v2-land")
-              .nth(id - 1)
-              .getByRole("button", { name: "收成", exact: true })
+              .nth(0)
+              .getByRole("button")
               .click();
+            const sowResponse = page.waitForResponse("**/lands/1/sow");
             await page
-              .locator(".farm-v2-land")
-              .nth(id - 1)
-              .getByRole("button", { name: /待播種/ })
+              .getByRole("dialog")
+              .getByRole("button", { name: "整批播種", exact: true })
+              .click();
+            expect((await sowResponse).status()).toBe(200);
+            await page
+              .getByRole("dialog")
+              .getByText("生長中", { exact: true })
               .waitFor();
             await page.screenshot({
-              path: "/tmp/farm-v2-interaction-" + label + ".png",
-              fullPage: true,
+              path: `/tmp/farm-v2-approved-${label}-dialog.png`,
+              fullPage: false,
+              animations: "disabled",
             });
-            await page.getByRole("button", { name: "進入洞府" }).click();
+            await page.keyboard.press("Escape");
+            await page
+              .locator(".farm-v2-land")
+              .nth(harvestId - 1)
+              .getByRole("button")
+              .click();
+            const harvestResponse = page.waitForResponse(
+              `**/lands/${harvestId}/harvest`,
+            );
+            await page
+              .getByRole("dialog")
+              .getByRole("button", { name: "收成入庫", exact: true })
+              .click();
+            expect((await harvestResponse).status()).toBe(200);
+            await page
+              .getByRole("dialog")
+              .getByText("待播種", { exact: true })
+              .waitFor();
+            await page.keyboard.press("Escape");
+            // Hotspots must hit the expected existing panel, never an adjacent plot.
+            for (const selector of [
+              ".farm-v2-formation",
+              ".farm-v2-pet",
+              ".farm-v2-pot",
+            ]) {
+              for (const target of await page.locator(selector).all()) {
+                await target.click();
+                await page.getByRole("dialog").waitFor();
+                await bounded();
+                await page.keyboard.press("Escape");
+                await page.getByRole("dialog").waitFor({ state: "hidden" });
+              }
+            }
+            await page
+              .getByRole("button", { name: "進入洞府", exact: true })
+              .click();
             expect(await page.locator(".farm-v2-decor").count()).toBe(6);
             await page
-              .getByRole("button", { name: "離開洞府・回到測試擁有者農場" })
+              .getByRole("button", { name: "離開洞府・回到我的福田農場" })
               .click();
-            await page.getByRole("button", { name: "進入洞府" }).waitFor();
+            expect(
+              await page.evaluate("document.body.scrollWidth <= innerWidth"),
+            ).toBe(true);
+            await page.evaluate("scrollTo(0, 0)");
+            await page.screenshot({
+              path: `/tmp/farm-v2-approved-${label}.png`,
+              fullPage: true,
+              animations: "disabled",
+            });
+            // Narrow phone: no clipping, no horizontal overflow, a bounded popup.
+            if (label === "mobile") {
+              await page.setViewportSize({ width: 320, height: 568 });
+              await page
+                .locator(".farm-v2-land")
+                .nth(5)
+                .getByRole("button")
+                .click();
+              await bounded();
+              await page.keyboard.press("Escape");
+              expect(
+                await page.evaluate("document.body.scrollWidth <= innerWidth"),
+              ).toBe(true);
+              await page.screenshot({
+                path: "/tmp/farm-v2-approved-mobile-320.png",
+                fullPage: true,
+                animations: "disabled",
+              });
+            }
+            expect(errors).toEqual([]);
             await page.close();
           }
           expect(
@@ -1592,12 +1732,20 @@ describe.skipIf(!enabled)(
               )
             ).rows[0],
           ).toEqual({ c2: "30", c3: "26", seeds: "0" });
+          expect(
+            (
+              await storage.pool.query(
+                "SELECT count(*)::int n FROM farm_v2_mutation WHERE user_id=$1 AND transaction_state='COMPLETED'",
+                [userId],
+              )
+            ).rows[0].n,
+          ).toBe(4);
         } finally {
           await browser.close();
           await new Promise<void>((resolve) => server.close(() => resolve()));
         }
       },
-      20000,
+      60000,
     );
     it("festival rights persist with workshop idempotency; client cannot choose a right or change a window", async () => {
       const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =

@@ -13,7 +13,7 @@ Delivered before this batch: authenticated idempotent chaos claim, farmer per-la
 
 This batch: authenticated workshop API, Core-priced pot/decor/mission/pet/food/premium-formation transactions, unique persisted pot/decor instances and galleries, same-species one-grade synthesis, six display slots and lingyun, six cave decor positions with compatibility and collapse recovery, mission claims, pet feeding, formation switching, authoritative friend list and readonly cave projection. Frontend exposes real saved state and same-key interruption retry. See `farm-v2-workshop-delivery.md` for evidence and limits.
 
-Remaining: final 2D cave/scene/art, decor gallery images, rest-position pet rendering and official festival/RPG acquisition mappings. Approved scene originals remain ASSET BLOCKED. POT-ATOMIC-001/POT-GALLERY-004 now have isolated verification of a same-database Core/Farm transaction; production co-location, restricted roles and cutover remain BLOCKED. Legacy cross-database journals retain a Saga, **not a single ACID transaction**. See `farm-v2-atomic-pot-release-gate.md`. No production acceptance is claimed.
+Remaining: final 2D cave/scene/art, decor gallery images, rest-position pet rendering and official festival/RPG acquisition mappings. Approved exterior scene originals are integrated; see `farm-v2-approved-scene-integration.md`. Interior/pet character art remains outside this batch. POT-ATOMIC-001/POT-GALLERY-004 now have isolated verification of a same-database Core/Farm transaction; production co-location, restricted roles and cutover remain BLOCKED. Legacy cross-database journals retain a Saga, **not a single ACID transaction**. See `farm-v2-atomic-pot-release-gate.md`. No production acceptance is claimed.
 
 | Rule ID | Module | Status |
 |---|---|---|
@@ -31,9 +31,9 @@ Remaining: final 2D cave/scene/art, decor gallery images, rest-position pet rend
 | CAVE-ALCHEMY-001 | 洞府 | Pending integration or focused verification |
 | CAVE-HONOR-001 | 洞府 | Pending integration or focused verification |
 | FARM-LAND-001 | 福田 | Pending integration or focused verification |
-| FARM-SOW-001 | 福田 | PARTIAL: real API scene interaction delivered; final artwork ASSET BLOCKED |
-| FARM-MATURE-001 | 福田 | PARTIAL: real API scene interaction delivered; final artwork ASSET BLOCKED |
-| FARM-HARVEST-001 | 福田 | PARTIAL: real API scene interaction delivered; final artwork ASSET BLOCKED |
+| FARM-SOW-001 | 福田 | Approved exterior + real API popup/sowing locally verified; remaining visual subrules/production acceptance pending |
+| FARM-MATURE-001 | 福田 | Server maturity/status on calibrated approved scene; remaining visual subrules/production acceptance pending |
+| FARM-HARVEST-001 | 福田 | Approved exterior + real API popup/harvest locally verified; remaining visual subrules/production acceptance pending |
 | FARM-NEWBIE-001 | 福田 | Pending integration or focused verification |
 | FARM-EXCHANGE-001 | 福田 | Pending integration or focused verification |
 | SEED-MARKET-001 | 商店 | Pending integration or focused verification |
@@ -153,7 +153,7 @@ Remaining: final 2D cave/scene/art, decor gallery images, rest-position pet rend
 | DECOR-COMPAT-001 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
 | DECOR-UNIQUE-001 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
 | CAVE-RENDER-001 | 洞府 | Pending integration or focused verification |
-| CAVE-RESPONSIVE-001 | 洞府 | Pending integration or focused verification |
+| CAVE-RESPONSIVE-001 | 洞府 | Independent native-ratio exterior layouts and bounded dialogs locally verified at 1280/390/320px; production acceptance pending |
 | CAVE-ASSETFAIL-001 | 洞府 | Pending integration or focused verification |
 | FARM-SCENE-001 | 福田 | Pending integration or focused verification |
 | FARM-SCENE-002 | 福田 | Pending integration or focused verification |
@@ -196,7 +196,7 @@ Remaining: final 2D cave/scene/art, decor gallery images, rest-position pet rend
 | PAID-REWARD-001 | 付費里程碑 | Pending integration or focused verification |
 | BORROW-MATURE-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
 | ASSIST-NOPET-001 | 好友 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
-| PET-REST-002 | 靈寵 | PARTIAL: real API scene interaction delivered; final artwork ASSET BLOCKED |
+| PET-REST-002 | 靈寵 | Four approved-scene rest targets and live ownership locally verified; character art/production acceptance pending |
 | POT-SPECIES-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
 | POT-SLOT-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
 | POT-SIZE-001 | 盆栽 | Pending integration or focused verification |

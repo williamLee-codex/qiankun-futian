@@ -1,5 +1,7 @@
 # Farm V2 atomic pot release gate
 
+**Latest scene status (2026-10-10):** the user has confirmed the existing two images by dimensions/SHA-256 as the approved originals. They are now integrated and locally verified; exterior ASSET BLOCKED is removed. See `farm-v2-approved-scene-integration.md`. Earlier asset findings below describe previous evidence, not the current asset gate. Production topology and cutover still make the overall recommendation **NO-GO**.
+
 ## Local implementation and authority
 
 POT-ATOMIC-001 and POT-GALLERY-004 now have a co-located PostgreSQL implementation. New public synthesis requires `FARM_V2_ATOMIC_POT_ENABLED=1`, the authenticated server authority context, and a fresh platform permit visible in the same database. The Farm transaction locks player state, computes the existing workshop plan, calls the platform-owned Core Wallet RPC on that **same transaction connection**, and writes inventory, display, gallery rewards and the request result before committing. No HTTP wallet write, copied wallet, or direct Core balance update is used.

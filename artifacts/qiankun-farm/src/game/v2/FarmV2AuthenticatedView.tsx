@@ -1,3 +1,4 @@
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
 import { FarmSceneInteractionLayer } from "./FarmSceneInteractionLayer";
 import { workshopState } from "./workshopRuntime";
@@ -37,6 +38,7 @@ export function FarmV2AuthenticatedView(props: {
   } = useFarmV2Scene(props.apiBaseUrl, props.launchToken);
   const [visited, setVisited] = useState<FarmV2PublicCave | null>(null);
   const [panelTab, setPanelTab] = useState("盆栽");
+  const [panelOpen, setPanelOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
 
@@ -131,6 +133,7 @@ export function FarmV2AuthenticatedView(props: {
     );
   return (
     <section
+      className="farm-v2-authenticated-view"
       aria-label="乾坤福田正式農田"
       style={{ maxWidth: 1200, margin: "0 auto" }}
     >
@@ -152,25 +155,49 @@ export function FarmV2AuthenticatedView(props: {
         onRefresh={refresh}
         onLandSelect={setSelectedLand}
         onLandAction={execute}
-        onSection={setPanelTab}
+        onSection={(tab) => {
+          setPanelTab(tab);
+          setPanelOpen(true);
+        }}
       />
       <h2>乾坤福田</h2>
       {friendRetries}
-      <FarmWorkshopPanel
-        tab={panelTab}
-        onTabChange={setPanelTab}
-        readFriends={readFriends}
-        visitCave={async (id) => {
-          const view = await visitCave(id);
-          setVisited(view);
-          return view;
-        }}
-        warehouse={data.warehouse}
-        missions={data.missions}
-        pets={data.pets}
-        busy={busy || loading}
-        transact={workshop}
-      />
+      <Dialog open={panelOpen} onOpenChange={setPanelOpen}>
+        <DialogContent
+          className="farm-v2-operation-dialog"
+          aria-describedby={undefined}
+        >
+          <DialogTitle>{panelTab}</DialogTitle>
+          <FarmWorkshopPanel
+            tab={panelTab}
+            onTabChange={setPanelTab}
+            readFriends={readFriends}
+            visitCave={async (id) => {
+              const view = await visitCave(id);
+              setVisited(view);
+              return view;
+            }}
+            warehouse={data.warehouse}
+            missions={data.missions}
+            pets={data.pets}
+            busy={busy || loading}
+            transact={workshop}
+          />
+        </DialogContent>
+      </Dialog>
+      <nav aria-label="農場操作">
+        {["盆栽", "洞府", "任務", "靈寵", "護陣", "好友"].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => {
+              setPanelTab(tab);
+              setPanelOpen(true);
+            }}
+          >
+            {tab}
+          </button>
+        ))}
+      </nav>
       {pendingWorkshop.map((command, index) => (
         <button
           key={index}
@@ -234,83 +261,96 @@ export function FarmV2AuthenticatedView(props: {
         更新農田
       </button>
       {selectedLand === null && <p>請點選 2D 場景中的農田查看操作。</p>}
-      <div>
-        {data.plots
-          .filter((plot) => selectedLand === plot.id + 1)
-          .map((plot) => {
-            const seeds = data.seedInventory[plot.cropId] ?? 0;
-            const crops = data.cropInventory[plot.cropId] ?? 0;
-            const canSow =
-              plot.unlocked && plot.state === "empty" && seeds >= plot.maxSeeds;
-            const canHarvest = plot.unlocked && plot.state === "ready";
-            const exchangeUnit = CROP_DATA[plot.cropId].sellQty;
-            const canExchange = plot.unlocked && crops >= exchangeUnit;
-            const canPurchase = plot.id < 5;
-            return (
-              <article key={plot.id}>
-                <h3>{plot.name}</h3>
-                <p>
-                  {!plot.unlocked
-                    ? "🔒 尚未解鎖"
-                    : plot.state === "ready"
-                      ? "已成熟"
-                      : plot.state === "growing"
-                        ? "生長中"
-                        : "待播種"}
-                </p>
-                <p>
-                  種子：{seeds}／整批 {plot.maxSeeds}；倉庫作物：{crops}
-                </p>
-                {plot.unlocked &&
-                  plot.state === "growing" &&
-                  plot.growthEndTime && (
-                    <p>
-                      預計成熟：
-                      {new Date(plot.growthEndTime).toLocaleString("zh-TW")}
-                    </p>
-                  )}
-                <button
-                  type="button"
-                  disabled={busy || loading || !canSow}
-                  onClick={() => {
-                    void execute("sow", plot.id + 1);
-                  }}
-                >
-                  整批播種
-                </button>
-                <button
-                  type="button"
-                  disabled={busy || loading || !canHarvest}
-                  onClick={() => {
-                    void execute("harvest", plot.id + 1);
-                  }}
-                >
-                  收成入庫
-                </button>
-                {canPurchase && (
+      <Dialog
+        open={selectedLand !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedLand(null);
+        }}
+      >
+        <DialogContent
+          className="farm-v2-operation-dialog"
+          aria-describedby={undefined}
+        >
+          <DialogTitle>農田操作</DialogTitle>
+          {data.plots
+            .filter((plot) => selectedLand === plot.id + 1)
+            .map((plot) => {
+              const seeds = data.seedInventory[plot.cropId] ?? 0;
+              const crops = data.cropInventory[plot.cropId] ?? 0;
+              const canSow =
+                plot.unlocked &&
+                plot.state === "empty" &&
+                seeds >= plot.maxSeeds;
+              const canHarvest = plot.unlocked && plot.state === "ready";
+              const exchangeUnit = CROP_DATA[plot.cropId].sellQty;
+              const canExchange = plot.unlocked && crops >= exchangeUnit;
+              const canPurchase = plot.id < 5;
+              return (
+                <article key={plot.id}>
+                  <h3>{plot.name}</h3>
+                  <p>
+                    {!plot.unlocked
+                      ? "🔒 尚未解鎖"
+                      : plot.state === "ready"
+                        ? "已成熟"
+                        : plot.state === "growing"
+                          ? "生長中"
+                          : "待播種"}
+                  </p>
+                  <p>
+                    種子：{seeds}／整批 {plot.maxSeeds}；倉庫作物：{crops}
+                  </p>
+                  {plot.unlocked &&
+                    plot.state === "growing" &&
+                    plot.growthEndTime && (
+                      <p>
+                        預計成熟：
+                        {new Date(plot.growthEndTime).toLocaleString("zh-TW")}
+                      </p>
+                    )}
                   <button
                     type="button"
-                    disabled={busy || loading}
+                    disabled={busy || loading || !canSow}
                     onClick={() => {
-                      void execute("purchaseSeeds", plot.id + 1, 1);
+                      void execute("sow", plot.id + 1);
                     }}
                   >
-                    購買一包種子（1 金幣）
+                    整批播種
                   </button>
-                )}
-                <button
-                  type="button"
-                  disabled={busy || loading || !canExchange}
-                  onClick={() => {
-                    void execute("exchangeCrops", plot.id + 1, exchangeUnit);
-                  }}
-                >
-                  兌換 {exchangeUnit} 株作物
-                </button>
-              </article>
-            );
-          })}
-      </div>
+                  <button
+                    type="button"
+                    disabled={busy || loading || !canHarvest}
+                    onClick={() => {
+                      void execute("harvest", plot.id + 1);
+                    }}
+                  >
+                    收成入庫
+                  </button>
+                  {canPurchase && (
+                    <button
+                      type="button"
+                      disabled={busy || loading}
+                      onClick={() => {
+                        void execute("purchaseSeeds", plot.id + 1, 1);
+                      }}
+                    >
+                      購買一包種子（1 金幣）
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={busy || loading || !canExchange}
+                    onClick={() => {
+                      void execute("exchangeCrops", plot.id + 1, exchangeUnit);
+                    }}
+                  >
+                    兌換 {exchangeUnit} 株作物
+                  </button>
+                </article>
+              );
+            })}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
