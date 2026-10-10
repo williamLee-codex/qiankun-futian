@@ -9,7 +9,7 @@ test("Farm plan states actual Drizzle baseline source and cannot create missing 
   assert.equal(p.status, 0, p.stderr);
   const plan = JSON.parse(p.stdout);
   assert.equal(plan.baselineSource, "lib/db/src/schema/farm-v2.ts");
-  assert.equal(plan.baselineSqlMigrationExists, false);
+  assert.equal(plan.baselineSqlMigrationExists, true);
   assert.equal(plan.requiredBaseTables.length, 3);
   assert.match(plan.sha256, /^[a-f0-9]{64}$/);
 });

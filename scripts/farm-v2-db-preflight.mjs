@@ -89,6 +89,12 @@ function main() {
       JSON.stringify(
         {
           migration,
+          executionOrder: [
+            migration,
+            "lib/db/migrations/0002_farm_v2_game_baseline.sql",
+          ],
+          preflightScope:
+            "Legacy default: baseline runtime readiness before 0001; for fresh installation use docs/farm-v2-baseline-migration.md read-only catalog checks instead. 0001 has no structural dependency on baseline tables.",
           sha256: createHash("sha256")
             .update(
               readFileSync(path.join(root, migration), "utf8").replace(
@@ -115,7 +121,7 @@ function main() {
           ),
           requiredBaseTables: Object.keys(tables),
           creationMechanism:
-            "lib/db/package.json push: drizzle-kit push (not run)",
+            "lib/db/migrations/0002_farm_v2_game_baseline.sql (strict transactional CREATE; never drizzle-kit push)",
           executionAuthority:
             "BLOCKED until operator verifies Farm DB identity and migration journal; this tool never applies SQL",
         },
