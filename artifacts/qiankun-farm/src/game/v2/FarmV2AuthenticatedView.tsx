@@ -38,7 +38,13 @@ export function FarmV2AuthenticatedView(props: {
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
 
   async function execute(
-    operation: "sow" | "harvest" | "purchaseSeeds" | "exchangeCrops",
+    operation:
+      | "sow"
+      | "harvest"
+      | "purchaseSeeds"
+      | "exchangeCrops"
+      | "claimChaos"
+      | "configureFarmer",
     landId: number,
     quantity?: number,
   ) {
@@ -147,6 +153,39 @@ export function FarmV2AuthenticatedView(props: {
         </div>
       </div>
       <h2>乾坤福田</h2>
+      {data.chaos && (
+        <button
+          disabled={busy || loading || !data.plots[5]?.unlocked}
+          onClick={() => void execute("claimChaos", 6)}
+        >
+          領取混沌種子（待領 {data.chaos.pending}）
+        </button>
+      )}
+      {data.farmer?.entitled && (
+        <fieldset disabled={busy || loading}>
+          <legend>專屬農夫・各田自動耕作</legend>
+          {data.plots.map((plot) => (
+            <label key={plot.id} style={{ display: "block" }}>
+              <input
+                type="checkbox"
+                checked={
+                  data.farmer!.enabledByLand[
+                    (plot.id + 1) as 1 | 2 | 3 | 4 | 5 | 6
+                  ]
+                }
+                onChange={(e) =>
+                  void execute(
+                    "configureFarmer",
+                    plot.id + 1,
+                    e.target.checked ? 1 : 0,
+                  )
+                }
+              />
+              {plot.name}
+            </label>
+          ))}
+        </fieldset>
+      )}
       <button
         type="button"
         disabled={busy || loading}
@@ -179,7 +218,7 @@ export function FarmV2AuthenticatedView(props: {
             const canHarvest = plot.unlocked && plot.state === "ready";
             const exchangeUnit = CROP_DATA[plot.cropId].sellQty;
             const canExchange = plot.unlocked && crops >= exchangeUnit;
-            const canPurchase = plot.unlocked && plot.id < 5;
+            const canPurchase = plot.id < 5;
             return (
               <article key={plot.id}>
                 <h3>{plot.name}</h3>

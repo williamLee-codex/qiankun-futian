@@ -69,7 +69,9 @@ describe.skipIf(!enabled)(
       await storage.pool.query(
         `insert into core.users(id,auth_user_id,status) values('10000000-0000-0000-0000-000000000001','${userId}','active');insert into core.wallets(id,user_id) values('${userId}','10000000-0000-0000-0000-000000000001');insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','credit',600,'payment','fixture-payment');`,
       );
-      await storage.pool.query("create table launch_tokens(id uuid primary key default gen_random_uuid(),user_id uuid,app_id text,token_hash text unique,expires_at timestamptz,used_at timestamptz,revoked_at timestamptz)");
+      await storage.pool.query(
+        "create table launch_tokens(id uuid primary key default gen_random_uuid(),user_id uuid,app_id text,token_hash text unique,expires_at timestamptz,used_at timestamptz,revoked_at timestamptz)",
+      );
       for (const file of [
         "0124_farm_v2_sessions.sql",
         "0125_farm_v2_paid_auth_identity.sql",
@@ -97,6 +99,154 @@ describe.skipIf(!enabled)(
       create table farm_v2_mutation(user_id text,request_id text,action text not null,response jsonb,transaction_state text not null default 'PENDING',wallet_direction text,wallet_currency text,wallet_amount integer,wallet_transaction jsonb,failure_code text,updated_at timestamptz default now(),created_at timestamptz default now(),primary key(user_id,request_id));
       create table farm_test_failures(flag boolean); create function fail_farm_commit() returns trigger language plpgsql as $$ begin if new.transaction_state='COMPLETED' and exists(select 1 from farm_test_failures) then raise exception 'TEST_FARM_COMMIT_FAILURE'; end if; return new; end $$; create trigger farm_test_failure before update on farm_v2_mutation for each row execute function fail_farm_commit();
     `);
+    });
+    async function gameplayFixture() {
+      const { createInitialFarmAccess, reconcilePaidLandAccess } =
+        await import("../../../qiankun-farm/src/game/v2/accessRuntime");
+      const { encodeFarmAccessState } = await import("./farm-v2-json-codecs");
+      const { createFarmerState } =
+        await import("../../../qiankun-farm/src/game/v2/farmerRuntime");
+      const access = reconcilePaidLandAccess({
+        access: createInitialFarmAccess(),
+        effectivePaidCrystals: 999,
+        now: 0,
+      }).access;
+      const farmer = {
+        ...createFarmerState(),
+        entitled: true,
+        enabledByLand: {
+          1: true,
+          2: false,
+          3: false,
+          4: false,
+          5: false,
+          6: false,
+        },
+      };
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET first_farm_entered_at=to_timestamp(0),effective_paid_crystals=999,access_state=$2,farmer_state=$3,chaos_seed_state=$4 WHERE user_id=$1",
+        [
+          userId,
+          encodeFarmAccessState(access),
+          farmer,
+          { anchorAt: 0, processedCycle: 0, pending: 0 },
+        ],
+      );
+      await storage.pool.query(
+        "INSERT INTO farm_v2_land(user_id,land_id,lifecycle,access_active,planted_quantity) SELECT $1,n,'EMPTY',true,0 FROM generate_series(1,6) n",
+        [userId],
+      );
+    }
+    it("CHAOS-CLAIM-001/TX-IDEMPOTENCY-001: parallel replay claims once, suspension rejects and rollback retains pending", async () => {
+      await gameplayFixture();
+      const { claimFarmV2ChaosSeeds } = await import("./farm-v2-gameplay");
+      const command = {
+        userId,
+        requestId: "chaos-claim",
+        now: 10 * 72 * 3600000,
+      };
+      const results = await Promise.all([
+        claimFarmV2ChaosSeeds(command),
+        claimFarmV2ChaosSeeds(command),
+      ]);
+      expect(results[0]).toEqual(results[1]);
+      expect(results[0].claimed).toBe(3);
+      let row = (
+        await storage.pool.query(
+          "SELECT warehouse_state,chaos_seed_state FROM farm_v2_player_state WHERE user_id=$1",
+          [userId],
+        )
+      ).rows[0];
+      expect(row.warehouse_state.seeds[6]).toBe(3);
+      expect(row.chaos_seed_state).toEqual({
+        anchorAt: 0,
+        processedCycle: 10,
+        pending: 0,
+      });
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET effective_paid_crystals=599 WHERE user_id=$1",
+        [userId],
+      );
+      await expect(
+        claimFarmV2ChaosSeeds({ ...command, requestId: "suspended" }),
+      ).rejects.toThrow("LAND_NOT_ACCESSIBLE");
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET effective_paid_crystals=999 WHERE user_id=$1",
+        [userId],
+      );
+      await storage.pool.query("INSERT INTO farm_test_failures VALUES(true)");
+      await expect(
+        claimFarmV2ChaosSeeds({
+          ...command,
+          requestId: "rollback",
+          now: 11 * 72 * 3600000,
+        }),
+      ).rejects.toMatchObject({
+        cause: { message: "TEST_FARM_COMMIT_FAILURE" },
+      });
+      row = (
+        await storage.pool.query(
+          "SELECT warehouse_state,chaos_seed_state FROM farm_v2_player_state WHERE user_id=$1",
+          [userId],
+        )
+      ).rows[0];
+      expect(row.warehouse_state.seeds[6]).toBe(3);
+      expect(row.chaos_seed_state.processedCycle).toBe(10);
+    });
+    it("FARMER-SETTLE-001/FARMER-PREF-001: concurrent login cannot duplicate assets and preference requires qualification", async () => {
+      await gameplayFixture();
+      const { settleFarmV2Farmer, configureFarmV2Farmer } =
+        await import("./farm-v2-gameplay");
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(warehouse_state,'{seeds,1}','40') WHERE user_id=$1",
+        [userId],
+      );
+      await storage.pool.query(
+        "UPDATE farm_v2_land SET lifecycle='GROWING',planted_quantity=20,planted_at=to_timestamp(0),matures_at=to_timestamp(14400) WHERE user_id=$1 AND land_id=1",
+        [userId],
+      );
+      await Promise.all([
+        settleFarmV2Farmer({ userId, requestId: "login-a", now: 10 * 3600000 }),
+        settleFarmV2Farmer({ userId, requestId: "login-b", now: 10 * 3600000 }),
+      ]);
+      const row = (
+        await storage.pool.query(
+          "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+          [userId],
+        )
+      ).rows[0];
+      expect(row.warehouse_state.crops[1]).toBe(260);
+      expect(row.warehouse_state.seeds[1]).toBe(0);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT planted_quantity FROM farm_v2_land WHERE user_id=$1 AND land_id=2",
+            [userId],
+          )
+        ).rows[0].planted_quantity,
+      ).toBe(0);
+      const result = await configureFarmV2Farmer({
+        userId,
+        requestId: "preference",
+        landId: 1,
+        enabled: false,
+      });
+      expect(result.farmer.enabledByLand[1]).toBe(false);
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET effective_paid_crystals=998 WHERE user_id=$1",
+        [userId],
+      );
+      await expect(
+        configureFarmV2Farmer({
+          userId,
+          requestId: "unqualified",
+          landId: 2,
+          enabled: true,
+        }),
+      ).rejects.toThrow("FARMER_NOT_ENTITLED");
+      await expect(
+        settleFarmV2Farmer({ userId: "someone-else", requestId: "isolated" }),
+      ).rejects.toThrow("FARM_PLAYER_STATE_NOT_FOUND");
     });
     beforeEach(async () => {
       dropWalletResponse = false;

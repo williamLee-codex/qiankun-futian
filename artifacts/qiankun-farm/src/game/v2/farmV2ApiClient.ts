@@ -21,6 +21,8 @@ export type FarmV2State = {
   player: {
     warehouseState: FarmV2Warehouse;
     firstFarmEnteredAt: string | null;
+    farmerState?: import("./farmerRuntime").FarmerState;
+    chaosSeedState?: import("./chaosSeedRuntime").ChaosSeedState | null;
   };
   lands: FarmV2Land[];
 };
@@ -238,6 +240,9 @@ export function createFarmV2Api(input: {
       revoked = true;
       sessionPromise = null;
     },
+    claimChaosSeeds: () => request<unknown>("farm/v2/chaos/claim", "POST"),
+    configureFarmer: (landId: number, enabled: boolean) =>
+      request<unknown>(`farm/v2/farmer/${landId}`, "POST", { enabled }),
     readState: () => request<FarmV2State>("farm/v2/state", "GET"),
     sow: (landId: number) =>
       request<FarmV2MutationResult>(`farm/v2/lands/${landId}/sow`, "POST"),

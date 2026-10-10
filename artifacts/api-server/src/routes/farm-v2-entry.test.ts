@@ -26,6 +26,11 @@ vi.mock("../lib/farm-v2-crop-exchange", () => ({
 vi.mock("../lib/farm-v2-paid-access", () => ({
   reconcileFarmV2PaidAccessFromCore: vi.fn(),
 }));
+vi.mock("../lib/farm-v2-gameplay", () => ({
+  claimFarmV2ChaosSeeds: vi.fn(),
+  configureFarmV2Farmer: vi.fn(),
+  settleFarmV2Farmer: vi.fn(),
+}));
 import router from "./farm-v2";
 let server: Server;
 let base: string;
@@ -52,6 +57,8 @@ afterEach(() => {
 });
 const paths = [
   "state",
+  "chaos/claim",
+  "farmer/1",
   "session",
   "lands/6/sow",
   "lands/6/harvest",

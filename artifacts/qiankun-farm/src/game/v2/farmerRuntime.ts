@@ -1,5 +1,5 @@
-import { FARM_V2_LANDS, type FarmLandId } from './canonicalLandData';
-import type { FarmLandEntity } from './landRuntime';
+import { FARM_V2_LANDS, type FarmLandId } from "./canonicalLandData";
+import type { FarmLandEntity } from "./landRuntime";
 
 export const FARMER_UNLOCK_EFFECTIVE_PAID_CRYSTALS = 999;
 
@@ -18,7 +18,7 @@ export interface FarmerLandSettlement {
 export function createFarmerState(): FarmerState {
   return {
     entitled: false,
-    enabledByLand: { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false },
+    enabledByLand: { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true },
   };
 }
 
@@ -63,12 +63,16 @@ export function settleFarmerLand(input: {
   const { farmer, land, now } = input;
   let seedsRemaining = input.seedsAvailable;
 
-  if (!farmer.entitled || !farmer.enabledByLand[land.landId] || !land.accessActive) {
+  if (
+    !farmer.entitled ||
+    !farmer.enabledByLand[land.landId] ||
+    !land.accessActive
+  ) {
     return { land, seedsRemaining, harvestedQuantity: 0, completedCycles: 0 };
   }
 
   const def = FARM_V2_LANDS.find((x) => x.id === land.landId);
-  if (!def) throw new Error('UNKNOWN_LAND');
+  if (!def) throw new Error("UNKNOWN_LAND");
 
   const capacity = def.capacity;
   const growthMs = def.growthHours * 60 * 60 * 1000;
@@ -80,11 +84,14 @@ export function settleFarmerLand(input: {
   let completedCycles = 0;
 
   // Empty land may start one batch at login if a complete seed batch exists.
-  if ((lifecycle === 'EMPTY' || lifecycle === 'LOCKED') && seedsRemaining >= capacity) {
+  if (
+    (lifecycle === "EMPTY" || lifecycle === "LOCKED") &&
+    seedsRemaining >= capacity
+  ) {
     seedsRemaining -= capacity;
     plantedAt = now;
     maturesAt = now + growthMs;
-    lifecycle = 'GROWING';
+    lifecycle = "GROWING";
     plantedQuantity = capacity;
     return {
       land: { ...land, lifecycle, plantedQuantity, plantedAt, maturesAt },
@@ -95,7 +102,7 @@ export function settleFarmerLand(input: {
   }
 
   if (
-    (lifecycle !== 'GROWING' && lifecycle !== 'MATURE') ||
+    (lifecycle !== "GROWING" && lifecycle !== "MATURE") ||
     plantedAt === null ||
     maturesAt === null ||
     now < maturesAt
@@ -124,7 +131,7 @@ export function settleFarmerLand(input: {
     return {
       land: {
         ...land,
-        lifecycle: 'GROWING',
+        lifecycle: "GROWING",
         plantedQuantity: capacity,
         plantedAt: nextPlantAt,
         maturesAt: nextMaturesAt,
@@ -139,7 +146,7 @@ export function settleFarmerLand(input: {
   return {
     land: {
       ...land,
-      lifecycle: 'EMPTY',
+      lifecycle: "EMPTY",
       plantedQuantity: 0,
       plantedAt: null,
       maturesAt: null,

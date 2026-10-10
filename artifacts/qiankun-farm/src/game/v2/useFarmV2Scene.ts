@@ -5,6 +5,8 @@ import type { Plot, CropInventory } from "../types";
 
 type Snapshot = {
   player: {
+    farmerState?: import("./farmerRuntime").FarmerState;
+    chaosSeedState?: import("./chaosSeedRuntime").ChaosSeedState | null;
     warehouseState: {
       seeds: Record<string, number>;
       crops: Record<string, number>;
@@ -14,6 +16,8 @@ type Snapshot = {
 };
 
 type SceneData = {
+  farmer?: import("./farmerRuntime").FarmerState;
+  chaos?: import("./chaosSeedRuntime").ChaosSeedState | null;
   plots: Plot[];
   seedInventory: CropInventory;
   cropInventory: CropInventory;
@@ -50,6 +54,8 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     try {
       const snapshot = (await api!.readState()) as unknown as Snapshot;
       const nextData = {
+        farmer: snapshot.player.farmerState,
+        chaos: snapshot.player.chaosSeedState,
         plots: mapServerLands(snapshot.lands),
         ...mapServerWarehouse(snapshot.player.warehouseState),
       };
@@ -77,7 +83,13 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
 
   const mutate = useCallback(
     async (
-      operation: "sow" | "harvest" | "purchaseSeeds" | "exchangeCrops",
+      operation:
+        | "sow"
+        | "harvest"
+        | "purchaseSeeds"
+        | "exchangeCrops"
+        | "claimChaos"
+        | "configureFarmer",
       landId: number,
       quantity?: number,
     ) => {
@@ -87,7 +99,10 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       setBusy(true);
       try {
         if (!api) throw new Error("FARM_V2_LAUNCH_TOKEN_REQUIRED");
-        if (operation === "sow") await api.sow(landId);
+        if (operation === "claimChaos") await api.claimChaosSeeds();
+        else if (operation === "configureFarmer")
+          await api.configureFarmer(landId, quantity === 1);
+        else if (operation === "sow") await api.sow(landId);
         else if (operation === "harvest") await api.harvest(landId);
         else {
           if (!Number.isSafeInteger(quantity) || (quantity ?? 0) <= 0)
