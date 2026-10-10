@@ -42,6 +42,8 @@ export function atomicPotPreflightSql(platformRoot, runtimeRole) {
   const columns = {
     farm_v2_player_state:
       "user_id:text warehouse_state:jsonb updated_at:timestamptz",
+    farm_v2_land:
+      "user_id:text land_id:integer lifecycle:text access_active:boolean planted_quantity:integer planted_at:timestamptz matures_at:timestamptz version:bigint",
     farm_v2_mutation:
       "user_id:text request_id:text action:text response:jsonb transaction_state:text wallet_transaction:jsonb wallet_currency:text wallet_amount:integer wallet_direction:text updated_at:timestamptz",
     farm_v2_authorization_attempt: "id:uuid user_id:text state:text",
@@ -68,11 +70,16 @@ export function atomicPotPreflightSql(platformRoot, runtimeRole) {
   }
   for (const name of [
     "farm_v2_player_state",
+    "farm_v2_land",
     "farm_v2_mutation",
     "farm_v2_authorization_attempt",
   ])
-    checks[name + "_runtime_access"] =
-      `has_table_privilege(${runtime},to_regclass('public.${name}'),'SELECT,INSERT,UPDATE')`;
+    checks[name + "_runtime_access"] = ["SELECT", "INSERT", "UPDATE"]
+      .map(
+        (privilege) =>
+          `has_table_privilege(${runtime},to_regclass('public.${name}'),'${privilege}')`,
+      )
+      .join(" AND ");
   for (const name of [
     "farm_v2_apply_atomic_pot_wallet",
     "farm_v2_apply_authorized_wallet_transaction",
