@@ -1,3 +1,4 @@
+import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
 import farmBackground from "@assets/file_00000000095072069ef62748d273ae91_1783571778589.png";
 import { useState } from "react";
 import { useFarmV2Scene } from "./useFarmV2Scene";
@@ -33,6 +34,10 @@ export function FarmV2AuthenticatedView(props: {
     mutate,
     reauthenticateUrl,
     endSession,
+    workshop,
+    pendingWorkshop,
+    readFriends,
+    visitCave,
   } = useFarmV2Scene(props.apiBaseUrl, props.launchToken);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
@@ -62,6 +67,15 @@ export function FarmV2AuthenticatedView(props: {
       <section role="alert">
         <p>無法取得正式農田資料，已停止所有操作。</p>
         {error && <p>{error}</p>}
+        {pendingWorkshop.map((command, index) => (
+          <button
+            key={index}
+            disabled={busy || loading}
+            onClick={() => void workshop(command)}
+          >
+            重試未確認交易（沿用原冪等鍵）
+          </button>
+        ))}
         {reauthenticateUrl && <a href={reauthenticateUrl}>重新登入御策羅盤</a>}
         <button
           type="button"
@@ -153,6 +167,24 @@ export function FarmV2AuthenticatedView(props: {
         </div>
       </div>
       <h2>乾坤福田</h2>
+      <FarmWorkshopPanel
+        readFriends={readFriends}
+        visitCave={visitCave}
+        warehouse={data.warehouse}
+        missions={data.missions}
+        pets={data.pets}
+        busy={busy || loading}
+        transact={workshop}
+      />
+      {pendingWorkshop.map((command, index) => (
+        <button
+          key={index}
+          disabled={busy || loading}
+          onClick={() => void workshop(command)}
+        >
+          重試未確認交易
+        </button>
+      ))}
       {data.chaos && (
         <button
           disabled={busy || loading || !data.plots[5]?.unlocked}

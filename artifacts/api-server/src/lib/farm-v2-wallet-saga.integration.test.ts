@@ -43,6 +43,9 @@ describe.skipIf(!enabled)(
       );
       const root = process.env.FARM_V2_PLATFORM_CHECKOUT!;
       await storage.pool.query(
+        "CREATE TABLE platform_friendships(user_a_id uuid,user_b_id uuid,status text,PRIMARY KEY(user_a_id,user_b_id))",
+      );
+      await storage.pool.query(
         readFileSync(
           `${root}/supabase/migrations/0019_create_core_wallet_runtime.sql`,
           "utf8",
@@ -79,6 +82,7 @@ describe.skipIf(!enabled)(
         "0127_farm_v2_paid_operation_authority.sql",
         "0128_farm_v2_operator_reconciliation.sql",
         "0129_farm_v2_wallet_creation_and_historical_revocation.sql",
+        "0130_farm_v2_workshop_wallet_contract.sql",
       ]) {
         await storage.pool.query(
           readFileSync(`${root}/supabase/migrations/${file}`, "utf8"),
@@ -248,6 +252,726 @@ describe.skipIf(!enabled)(
         settleFarmV2Farmer({ userId: "someone-else", requestId: "isolated" }),
       ).rejects.toThrow("FARM_PLAYER_STATE_NOT_FOUND");
     });
+    async function workshopFixture() {
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(warehouse_state,'{workshop}',$2) WHERE user_id=$1",
+        [
+          userId,
+          {
+            pots: [],
+            decor: [],
+            potGallery: {},
+            decorGallery: {},
+            materials: { 蘊靈砂: 10, 九霄玉髓: 30 },
+          },
+        ],
+      );
+    }
+    it("POT-GALLERY-004/TX-IDEMPOTENCY-001: concurrent synthesis grants first reward once; replay cannot copy assets", async () => {
+      await workshopFixture();
+      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const command = {
+        kind: "synthesize" as const,
+        species: 1,
+        grade: "黃" as const,
+        useDisplayed: false,
+      };
+      const input = {
+        userId,
+        launchToken: "token",
+        requestId: "craft-a",
+        command,
+      };
+      await Promise.all([
+        mutateFarmV2Workshop(input),
+        mutateFarmV2Workshop({ ...input, requestId: "craft-b" }),
+      ]);
+      await mutateFarmV2Workshop(input);
+      const row = (
+        await storage.pool.query(
+          "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+          [userId],
+        )
+      ).rows[0].warehouse_state;
+      expect(row.workshop.pots).toHaveLength(2);
+      expect(row.crops[1]).toBe(14);
+      expect(row.workshop.materials.蘊靈砂).toBe(8);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+            [userId],
+          )
+        ).rows[0].coin_balance,
+      ).toBe(109);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT count(*)::int n FROM core_wallet_ledger WHERE reason='farm_pot_synthesis'",
+          )
+        ).rows[0].n,
+      ).toBe(2);
+    });
+    it("POT-ATOMIC-001: gross funds required despite positive reward; Core rejects forged amount", async () => {
+      await workshopFixture();
+      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      await storage.pool.query(
+        "UPDATE core_wallets SET coin_balance=2 WHERE owner_id=$1",
+        [userId],
+      );
+      await expect(
+        mutateFarmV2Workshop({
+          userId,
+          launchToken: "token",
+          requestId: "too-poor",
+          command: {
+            kind: "synthesize",
+            species: 1,
+            grade: "黃",
+            useDisplayed: false,
+          },
+        }),
+      ).rejects.toThrow("insufficient_funds");
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+            [userId],
+          )
+        ).rows[0].warehouse_state.workshop.pots,
+      ).toHaveLength(0);
+      const declined = (
+        await storage.pool.query(
+          "SELECT wallet_transaction FROM farm_v2_mutation WHERE user_id=$1 AND request_id='too-poor'",
+          [userId],
+        )
+      ).rows[0].wallet_transaction;
+      expect(declined.assetPlan).toBeUndefined();
+      expect(declined.rejectedPlan).toBeDefined();
+      await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "after-decline",
+        command: { kind: "removePot", species: 1 },
+      });
+      await storage.pool.query(
+        "UPDATE core_wallets SET coin_balance=10 WHERE owner_id=$1",
+        [userId],
+      );
+      await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "too-poor",
+        command: {
+          kind: "synthesize",
+          species: 1,
+          grade: "黃",
+          useDisplayed: false,
+        },
+      });
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+            [userId],
+          )
+        ).rows[0].coin_balance,
+      ).toBe(22);
+      const raw = await storage.pool.query(
+        "SELECT farm_v2_apply_wallet_transaction($1,'forged',13,'coin','credit','farm_pot_synthesis','1:0:1','farm_pot_synthesis') result",
+        [userId],
+      );
+      expect(raw.rows[0].result.result_status).toBe("invalid");
+    });
+    it("POT-ATOMIC-001: lost Core response reserves inputs and recovers exact result without double reward", async () => {
+      await workshopFixture();
+      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const input = {
+        userId,
+        launchToken: "token",
+        requestId: "recover-craft",
+        command: {
+          kind: "synthesize" as const,
+          species: 1,
+          grade: "黃" as const,
+          useDisplayed: false,
+        },
+      };
+      dropWalletResponse = true;
+      await expect(mutateFarmV2Workshop(input)).rejects.toThrow(
+        "TEST_LOST_CORE_RESPONSE",
+      );
+      await expect(
+        exchange({
+          userId,
+          launchToken: "token",
+          requestId: "steal-reserved",
+          landId: 1,
+          cropQuantity: 20,
+        }),
+      ).rejects.toThrow("WORKSHOP_RECOVERY_REQUIRED");
+      const recovered = await mutateFarmV2Workshop(input);
+      expect(recovered.state.pots).toHaveLength(1);
+      expect(recovered.warehouse.crops[1]).toBe(17);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+            [userId],
+          )
+        ).rows[0].coin_balance,
+      ).toBe(112);
+      await expect(
+        mutateFarmV2Workshop({
+          ...input,
+          command: { ...input.command, species: 2 },
+        }),
+      ).rejects.toThrow("REQUEST_ID_ACTION_MISMATCH");
+    });
+    it("POT-GALLERY-004: interrupted Farm commit recovers gallery and asset together", async () => {
+      await workshopFixture();
+      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const input = {
+        userId,
+        launchToken: "token",
+        requestId: "commit-craft",
+        command: {
+          kind: "synthesize" as const,
+          species: 6,
+          grade: "黃" as const,
+          useDisplayed: false,
+        },
+      };
+      dropFarmCommit = true;
+      await expect(mutateFarmV2Workshop(input)).rejects.toThrow();
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+            [userId],
+          )
+        ).rows[0].warehouse_state.workshop.pots,
+      ).toHaveLength(0);
+      await storage.pool.query("TRUNCATE farm_test_failures");
+      const result = await mutateFarmV2Workshop(input);
+      expect(result.state.pots).toHaveLength(1);
+      expect(result.state.potGallery["6:黃"]).toBeTypeOf("number");
+    });
+    it("DECOR-PURCHASE-001/DECOR-LOCATION-001: purchase, placement and removal persist a single instance", async () => {
+      await workshopFixture();
+      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const first = await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "decor-buy",
+        command: { kind: "buyDecor", catalogId: "DF001" },
+      });
+      expect(first.reward).toBe(30);
+      const id = first.state.decor[0].id;
+      const placed = await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "decor-place",
+        command: { kind: "placeDecor", decorId: id, slot: 1 },
+      });
+      expect(placed.state.decor[0].slot).toBe(1);
+      const removed = await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "decor-remove",
+        command: { kind: "placeDecor", decorId: id, slot: null },
+      });
+      expect(removed.state.decor[0].slot).toBe(null);
+      expect(removed.state.decor).toHaveLength(1);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+            [userId],
+          )
+        ).rows[0].coin_balance,
+      ).toBe(42);
+      await expect(
+        mutateFarmV2Workshop({
+          userId,
+          launchToken: "token",
+          requestId: "unknown",
+          command: { kind: "displayPot", potId: "someone-elses-pot" },
+        }),
+      ).rejects.toThrow("POT_NOT_OWNED");
+    });
+    it("MISSION-CLAIM-001/TX-IDEMPOTENCY-001: duplicate claims credit gold and material once; expired progress cannot claim", async () => {
+      await workshopFixture();
+      const { recordMissionEvent, createMissionState } =
+        await import("../../../qiankun-farm/src/game/v2/missionRuntime");
+      const missions = recordMissionEvent(
+        createMissionState(Date.now()),
+        "SOW",
+        Date.now(),
+      );
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET mission_state=$2 WHERE user_id=$1",
+        [userId, missions],
+      );
+      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const input = {
+        userId,
+        launchToken: "token",
+        requestId: "mission-a",
+        command: { kind: "claimMission" as const, missionId: "MISSION_D01" },
+      };
+      await mutateFarmV2Workshop(input);
+      await mutateFarmV2Workshop(input);
+      await expect(
+        mutateFarmV2Workshop({ ...input, requestId: "mission-b" }),
+      ).rejects.toThrow("MISSION_ALREADY_CLAIMED");
+      const row = (
+        await storage.pool.query(
+          "SELECT warehouse_state,mission_state FROM farm_v2_player_state WHERE user_id=$1",
+          [userId],
+        )
+      ).rows[0];
+      expect(row.warehouse_state.workshop.materials.蘊靈砂).toBe(11);
+      expect(row.mission_state.progress.MISSION_D01.claimed).toBe(true);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+            [userId],
+          )
+        ).rows[0].coin_balance,
+      ).toBe(102);
+      const old = recordMissionEvent(
+        createMissionState(Date.now() - 86400000),
+        "SOW",
+        Date.now() - 86400000,
+      );
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET mission_state=$2 WHERE user_id=$1",
+        [userId, old],
+      );
+      await expect(
+        mutateFarmV2Workshop({ ...input, requestId: "expired" }),
+      ).rejects.toThrow("MISSION_NOT_COMPLETE");
+    });
+    it("PET-FOOD-001/PET-REFEED-001: Core food purchase and feeding settle atomically with replay protection", async () => {
+      await workshopFixture();
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET effective_paid_crystals=999,pet_state=$2 WHERE user_id=$1",
+        [userId, { owned: ["噬時諦聽"], activePetId: null, activeUntil: null }],
+      );
+      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "food",
+        command: { kind: "buyFood", quantity: 3 },
+      });
+      const feed = {
+        userId,
+        launchToken: "token",
+        requestId: "feed",
+        command: { kind: "feedPet" as const, petId: "噬時諦聽" },
+      };
+      await mutateFarmV2Workshop(feed);
+      await mutateFarmV2Workshop(feed);
+      const row = (
+        await storage.pool.query(
+          "SELECT warehouse_state,pet_state FROM farm_v2_player_state WHERE user_id=$1",
+          [userId],
+        )
+      ).rows[0];
+      expect(row.warehouse_state.workshop.petFood).toBe(0);
+      expect(row.pet_state.activePetId).toBe("噬時諦聽");
+      expect(row.pet_state.activeUntil).toBeGreaterThan(
+        Date.now() + 23 * 3600000,
+      );
+      await expect(
+        mutateFarmV2Workshop({ ...feed, requestId: "feed-empty" }),
+      ).rejects.toThrow("INSUFFICIENT_PET_FOOD");
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+            [userId],
+          )
+        ).rows[0].coin_balance,
+      ).toBe(94);
+    });
+    it("POT-ATOMIC-001: unrecoverable reserved input compensates net posting once and cannot reopen", async () => {
+      await workshopFixture();
+      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const input = {
+        userId,
+        launchToken: "token",
+        requestId: "compensate-craft",
+        command: {
+          kind: "synthesize" as const,
+          species: 1,
+          grade: "黃" as const,
+          useDisplayed: false,
+        },
+      };
+      dropWalletResponse = true;
+      await expect(mutateFarmV2Workshop(input)).rejects.toThrow();
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(warehouse_state,'{crops,1}','0') WHERE user_id=$1",
+        [userId],
+      );
+      await expect(mutateFarmV2Workshop(input)).rejects.toThrow(
+        "FARM_MUTATION_COMPENSATED",
+      );
+      await expect(mutateFarmV2Workshop(input)).rejects.toThrow(
+        "FARM_MUTATION_COMPENSATED",
+      );
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+            [userId],
+          )
+        ).rows[0].coin_balance,
+      ).toBe(100);
+      const inspect = await storage.pool.query(
+        "SELECT farm_v2_operator_wallet_reconcile($1,'compensate-craft','inspect','case','operator','isolated-test') result",
+        [userId],
+      );
+      expect(inspect.rows[0].result.primary).toHaveLength(1);
+      const again = await storage.pool.query(
+        "SELECT farm_v2_apply_wallet_transaction($1,'compensate-craft',12,'coin','credit','farm_pot_synthesis','1:0:1','farm_pot_synthesis') result",
+        [userId],
+      );
+      expect(again.rows[0].result.result_status).toBe("compensated");
+    });
+    it("PET-OWN-001/FORMATION-PREMIUM-001: correct currencies, permanent ownership and free switching", async () => {
+      await workshopFixture();
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET pet_state=$2 WHERE user_id=$1",
+        [userId, { owned: [], activePetId: null, activeUntil: null }],
+      );
+      await storage.pool.query(
+        "UPDATE core_wallets SET coin_balance=500,crystal_balance=500 WHERE owner_id=$1",
+        [userId],
+      );
+      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "dog-buy",
+        command: { kind: "buyPet", petId: "尋星犬" },
+      });
+      await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "lion-buy",
+        command: { kind: "buyPet", petId: "辟邪狻猊" },
+      });
+      await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "formation-buy",
+        command: { kind: "buyFormation" },
+      });
+      const switched = await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "formation-switch",
+        command: {
+          kind: "switchFormation",
+          formationId: "FORMATION_PREMIUM_V2",
+        },
+      });
+      expect(switched.state.activeFormation).toBe("FORMATION_PREMIUM_V2");
+      await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "formation-off",
+        command: { kind: "switchFormation", formationId: null },
+      });
+      await expect(
+        mutateFarmV2Workshop({
+          userId,
+          launchToken: "token",
+          requestId: "formation-duplicate",
+          command: { kind: "buyFormation" },
+        }),
+      ).rejects.toThrow("FORMATION_ALREADY_OWNED");
+      const balance = (
+        await storage.pool.query(
+          "SELECT coin_balance,crystal_balance FROM core_wallets WHERE owner_id=$1",
+          [userId],
+        )
+      ).rows[0];
+      expect(balance).toEqual({ coin_balance: 200, crystal_balance: 12 });
+      const raw = await storage.pool.query(
+        "SELECT farm_v2_apply_wallet_transaction($1,'wrong-currency',100,'coin','debit','farm_pet_purchase','2','farm_pet_purchase') result",
+        [userId],
+      );
+      expect(raw.rows[0].result.result_status).toBe("invalid");
+    });
+    it("FRIEND-REL-001/CAVE-VISIT-001: active reciprocal relation only, removal and suspension deny access", async () => {
+      const target = "00000000-0000-0000-0000-000000000002";
+      await storage.pool.query(
+        "INSERT INTO auth.users(id) VALUES($1) ON CONFLICT DO NOTHING",
+        [target],
+      );
+      await storage.pool.query(
+        "INSERT INTO core.users(id,auth_user_id,status) VALUES('10000000-0000-0000-0000-000000000002',$1,'active') ON CONFLICT(id) DO UPDATE SET status='active'",
+        [target],
+      );
+      await storage.pool.query(
+        "INSERT INTO platform_friendships VALUES($1,$2,'active') ON CONFLICT(user_a_id,user_b_id) DO UPDATE SET status='active'",
+        [userId, target],
+      );
+      const read = async () =>
+        (
+          await storage.pool.query(
+            "SELECT farm_v2_read_friend_access($1,$2) result",
+            [userId, target],
+          )
+        ).rows[0].result;
+      await storage.pool.query(
+        "INSERT INTO farm_v2_player_state(user_id,access_state,warehouse_state,mission_state,pet_state,farmer_state) SELECT $1,access_state,jsonb_set(warehouse_state,'{workshop}',$2),mission_state,pet_state,farmer_state FROM farm_v2_player_state WHERE user_id=$3",
+        [
+          target,
+          {
+            pots: [
+              {
+                id: "private-instance",
+                species: 1,
+                grade: "黃",
+                displayed: true,
+                acquiredAt: 0,
+              },
+            ],
+            decor: [],
+            potGallery: { "1:黃": 0 },
+            decorGallery: {},
+            materials: { 蘊靈砂: 20, 九霄玉髓: 10 },
+          },
+          userId,
+        ],
+      );
+      const originalFetch = globalThis.fetch;
+      vi.stubGlobal("fetch", async (url: unknown, init: RequestInit) => {
+        if (String(url).endsWith("/friends")) {
+          const body = JSON.parse(String(init.body));
+          const result = (
+            await storage.pool.query(
+              "SELECT farm_v2_read_friend_access($1,$2) result",
+              [userId, body.targetId ?? null],
+            )
+          ).rows[0].result;
+          return new Response(JSON.stringify(result), {
+            status: result.allowed === false ? 403 : 200,
+          });
+        }
+        return originalFetch(url as Parameters<typeof originalFetch>[0], init);
+      });
+      const { visitFarmV2Cave } = await import("./farm-v2-friends");
+      const projection = await visitFarmV2Cave({
+        launchToken: "token",
+        targetId: target,
+      });
+      expect(projection).toEqual({
+        ownerId: target,
+        readOnly: true,
+        lingyun: 1,
+        pots: [{ species: 1, grade: "黃" }],
+        decor: [],
+        activeFormation: null,
+      });
+      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      await expect(
+        mutateFarmV2Workshop({
+          userId,
+          launchToken: "token",
+          requestId: "foreign-asset",
+          command: { kind: "displayPot", potId: "private-instance" },
+        }),
+      ).rejects.toThrow("POT_NOT_OWNED");
+      expect(await read()).toEqual({ allowed: true });
+      await storage.pool.query(
+        "UPDATE platform_friendships SET status='blocked' WHERE user_b_id=$1",
+        [target],
+      );
+      expect(await read()).toEqual({ allowed: false });
+      await storage.pool.query(
+        "UPDATE platform_friendships SET status='active' WHERE user_b_id=$1",
+        [target],
+      );
+      await storage.pool.query(
+        "UPDATE core.users SET status='archived' WHERE auth_user_id=$1",
+        [target],
+      );
+      expect(await read()).toEqual({ allowed: false });
+      await storage.pool.query(
+        "DELETE FROM platform_friendships WHERE user_b_id=$1",
+        [target],
+      );
+      expect(await read()).toEqual({ allowed: false });
+    });
+    it.skipIf(process.env.FARM_V2_BROWSER_ACCEPTANCE !== "1")(
+      "desktop/mobile workshop clicks settle real isolated PostgreSQL assets (test identity only)",
+      async () => {
+        await workshopFixture();
+        const express = (await import("express")).default;
+        const { build } = await import("esbuild");
+        const { fileURLToPath } = await import("node:url");
+        const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+        const { chromium } = await import(
+          process.env.FARM_V2_PLATFORM_CHECKOUT +
+            "/node_modules/@playwright/test/index.mjs"
+        );
+        const bundle = await build({
+          stdin: {
+            contents: `import React,{useState,useEffect} from 'react';import{createRoot}from'react-dom/client';import{FarmWorkshopPanel}from'./src/game/v2/FarmWorkshopPanel';function App(){const[data,setData]=useState(null);useEffect(()=>{fetch('/state').then(r=>r.json()).then(setData)},[]);if(!data)return <p>讀取中</p>;return <><p>隔離操作驗收・測試身分，非正式環境</p><FarmWorkshopPanel {...data} busy={false} transact={async command=>{const response=await fetch('/workshop',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(command)});if(!response.ok)throw new Error(await response.text());setData(await(await fetch('/state')).json());return true;}}/></>;}createRoot(document.getElementById('root')).render(<App/>);`,
+            resolveDir: fileURLToPath(
+              new URL("../../../qiankun-farm", import.meta.url),
+            ),
+            loader: "tsx",
+          },
+          bundle: true,
+          write: false,
+          platform: "browser",
+          jsx: "automatic",
+        });
+        const app = express();
+        app.use(express.json());
+        app.get("/", (_req, res) =>
+          res
+            .type("html")
+            .send(
+              '<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:sans-serif;max-width:720px;margin:auto;padding:12px}button,select{min-height:44px;margin:4px}article{padding:8px;overflow-wrap:anywhere}fieldset{min-width:0}</style><div id="root"></div><script src="/app.js"></script>',
+            ),
+        );
+        app.get("/app.js", (_req, res) =>
+          res.type("js").send(bundle.outputFiles[0].text),
+        );
+        app.get("/state", async (_req, res) => {
+          const row = (
+            await storage.pool.query(
+              "SELECT warehouse_state,mission_state,pet_state FROM farm_v2_player_state WHERE user_id=$1",
+              [userId],
+            )
+          ).rows[0];
+          res.json({
+            warehouse: row.warehouse_state,
+            missions: row.mission_state,
+            pets: { owned: [], activePetId: null, activeUntil: null },
+          });
+        });
+        app.post("/workshop", async (req, res) => {
+          try {
+            res.json(
+              await mutateFarmV2Workshop({
+                userId,
+                launchToken: "token",
+                requestId: crypto.randomUUID(),
+                command: req.body,
+              }),
+            );
+          } catch (e) {
+            res.status(409).send(String(e));
+          }
+        });
+        const server = await new Promise<import("node:http").Server>(
+          (resolve) => {
+            const s = app.listen(0, "127.0.0.1", () => resolve(s));
+          },
+        );
+        const port = (server.address() as import("node:net").AddressInfo).port;
+        const browser = await chromium.launch({
+          executablePath: "/usr/bin/chromium",
+          headless: true,
+          args: ["--no-sandbox"],
+        });
+        try {
+          for (const [label, width, height] of [
+            ["desktop", 1280, 900],
+            ["mobile", 390, 844],
+          ] as const) {
+            const page = await browser.newPage({ viewport: { width, height } });
+            page.setDefaultTimeout(5000);
+            page.on("dialog", (d: any) => d.accept());
+            await page.goto("http://127.0.0.1:" + port);
+            await page.getByRole("button", { name: "確認合成一株" }).click();
+            await page
+              .getByRole("button", { name: "展示／替換" })
+              .first()
+              .waitFor();
+            await page
+              .getByRole("button", { name: "展示／替換" })
+              .first()
+              .click();
+            await page.getByRole("button", { name: "取下" }).waitFor();
+            await page
+              .getByRole("button", { name: "洞府", exact: true })
+              .click();
+            if (label === "desktop") {
+              await page.getByText("陳設商店（V2）", { exact: true }).click();
+              const purchaseDone = page.waitForResponse("**/workshop", {
+                timeout: 5000,
+              });
+              await page
+                .getByRole("button", { name: "購買入倉" })
+                .first()
+                .click();
+              const purchaseResponse = await purchaseDone;
+              expect(purchaseResponse.status()).toBe(200);
+            }
+            await page.getByLabel("位置", { exact: true }).waitFor();
+            const placeDone = page.waitForResponse("**/workshop", {
+              timeout: 5000,
+            });
+            await page.getByLabel("位置", { exact: true }).selectOption("1");
+            await placeDone;
+            await page.waitForFunction(
+              "document.querySelector('select')?.value === '1'",
+              undefined,
+              { timeout: 5000 },
+            );
+            const removeDone = page.waitForResponse("**/workshop", {
+              timeout: 5000,
+            });
+            await page.getByLabel("位置", { exact: true }).selectOption("");
+            await removeDone;
+            await page.waitForFunction(
+              "document.querySelector('select')?.value === ''",
+              undefined,
+              { timeout: 5000 },
+            );
+            expect(
+              await page.evaluate("document.body.scrollWidth <= innerWidth"),
+            ).toBe(true);
+            await page.screenshot({
+              path: "/tmp/farm-v2-workshop-" + label + ".png",
+              fullPage: true,
+            });
+            await page.close();
+          }
+          const row = (
+            await storage.pool.query(
+              "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+              [userId],
+            )
+          ).rows[0].warehouse_state;
+          expect(row.workshop.pots).toHaveLength(2);
+          expect(
+            row.workshop.pots.filter(
+              (p: { displayed: boolean }) => p.displayed,
+            ),
+          ).toHaveLength(1);
+          expect(row.workshop.decor).toHaveLength(1);
+          expect(row.workshop.decor[0].slot).toBe(null);
+          expect(row.crops[1]).toBe(14);
+        } finally {
+          await browser.close();
+          await new Promise<void>((resolve) => server.close(() => resolve()));
+        }
+      },
+      20000,
+    );
     beforeEach(async () => {
       dropWalletResponse = false;
       dropFarmCommit = false;

@@ -1,3 +1,4 @@
+import { settleWorkshopTimedRights } from "../../../qiankun-farm/src/game/v2/workshopRuntime";
 import { and, eq } from "drizzle-orm";
 import { farmV2PlayerStateTable, farmV2LandTable } from "@workspace/db";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
@@ -126,7 +127,10 @@ export function settleFarmV2Farmer(input: Input) {
       if (rows.length !== 6) throw new Error("FARM_INITIALIZATION_INCOMPLETE");
       if (!player.firstFarmEnteredAt)
         throw new Error("FIRST_FARM_ENTERED_AT_REQUIRED");
-      let warehouse = player.warehouseState as FarmWarehouse;
+      let warehouse = settleWorkshopTimedRights(
+        player.warehouseState as FarmWarehouse,
+        now,
+      );
       let creditedQuantity = 0;
       for (const row of rows) {
         const result = executeFarmerLandTransaction({

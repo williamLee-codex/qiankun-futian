@@ -9,15 +9,17 @@ RULES: 209 FINAL rows; 208 effective FINAL rules. PET-REFUND-001 is still marked
 
 Canonical overrides supplementary conflicts: pending cap=3, assist fields=2–5, borrow formula=ceil, farmer early guard, first chaos seed and cursor. Supplement initial farmer ON is applied only to new state; existing preferences are preserved.
 
-Delivered: authenticated idempotent chaos claim, farmer per-land settings and row-locked lazy settlement, correct blessing at original maturity timestamps. UI re-reads persisted server state. Locked fields 1–5 may purchase seeds. No wallet balance mutations or migration changes.
+Delivered before this batch: authenticated idempotent chaos claim, farmer per-land settings and lazy settlement, seven-day blessing and seed purchases. Preserved.
 
-Remaining: pot synthesis/material costs/first rewards/unique instances, cave/decor shop and persistence, friend/visit endpoints, pet purchase/food/feeding endpoints, mission claims, formations and RPG data. Pure runtimes do not count as playable features. Desktop/mobile browser acceptance not yet performed. Final scene integration remains ASSET BLOCKED; production identity/migrations are deployment blockers only.
+This batch: authenticated workshop API, Core-priced pot/decor/mission/pet/food/premium-formation transactions, unique persisted pot/decor instances and galleries, same-species one-grade synthesis, six display slots and lingyun, six cave decor positions with compatibility and collapse recovery, mission claims, pet feeding, formation switching, authoritative friend list and readonly cave projection. Frontend exposes real saved state and same-key interruption retry. See `farm-v2-workshop-delivery.md` for evidence and limits.
+
+Remaining: borrow/assist writes, final 2D cave/scene/art, decor gallery images, rest-position pet rendering, attendance/festival/RPG formation acquisition. ASSET BLOCKED applies to approved scene originals. Production DB/API identity and applying reviewed migrations remain deployment blockers. Cross-database wallet settlement uses a durable saga, **not a single ACID transaction**: POT-ATOMIC-001/POT-GALLERY-004 strict cross-database atomicity is not certified. No production acceptance is claimed.
 
 | Rule ID | Module | Status |
 |---|---|---|
-| PET-FOOD-001 | 靈寵 | Pending integration or focused verification |
-| PET-ACTIVE-001 | 靈寵 | Pending integration or focused verification |
-| PET-SWAP-001 | 靈寵 | Pending integration or focused verification |
+| PET-FOOD-001 | 靈寵 | Server logic + management UI; isolated local verification, not production acceptance |
+| PET-ACTIVE-001 | 靈寵 | PARTIAL: backend operation delivered; final scene/remaining ownership sources pending |
+| PET-SWAP-001 | 靈寵 | Server logic + management UI; isolated local verification, not production acceptance |
 | FRIEND-BORROW-DAILY-001 | 好友 | Pending integration or focused verification |
 | FRIEND-ASSIST-DAILY-001 | 好友 | Pending integration or focused verification |
 | FRIEND-BORROW-CD-001 | 好友 | Pending integration or focused verification |
@@ -41,15 +43,15 @@ Remaining: pot synthesis/material costs/first rewards/unique instances, cave/dec
 | CHAOS-SEED-001 | 福田 | Pending integration or focused verification |
 | CHAOS-SEED-002 | 福田 | Pending integration or focused verification |
 | CHAOS-SEED-003 | 福田 | Pending integration or focused verification |
-| MISSION-D-001 | 任務 | Pending integration or focused verification |
-| MISSION-W-001 | 任務 | Pending integration or focused verification |
-| POT-GRADE-001 | 盆栽 | Pending integration or focused verification |
-| POT-RATIO-001 | 盆栽 | Pending integration or focused verification |
-| POT-RATIO-002 | 盆栽 | Pending integration or focused verification |
-| POT-COST-001 | 盆栽 | Pending integration or focused verification |
-| POT-DISPLAY-001 | 盆栽 | Pending integration or focused verification |
-| POT-GALLERY-001 | 盆栽 | Pending integration or focused verification |
-| POT-GALLERY-002 | 盆栽 | Pending integration or focused verification |
+| MISSION-D-001 | 任務 | Server logic + management UI; isolated local verification, not production acceptance |
+| MISSION-W-001 | 任務 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-GRADE-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-RATIO-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-RATIO-002 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-COST-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-DISPLAY-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-GALLERY-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-GALLERY-002 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
 | FRIEND-CAP-001 | 好友 | Pending integration or focused verification |
 | BORROW-001 | 好友 | Pending integration or focused verification |
 | BORROW-002 | 好友 | Pending integration or focused verification |
@@ -61,31 +63,31 @@ Remaining: pot synthesis/material costs/first rewards/unique instances, cave/dec
 | PET-EFFECT-002 | 靈寵 | Pending integration or focused verification |
 | PET-EFFECT-003 | 靈寵 | Pending integration or focused verification |
 | WAREHOUSE-001 | 福田倉庫 | Pending integration or focused verification |
-| LINGYUN-001 | 洞府 | Pending integration or focused verification |
-| LINGYUN-SLOT-001 | 洞府 | Pending integration or focused verification |
+| LINGYUN-001 | 洞府 | Server logic + management UI; isolated local verification, not production acceptance |
+| LINGYUN-SLOT-001 | 洞府 | Server logic + management UI; isolated local verification, not production acceptance |
 | LINGYUN-FX-001 | 洞府 | Pending integration or focused verification |
-| CAVE-VISIT-001 | 洞府 | Pending integration or focused verification |
+| CAVE-VISIT-001 | 洞府 | PARTIAL: backend operation delivered; final scene/remaining ownership sources pending |
 | CAVE-NAV-001 | 洞府 | Pending integration or focused verification |
 | CAVE-SHOT-001 | 洞府 | Pending integration or focused verification |
 | FORMATION-001 | 洞府護陣 | Pending integration or focused verification |
 | FORMATION-PAID-001 | 洞府護陣 | Pending integration or focused verification |
 | FORMATION-FEST-001 | 洞府護陣 | Pending integration or focused verification |
 | FORMATION-ATTEND-001 | 洞府護陣 | Pending integration or focused verification |
-| POT-BONUS-001 | 盆栽 | Pending integration or focused verification |
-| POT-BONUS-002 | 盆栽 | Pending integration or focused verification |
-| POT-DISPLAY-002 | 盆栽 | Pending integration or focused verification |
-| POT-DISPLAY-003 | 盆栽 | Pending integration or focused verification |
+| POT-BONUS-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-BONUS-002 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-DISPLAY-002 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-DISPLAY-003 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
 | FRIEND-CAP-002 | 好友 | Pending integration or focused verification |
 | DONGFU-SLOT-001 | 洞府 | Pending integration or focused verification |
 | DONGFU-SLOT-002 | 洞府 | Pending integration or focused verification |
-| DECOR-CORE-001 | 洞府陳設 | Pending integration or focused verification |
-| DECOR-CORE-002 | 洞府陳設 | Pending integration or focused verification |
-| DECOR-CORE-003 | 洞府陳設 | Pending integration or focused verification |
-| DECOR-VERSION-001 | 洞府陳設 | Pending integration or focused verification |
-| DECOR-GALLERY-001 | 洞府陳設 | Pending integration or focused verification |
-| DECOR-GALLERY-002 | 洞府陳設 | Pending integration or focused verification |
-| FORMATION-CORE-002 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-CORE-003 | 洞府護陣 | Pending integration or focused verification |
+| DECOR-CORE-001 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
+| DECOR-CORE-002 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
+| DECOR-CORE-003 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
+| DECOR-VERSION-001 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
+| DECOR-GALLERY-001 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
+| DECOR-GALLERY-002 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
+| FORMATION-CORE-002 | 洞府護陣 | PARTIAL: backend operation delivered; final scene/remaining ownership sources pending |
+| FORMATION-CORE-003 | 洞府護陣 | Server logic + management UI; isolated local verification, not production acceptance |
 | FORMATION-SOURCE-001 | 洞府護陣 | Pending integration or focused verification |
 | FORMATION-ATTEND-002 | 洞府護陣 | Pending integration or focused verification |
 | FORMATION-HISTORY-001 | 洞府護陣 | Pending integration or focused verification |
@@ -99,16 +101,16 @@ Remaining: pot synthesis/material costs/first rewards/unique instances, cave/dec
 | CAVE-INTERIOR-001 | 洞府 | Pending integration or focused verification |
 | CAVE-RPGREF-001 | 洞府 | Pending integration or focused verification |
 | CAVE-ALCHEMY-002 | 洞府 | Pending integration or focused verification |
-| MISSION-CLAIM-001 | 任務 | Pending integration or focused verification |
-| MISSION-CLAIM-002 | 任務 | Pending integration or focused verification |
+| MISSION-CLAIM-001 | 任務 | Server logic + management UI; isolated local verification, not production acceptance |
+| MISSION-CLAIM-002 | 任務 | Server logic + management UI; isolated local verification, not production acceptance |
 | MISSION-EXCHANGE-001 | 任務 | Pending integration or focused verification |
 | EXCHANGE-ATOMIC-001 | 福田 | Pending integration or focused verification |
 | EXCHANGE-CHOICE-001 | 福田 | Pending integration or focused verification |
-| POT-ATOMIC-001 | 盆栽 | Pending integration or focused verification |
-| POT-UPGRADE-001 | 盆栽 | Pending integration or focused verification |
-| POT-NOREVERSE-001 | 盆栽 | Pending integration or focused verification |
-| POT-LOCATION-001 | 盆栽 | Pending integration or focused verification |
-| POT-UPGRADE-CHOICE-001 | 盆栽 | Pending integration or focused verification |
+| POT-ATOMIC-001 | 盆栽 | PARTIAL: owner serialization, durable recovery/compensation verified; strict cross-DB ACID BLOCKED |
+| POT-UPGRADE-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-NOREVERSE-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-LOCATION-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-UPGRADE-CHOICE-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
 | POT-VISUAL-001 | 盆栽 | Pending integration or focused verification |
 | FRIEND-REQUEST-001 | 好友 | Pending integration or focused verification |
 | FRIEND-REMOVE-001 | 好友 | Pending integration or focused verification |
@@ -117,8 +119,8 @@ Remaining: pot synthesis/material costs/first rewards/unique instances, cave/dec
 | BORROW-RESULT-001 | 好友 | Pending integration or focused verification |
 | ASSIST-RESULT-001 | 好友 | Pending integration or focused verification |
 | ASSIST-RACE-001 | 好友 | Pending integration or focused verification |
-| PET-OWN-001 | 靈寵 | Pending integration or focused verification |
-| PET-ACTIVE-002 | 靈寵 | Pending integration or focused verification |
+| PET-OWN-001 | 靈寵 | PARTIAL: backend operation delivered; final scene/remaining ownership sources pending |
+| PET-ACTIVE-002 | 靈寵 | Server logic + management UI; isolated local verification, not production acceptance |
 | PET-EFFECT-004 | 靈寵 | Pending integration or focused verification |
 | FARMER-PREF-001 | 專屬農夫 | Implemented in server/client; local validation |
 | FARMER-SEED-001 | 專屬農夫 | Implemented in server/client; local validation |
@@ -146,10 +148,10 @@ Remaining: pot synthesis/material costs/first rewards/unique instances, cave/dec
 | CHAOS-CLAIM-001 | 福田 | Implemented in server/client; local validation |
 | CHAOS-OFFLINE-001 | 福田 | Pending integration or focused verification |
 | TX-IDEMPOTENCY-001 | 福田 | Pending integration or focused verification |
-| DECOR-PURCHASE-001 | 洞府陳設 | Pending integration or focused verification |
-| DECOR-LOCATION-001 | 洞府陳設 | Pending integration or focused verification |
-| DECOR-COMPAT-001 | 洞府陳設 | Pending integration or focused verification |
-| DECOR-UNIQUE-001 | 洞府陳設 | Pending integration or focused verification |
+| DECOR-PURCHASE-001 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
+| DECOR-LOCATION-001 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
+| DECOR-COMPAT-001 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
+| DECOR-UNIQUE-001 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
 | CAVE-RENDER-001 | 洞府 | Pending integration or focused verification |
 | CAVE-RESPONSIVE-001 | 洞府 | Pending integration or focused verification |
 | CAVE-ASSETFAIL-001 | 洞府 | Pending integration or focused verification |
@@ -168,22 +170,22 @@ Remaining: pot synthesis/material costs/first rewards/unique instances, cave/dec
 | SEED-ASSET-002 | 福田倉庫 | Pending integration or focused verification |
 | WAREHOUSE-CAT-001 | 福田倉庫 | Pending integration or focused verification |
 | WAREHOUSE-SORT-001 | 福田倉庫 | Pending integration or focused verification |
-| POT-CONFIRM-001 | 盆栽 | Pending integration or focused verification |
-| POT-GALLERY-003 | 盆栽 | Pending integration or focused verification |
-| POT-GALLERY-004 | 盆栽 | Pending integration or focused verification |
-| LINGYUN-CALC-001 | 洞府 | Pending integration or focused verification |
-| LINGYUN-NOSTAT-001 | 洞府 | Pending integration or focused verification |
+| POT-CONFIRM-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-GALLERY-003 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-GALLERY-004 | 盆栽 | PARTIAL: owner serialization, durable recovery/compensation verified; strict cross-DB ACID BLOCKED |
+| LINGYUN-CALC-001 | 洞府 | Server logic + management UI; isolated local verification, not production acceptance |
+| LINGYUN-NOSTAT-001 | 洞府 | Server logic + management UI; isolated local verification, not production acceptance |
 | DECOR-ARRANGE-001 | 洞府陳設 | Pending integration or focused verification |
 | DECOR-ARRANGE-002 | 洞府陳設 | Pending integration or focused verification |
 | DECOR-NOTSIZE-001 | 洞府陳設 | Pending integration or focused verification |
 | CAVE-POT-VISUAL-001 | 洞府外觀 | Pending integration or focused verification |
 | CAVE-PLAQUE-001 | 洞府外觀 | Pending integration or focused verification |
 | CAVE-OWNER-001 | 洞府 | Pending integration or focused verification |
-| CAVE-VISIT-002 | 洞府 | Pending integration or focused verification |
-| CAVE-VISIT-003 | 洞府 | Pending integration or focused verification |
+| CAVE-VISIT-002 | 洞府 | PARTIAL: backend operation delivered; final scene/remaining ownership sources pending |
+| CAVE-VISIT-003 | 洞府 | PARTIAL: backend operation delivered; final scene/remaining ownership sources pending |
 | FORMATION-ATTEND-003 | 洞府護陣 | Pending integration or focused verification |
 | FORMATION-FEST-002 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-EXPIRE-001 | 洞府護陣 | Pending integration or focused verification |
+| FORMATION-EXPIRE-001 | 洞府護陣 | Server logic + management UI; isolated local verification, not production acceptance |
 | FORMATION-EFFECT-001 | 洞府護陣 | Pending integration or focused verification |
 | FORMATION-RPG-002 | 洞府護陣 | Pending integration or focused verification |
 | RULE-PROVENANCE-001 | 治理 | Pending integration or focused verification |
@@ -195,19 +197,19 @@ Remaining: pot synthesis/material costs/first rewards/unique instances, cave/dec
 | BORROW-MATURE-001 | 好友 | Pending integration or focused verification |
 | ASSIST-NOPET-001 | 好友 | Pending integration or focused verification |
 | PET-REST-002 | 靈寵 | Pending integration or focused verification |
-| POT-SPECIES-001 | 盆栽 | Pending integration or focused verification |
-| POT-SLOT-001 | 盆栽 | Pending integration or focused verification |
+| POT-SPECIES-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| POT-SLOT-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
 | POT-SIZE-001 | 盆栽 | Pending integration or focused verification |
-| POT-NUMBER-001 | 盆栽 | Pending integration or focused verification |
-| DECOR-RELEASE-001 | 洞府陳設 | Pending integration or focused verification |
-| DECOR-PRICE-001 | 洞府陳設 | Pending integration or focused verification |
+| POT-NUMBER-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
+| DECOR-RELEASE-001 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
+| DECOR-PRICE-001 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
 | DECOR-GALLERY-003 | 洞府陳設 | Pending integration or focused verification |
 | FORMATION-NOUPGRADE-001 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-PREMIUM-001 | 洞府護陣 | Pending integration or focused verification |
+| FORMATION-PREMIUM-001 | 洞府護陣 | Server logic + management UI; isolated local verification, not production acceptance |
 | FORMATION-ATTEND-004 | 洞府護陣 | Pending integration or focused verification |
 | CAVE-BRAND-001 | 洞府 | Pending integration or focused verification |
 | CAVE-NEXT-001 | 洞府外觀 | Pending integration or focused verification |
-| PET-REFEED-001 | 靈寵 | Pending integration or focused verification |
+| PET-REFEED-001 | 靈寵 | Server logic + management UI; isolated local verification, not production acceptance |
 | DAILY-TZ-001 | 好友/任務 | Pending integration or focused verification |
 | PET-REFUND-002 | 靈寵 | Pending integration or focused verification |
 | FORMATION-RPG-PROP-001 | 洞府護陣 | Pending integration or focused verification |

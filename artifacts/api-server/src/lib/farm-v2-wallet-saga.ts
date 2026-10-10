@@ -12,6 +12,7 @@ import {
 
 type WalletCommand = Omit<FarmWalletMutationInput, "launchToken">;
 type WalletJournal = {
+  assetPlan?: unknown;
   command: WalletCommand;
   result?: FarmWalletMutationResult;
   compensation?: FarmWalletMutationResult;
@@ -83,7 +84,7 @@ export async function applyFarmV2WalletStep(
       walletDirection: input.direction,
       walletCurrency: input.currency,
       walletAmount: input.amount,
-      walletTransaction: { command },
+      walletTransaction: { ...journal, command },
       updatedAt: new Date(),
     })
     .where(mutationWhere(input.userId, input.requestId));
@@ -92,7 +93,7 @@ export async function applyFarmV2WalletStep(
     .update(farmV2MutationTable)
     .set({
       transactionState: "WALLET_APPLIED",
-      walletTransaction: { command, result },
+      walletTransaction: { ...journal, command, result },
       failureCode: null,
       updatedAt: new Date(),
     })
@@ -155,6 +156,7 @@ export async function compensateFarmV2WalletStep(input: {
 }
 
 const PERMANENT_FARM_RECOVERY_CODES = new Set([
+  "WORKSHOP_RESERVATION_CHANGED",
   "FARM_PLAYER_STATE_NOT_FOUND",
   "INVALID_FARM_LAND_ID",
   "INVALID_EXCHANGE_QUANTITY",

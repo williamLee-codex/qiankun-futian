@@ -48,6 +48,17 @@ export async function mutateFarmV2Wallet(
       input.referenceType === "farm_crop_exchange" &&
       input.direction === "credit" &&
       (input.currency === "coin" || input.currency === "crystal")) ||
+    ([
+      "farm_pot_synthesis",
+      "farm_decor_purchase",
+      "farm_mission_reward",
+      "farm_pet_food_purchase",
+    ].includes(input.reason) &&
+      input.referenceType === input.reason &&
+      input.currency === "coin") ||
+    (["farm_pet_purchase", "farm_formation_purchase"].includes(input.reason) &&
+      input.referenceType === input.reason &&
+      input.direction === "debit") ||
     (input.reason === "farm_wallet_compensation" &&
       input.referenceType === "farm_wallet_compensation" &&
       input.idempotencySuffix === "compensation" &&

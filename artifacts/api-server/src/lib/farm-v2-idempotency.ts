@@ -1,6 +1,6 @@
 import { assertFarmAuthorityFence } from "./farm-v2-authority-context";
 import { and, eq, sql } from "drizzle-orm";
-import { db, farmV2MutationTable } from "@workspace/db";
+import { db, farmV2MutationTable, farmV2PlayerStateTable } from "@workspace/db";
 import { journalDb } from "./farm-v2-wallet-saga";
 
 export async function runFarmV2IdempotentMutation<T>(input: {
@@ -43,6 +43,18 @@ export async function runFarmV2IdempotentMutation<T>(input: {
     await tx.execute(
       sql`select pg_advisory_xact_lock(hashtextextended(${input.userId + ":" + input.requestId}, 0))`,
     );
+
+    // Reserve workshop inputs across a lost Core response. Every mutation locks
+    // the owner first, so another operation cannot consume reserved assets.
+    await tx
+      .select({ userId: farmV2PlayerStateTable.userId })
+      .from(farmV2PlayerStateTable)
+      .where(eq(farmV2PlayerStateTable.userId, input.userId))
+      .for("update");
+    const reservations = await tx.execute(
+      sql`SELECT 1 FROM farm_v2_mutation WHERE user_id=${input.userId} AND request_id<>${input.requestId} AND transaction_state IN ('PENDING','WALLET_PENDING','WALLET_APPLIED','COMPENSATING') AND wallet_transaction->'assetPlan' IS NOT NULL LIMIT 1`,
+    );
+    if (reservations.rows.length) throw new Error("WORKSHOP_RECOVERY_REQUIRED");
 
     const [existing] = await tx
       .select()

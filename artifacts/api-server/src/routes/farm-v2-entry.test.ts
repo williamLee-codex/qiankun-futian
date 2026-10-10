@@ -31,6 +31,11 @@ vi.mock("../lib/farm-v2-gameplay", () => ({
   configureFarmV2Farmer: vi.fn(),
   settleFarmV2Farmer: vi.fn(),
 }));
+vi.mock("../lib/farm-v2-workshop", () => ({ mutateFarmV2Workshop: vi.fn() }));
+vi.mock("../lib/farm-v2-friends", () => ({
+  readFarmV2Friends: vi.fn(),
+  visitFarmV2Cave: vi.fn(),
+}));
 import router from "./farm-v2";
 let server: Server;
 let base: string;
@@ -57,6 +62,9 @@ afterEach(() => {
 });
 const paths = [
   "state",
+  "workshop",
+  "friends",
+  "friends/someone/cave",
   "chaos/claim",
   "farmer/1",
   "session",

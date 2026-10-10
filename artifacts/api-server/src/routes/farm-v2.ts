@@ -1,3 +1,5 @@
+import { readFarmV2Friends, visitFarmV2Cave } from "../lib/farm-v2-friends";
+import { mutateFarmV2Workshop } from "../lib/farm-v2-workshop";
 import {
   claimFarmV2ChaosSeeds,
   configureFarmV2Farmer,
@@ -115,6 +117,39 @@ router.get(
     } catch (error) {
       next(error);
     }
+  }),
+);
+
+router.get(
+  "/farm/v2/friends",
+  authorizedRoute(async (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json(await readFarmV2Friends(String(res.locals.launchToken)));
+  }),
+);
+router.get(
+  "/farm/v2/friends/:targetId/cave",
+  authorizedRoute(async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json(
+      await visitFarmV2Cave({
+        launchToken: String(res.locals.launchToken),
+        targetId: String(req.params.targetId),
+      }),
+    );
+  }),
+);
+router.post(
+  "/farm/v2/workshop",
+  authorizedRoute(async (req, res) => {
+    res.json(
+      await mutateFarmV2Workshop({
+        userId: String(res.locals.authenticatedUserId),
+        requestId: String(req.header("x-request-id")),
+        launchToken: String(res.locals.launchToken),
+        command: req.body,
+      }),
+    );
   }),
 );
 

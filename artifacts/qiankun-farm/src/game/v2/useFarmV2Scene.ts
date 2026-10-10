@@ -1,3 +1,4 @@
+import type { WorkshopCommand, WorkshopWarehouse } from "./workshopRuntime";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFarmV2Api } from "./farmV2ApiClient";
 import { mapServerLands, mapServerWarehouse } from "./farmV2SceneAdapter";
@@ -5,6 +6,12 @@ import type { Plot, CropInventory } from "../types";
 
 type Snapshot = {
   player: {
+    missionState?: import("./missionRuntime").MissionState;
+    petState?: {
+      owned: string[];
+      activePetId: string | null;
+      activeUntil: number | null;
+    };
     farmerState?: import("./farmerRuntime").FarmerState;
     chaosSeedState?: import("./chaosSeedRuntime").ChaosSeedState | null;
     warehouseState: {
@@ -16,6 +23,13 @@ type Snapshot = {
 };
 
 type SceneData = {
+  warehouse: WorkshopWarehouse;
+  missions?: import("./missionRuntime").MissionState;
+  pets?: {
+    owned: string[];
+    activePetId: string | null;
+    activeUntil: number | null;
+  };
   farmer?: import("./farmerRuntime").FarmerState;
   chaos?: import("./chaosSeedRuntime").ChaosSeedState | null;
   plots: Plot[];
@@ -39,6 +53,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [pendingWorkshop, setPendingWorkshop] = useState<WorkshopCommand[]>([]);
   const mutationInFlight = useRef(false);
   const readSequence = useRef(0);
 
@@ -54,6 +69,9 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     try {
       const snapshot = (await api!.readState()) as unknown as Snapshot;
       const nextData = {
+        warehouse: snapshot.player.warehouseState as WorkshopWarehouse,
+        missions: snapshot.player.missionState,
+        pets: snapshot.player.petState,
         farmer: snapshot.player.farmerState,
         chaos: snapshot.player.chaosSeedState,
         plots: mapServerLands(snapshot.lands),
@@ -66,6 +84,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     } catch (cause) {
       if (sequence !== readSequence.current) return false;
       setData(null);
+      setPendingWorkshop(api?.pendingWorkshop() ?? []);
       setReauthenticateUrl(api?.getReauthenticationUrl() ?? null);
       setError(cause instanceof Error ? cause.message : "FARM_V2_STATE_FAILED");
       return false;
@@ -129,6 +148,26 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     [api, launchToken, refresh],
   );
 
+  const workshop = useCallback(
+    async (command: WorkshopCommand) => {
+      if (!api || mutationInFlight.current) return false;
+      mutationInFlight.current = true;
+      setBusy(true);
+      try {
+        await api.workshop(command);
+        setPendingWorkshop(api.pendingWorkshop());
+        return await refresh();
+      } catch (cause) {
+        setPendingWorkshop(api.pendingWorkshop());
+        setError(cause instanceof Error ? cause.message : "WORKSHOP_FAILED");
+        return false;
+      } finally {
+        mutationInFlight.current = false;
+        setBusy(false);
+      }
+    },
+    [api, refresh],
+  );
   const endSession = useCallback(async () => {
     if (!api) return;
     mutationInFlight.current = true;
@@ -151,6 +190,16 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     setError("FARM_SESSION_NOT_ACTIVE");
   }, [api]);
   return {
+    readFriends: () => {
+      if (!api) throw new Error("AUTH_REQUIRED");
+      return api.readFriends();
+    },
+    visitCave: (id: string) => {
+      if (!api) throw new Error("AUTH_REQUIRED");
+      return api.visitCave(id);
+    },
+    workshop,
+    pendingWorkshop,
     endSession,
     data,
     error,

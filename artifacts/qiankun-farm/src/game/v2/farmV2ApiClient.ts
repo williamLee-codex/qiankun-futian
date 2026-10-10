@@ -243,6 +243,25 @@ export function createFarmV2Api(input: {
     claimChaosSeeds: () => request<unknown>("farm/v2/chaos/claim", "POST"),
     configureFarmer: (landId: number, enabled: boolean) =>
       request<unknown>(`farm/v2/farmer/${landId}`, "POST", { enabled }),
+    workshop: (command: import("./workshopRuntime").WorkshopCommand) =>
+      request<unknown>("farm/v2/workshop", "POST", command),
+    pendingWorkshop: () =>
+      [...pendingRequests.keys()].flatMap((key) => {
+        const [path, command] = JSON.parse(key);
+        return path === "farm/v2/workshop"
+          ? [command as import("./workshopRuntime").WorkshopCommand]
+          : [];
+      }),
+    readFriends: () =>
+      request<{ friends: { id: string }[] }>("farm/v2/friends", "GET"),
+    visitCave: (id: string) =>
+      request<{
+        readOnly: boolean;
+        lingyun: number;
+        pots: unknown[];
+        decor: unknown[];
+        activeFormation: string | null;
+      }>(`farm/v2/friends/${encodeURIComponent(id)}/cave`, "GET"),
     readState: () => request<FarmV2State>("farm/v2/state", "GET"),
     sow: (landId: number) =>
       request<FarmV2MutationResult>(`farm/v2/lands/${landId}/sow`, "POST"),
