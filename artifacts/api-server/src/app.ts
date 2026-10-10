@@ -3,8 +3,10 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { requestDeadline } from "./lib/farm-v2-request-deadline";
 
 const app: Express = express();
+app.use(requestDeadline());
 
 app.use(
   pinoHttp({

@@ -3,7 +3,7 @@ import { createDatabaseConnection, pool } from "@workspace/db";
 import { farmV2PlatformConnection } from "./farm-v2-platform";
 import { farmAuthorityContext } from "./farm-v2-authority-context";
 export const { pool: farmAuthorityPool } = createDatabaseConnection({
-  max: 2,
+  max: 1,
   connectionTimeoutMillis: 5000,
   idleTimeoutMillis: 5000,
   allowExitOnIdle: true,

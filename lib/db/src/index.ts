@@ -18,8 +18,10 @@ export function createDatabaseConnection(
   const pool = new Pool({
     ...config,
     ...options,
-    // Callers may adjust pool sizes, but cannot weaken production TLS.
-    ...(process.env.NODE_ENV === "production" ? { ssl: config.ssl } : {}),
+    // Production callers cannot raise pool limits or weaken TLS/timeouts.
+    ...(process.env.NODE_ENV === "production"
+      ? { ssl: config.ssl, max: 1, options: config.options }
+      : {}),
   });
   // pg removes failed clients itself. Active-client and idle-pool error
   // listeners keep a broken connection from crashing the API after rollback.

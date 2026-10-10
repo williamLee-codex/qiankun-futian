@@ -2152,13 +2152,13 @@ describe.skipIf(!enabled)(
     });
     afterAll(async () => {
       vi.unstubAllGlobals();
-      vi.unstubAllEnvs();
       await (
         await import("./farm-v2-wallet-saga")
       ).farmV2WalletJournalPool.end();
       await (await import("./farm-v2-authority")).farmAuthorityPool.end();
       await storage?.pool.end();
       await corePool?.end();
+      vi.unstubAllEnvs();
     });
     const seedInput = () => ({
       userId,

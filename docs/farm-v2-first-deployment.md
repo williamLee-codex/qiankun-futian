@@ -17,7 +17,7 @@ The API uses the same physical PostgreSQL database as Core Wallet, with a dedica
 ## Local deliverables
 
 - `api/index.mjs`, `vercel.json`, compiled `serverless.mjs`: Express function export without `listen()`. Existing CLI/local server entry remains. Generated runtime files are included in the function package; automatic Git deployments are disabled in the proposed API configuration.
-- `connection-config.ts`: verified production TLS, optional trusted CA file, max two primary pool clients, five-second connection/idle timeouts and reusable pools. The existing separate journal pool has max two clients, so budget **up to four per warm instance**, not two total. No pool is closed per request. Do not use a statement pooler; Supabase transaction pooling must retain one backend for BEGIN through COMMIT and support the existing transaction-level locks. No named prepared statements/session-local authority is introduced.
+- `connection-config.ts`: verified production TLS, optional trusted CA file, max one client in each runtime pool, five-second connection/idle timeouts and reusable pools. The separate authority and journal pools also have max one client each: budget **up to three per warm instance** plus separate operator capacity. They remain independent to prevent nested journal/authority work starving behind occupied gameplay clients. No pool is closed per request. The authority barrier uses session advisory locks, so **transaction/statement poolers are incompatible**. Production requires `FARM_DB_CONNECTION_MODE=session` or `direct`; this declaration is fail-closed, not proof of provider compatibility. Verify session affinity and backend lock cleanup with the provider.
 - `/api/healthz` is liveness only. `/api/healthz/ready` reads catalog/privilege metadata, fails on missing RPC/grants and rejects direct Core table writers. It does not certify RPC source hashes, deployment topology or drained legacy work; the full preflight remains mandatory. Unexpected API failures return a fixed error code without driver details.
 - Production CORS accepts only `FARM_V2_ALLOWED_ORIGIN`; browser cookies are not used by Farm. Use the primary website HTTPS origin. Direct server probes without Origin still require existing authentication for game routes.
 - `.env.farm-v2.example`: names and empty placeholders only. Production variables must be injected securely, never copied into Git. The main repository has its own template for the API origin, launch URL, shared secret and disabled flag.
@@ -55,3 +55,23 @@ On a failed migration, stop subsequent steps, verify transaction rollback and jo
 ## Verification scope
 
 Local connection-policy tests, isolated transaction regression, compiled Functions HTTP probes, main-site route/flag tests, architecture/type checks and artifact hashes provide local evidence only. Actual Vercel function packaging/runtime, secure TLS handshake, production role/history, account limits and end-to-end deployed acceptance remain unverified. No hosted build, push, merge, formal environment-variable change, migration or production data operation is authorized or performed in this preparation.
+
+## Functions timeout hardening
+
+All runtime connections request PostgreSQL server-side `statement_timeout=15000`, `lock_timeout=3000`, and `idle_in_transaction_session_timeout=8000` through startup options. Production callers and URL query parameters cannot override these settings or raise pool limits. A session pooler must forward startup options; verify SHOW values on the actual runtime connection before opening entry.
+
+The 3-second lock wait is below the existing 5-second external-call/acquisition deadline; do not retain a lock-waiting query after an authority request has already timed out. Statement cancellation allows larger compound atomic SQL up to 15 seconds. The 8-second idle transaction guard allows one awaited 5-second bridge call plus a 3-second scheduling margin. It cancels abandoned transactions, not an actively executing transaction. Individual statement/idle deadlines are not a bound on the total duration of a multi-statement transaction.
+
+HTTP acknowledgement has a 50-second deadline, leaving 10 seconds against the requested 60-second host limit. It returns `FARM_REQUEST_RESULT_UNKNOWN` and requires the **same request ID**, never assumes rollback or posts another economic action. It does not cancel the operation or release an authority barrier early. All economic steps remain awaited and journaled; no background worker is required. If the host terminates first or the connection fails, completed atomic receipts or existing durable intents determine recovery. Never rely on `finally` running on host termination; unresolved authorization work must be fenced/reconciled through the existing operator mechanism. The actual main proxy and Vercel deadlines must support this budget, otherwise keep entry closed and revise the budget under approval.
+
+Idle reusable clients close after five seconds; active session-lock clients are still explicitly destroyed in `finally`. No pool is ended per HTTP request. A failed connection remains fail-closed through existing authorization fencing, with the journal retained for reconciliation. Production role, TLS, pooler, cold starts and hosted packaging remain unverified.
+
+### Verified local regression
+
+- Connection policy, frontend original-key retries and HTTP unknown-result deadline: 18/18.
+- Actual PostgreSQL statement cancellation, session affinity/lock conflict, pool exhaustion recovery and idle transaction rollback: 4/4 (real configured 15s/3s/5s/8s waits).
+- Existing same-database pot/gallery interruption and atomic receipt regression with primary/authority/journal limits 1/1/1: 14/14.
+- Lost-response, compensation and ten-concurrent-retry regression at limits 1/1/1: 8/8. Narrow-test teardown now closes pools before restoring the database environment, avoiding a lazy import without its required configuration.
+- Current compiled Functions HTTP smoke: three scenarios passed. TypeScript and API bundle passed.
+
+The existing browser deadline is 10 seconds; timeout and 503 retries retain the persisted operation/request ID. It may expire before a 15-second database statement completes: this is deliberately an unknown acknowledgement, not a rollback guarantee. No client request-ID, price or reward semantics changed. Actual Vercel packaging, proxy limit, session-mode provider behavior and production runtime SHOW values still require acceptance.

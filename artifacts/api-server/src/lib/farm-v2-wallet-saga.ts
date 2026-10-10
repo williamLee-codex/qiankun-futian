@@ -21,7 +21,7 @@ type WalletJournal = {
 // its durable journal, even when all gameplay pool connections wait for locks.
 export const { pool: farmV2WalletJournalPool, db: journalDb } =
   createDatabaseConnection({
-    max: 2,
+    max: 1,
     connectionTimeoutMillis: 5000,
     idleTimeoutMillis: 5000,
     allowExitOnIdle: true,

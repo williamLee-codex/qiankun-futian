@@ -22,7 +22,10 @@ router.get("/healthz/ready", async (_req, res) => {
   }
   try {
     const result = await pool.query(`SELECT
-      to_regclass('public.farm_v2_player_state') IS NOT NULL
+      current_setting('statement_timeout') = '15s'
+      AND current_setting('lock_timeout') = '3s'
+      AND current_setting('idle_in_transaction_session_timeout') = '8s'
+      AND to_regclass('public.farm_v2_player_state') IS NOT NULL
       AND to_regclass('public.farm_v2_land') IS NOT NULL
       AND to_regclass('public.farm_v2_mutation') IS NOT NULL
       AND to_regclass('public.farm_v2_authorization_attempt') IS NOT NULL

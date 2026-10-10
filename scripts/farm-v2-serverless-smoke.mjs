@@ -87,6 +87,7 @@ const statuses=[];for(const origin of ['https://platform.test','https://other.te
     env: {
       ...process.env,
       NODE_ENV: "production",
+      FARM_DB_CONNECTION_MODE: "session",
       DATABASE_URL:
         "postgresql://runtime:isolated-test-only@unused.example/db?sslmode=require",
       FARM_V2_ALLOWED_ORIGIN: "https://platform.test",

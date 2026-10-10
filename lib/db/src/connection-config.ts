@@ -18,8 +18,8 @@ export function farmDatabaseConfig(env: NodeJS.ProcessEnv): PoolConfig {
   )
     throw new Error("INVALID_FARM_DATABASE_CONFIG");
   const production = env.NODE_ENV === "production";
-  const max = Number(env.FARM_DB_POOL_MAX ?? (production ? "2" : "10"));
-  if (!Number.isInteger(max) || max < 1 || max > (production ? 2 : 20))
+  const max = Number(env.FARM_DB_POOL_MAX ?? (production ? "1" : "10"));
+  if (!Number.isInteger(max) || max < 1 || max > (production ? 1 : 20))
     throw new Error("INVALID_FARM_POOL_LIMIT");
   const config: PoolConfig = {
     connectionString: url.toString(),
@@ -28,14 +28,20 @@ export function farmDatabaseConfig(env: NodeJS.ProcessEnv): PoolConfig {
     idleTimeoutMillis: 5000,
     allowExitOnIdle: true,
     application_name: "farm_v2_api",
+    // Server-side cancellation, including lock waits; not merely a client timer.
+    options:
+      "-c statement_timeout=15000 -c lock_timeout=3000 -c idle_in_transaction_session_timeout=8000",
   };
   if (production) {
+    if (!["session", "direct"].includes(env.FARM_DB_CONNECTION_MODE ?? ""))
+      throw new Error("FARM_SESSION_CONNECTION_REQUIRED");
     if (["localhost", "127.0.0.1", "[::1]"].includes(url.hostname))
       throw new Error("FARM_PRODUCTION_DATABASE_REQUIRED");
     const mode = url.searchParams.get("sslmode");
     if (mode && !["require", "verify-full", "verify-ca"].includes(mode))
       throw new Error("FARM_DATABASE_TLS_REQUIRED");
     if (
+      url.searchParams.has("options") ||
       url.searchParams.has("ssl") ||
       url.searchParams.has("sslcert") ||
       url.searchParams.has("sslkey") ||
