@@ -13,7 +13,7 @@ Delivered before this batch: authenticated idempotent chaos claim, farmer per-la
 
 This batch: authenticated workshop API, Core-priced pot/decor/mission/pet/food/premium-formation transactions, unique persisted pot/decor instances and galleries, same-species one-grade synthesis, six display slots and lingyun, six cave decor positions with compatibility and collapse recovery, mission claims, pet feeding, formation switching, authoritative friend list and readonly cave projection. Frontend exposes real saved state and same-key interruption retry. See `farm-v2-workshop-delivery.md` for evidence and limits.
 
-Remaining: borrow/assist writes, final 2D cave/scene/art, decor gallery images, rest-position pet rendering, attendance/festival/RPG formation acquisition. ASSET BLOCKED applies to approved scene originals. Production DB/API identity and applying reviewed migrations remain deployment blockers. Cross-database wallet settlement uses a durable saga, **not a single ACID transaction**: POT-ATOMIC-001/POT-GALLERY-004 strict cross-database atomicity is not certified. No production acceptance is claimed.
+Remaining: final 2D cave/scene/art, decor gallery images, rest-position pet rendering and official festival/RPG acquisition mappings. Approved scene originals remain ASSET BLOCKED. POT-ATOMIC-001/POT-GALLERY-004 now have isolated verification of a same-database Core/Farm transaction; production co-location, restricted roles and cutover remain BLOCKED. Legacy cross-database journals retain a Saga, **not a single ACID transaction**. See `farm-v2-atomic-pot-release-gate.md`. No production acceptance is claimed.
 
 | Rule ID | Module | Status |
 |---|---|---|
@@ -106,7 +106,7 @@ Remaining: borrow/assist writes, final 2D cave/scene/art, decor gallery images, 
 | MISSION-EXCHANGE-001 | 任務 | Pending integration or focused verification |
 | EXCHANGE-ATOMIC-001 | 福田 | Pending integration or focused verification |
 | EXCHANGE-CHOICE-001 | 福田 | Pending integration or focused verification |
-| POT-ATOMIC-001 | 盆栽 | PARTIAL: owner serialization, durable recovery/compensation verified; strict cross-DB ACID BLOCKED |
+| POT-ATOMIC-001 | 盆栽 | Same-DB Core/Farm ACID locally verified; legacy Saga preserved; production topology/cutover BLOCKED |
 | POT-UPGRADE-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
 | POT-NOREVERSE-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
 | POT-LOCATION-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
@@ -172,7 +172,7 @@ Remaining: borrow/assist writes, final 2D cave/scene/art, decor gallery images, 
 | WAREHOUSE-SORT-001 | 福田倉庫 | Pending integration or focused verification |
 | POT-CONFIRM-001 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
 | POT-GALLERY-003 | 盆栽 | Server logic + management UI; isolated local verification, not production acceptance |
-| POT-GALLERY-004 | 盆栽 | PARTIAL: owner serialization, durable recovery/compensation verified; strict cross-DB ACID BLOCKED |
+| POT-GALLERY-004 | 盆栽 | Inventory/display/gallery/reward commit together locally verified; production topology/cutover BLOCKED |
 | LINGYUN-CALC-001 | 洞府 | Server logic + management UI; isolated local verification, not production acceptance |
 | LINGYUN-NOSTAT-001 | 洞府 | Server logic + management UI; isolated local verification, not production acceptance |
 | DECOR-ARRANGE-001 | 洞府陳設 | Pending integration or focused verification |

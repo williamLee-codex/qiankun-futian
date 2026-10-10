@@ -1,3 +1,4 @@
+import { mutateFarmV2AtomicPot } from "./farm-v2-atomic-pot";
 import {
   findOfficialFestivalCode,
   readTrustedFormationGrants,
@@ -40,7 +41,8 @@ type Input = {
   launchToken: string;
   command: WorkshopCommand;
 };
-export function mutateFarmV2Workshop(input: Input) {
+/** Existing Saga execution retained for recovery of pre-cutover journals. */
+export function mutateLegacyFarmV2Workshop(input: Input) {
   if (
     !input.command ||
     typeof input.command !== "object" ||
@@ -353,4 +355,28 @@ export function mutateFarmV2Workshop(input: Input) {
         recover: (tx) => apply(tx, true),
       }),
   });
+}
+
+/** Public dispatcher: every NEW pot settlement requires verified co-location. */
+export async function mutateFarmV2Workshop(input: Input) {
+  if (input.command?.kind !== "synthesize")
+    return mutateLegacyFarmV2Workshop(input);
+  const [existing] = await journalDb
+    .select()
+    .from(farmV2MutationTable)
+    .where(
+      and(
+        eq(farmV2MutationTable.userId, input.userId),
+        eq(farmV2MutationTable.requestId, input.requestId),
+      ),
+    );
+  // Never attach a new atomic result to a previously committed Saga wallet leg.
+  // Old requests keep their exact original recovery/compensation contract.
+  const legacy =
+    existing &&
+    (existing.walletTransaction as { settlement?: string } | null)
+      ?.settlement !== "ATOMIC_CORE_FARM";
+  if (legacy || existing?.transactionState === "COMPLETED")
+    return mutateLegacyFarmV2Workshop(input);
+  return mutateFarmV2AtomicPot({ ...input, command: input.command });
 }

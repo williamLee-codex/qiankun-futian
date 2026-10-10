@@ -84,6 +84,7 @@ describe.skipIf(!enabled)(
         "0129_farm_v2_wallet_creation_and_historical_revocation.sql",
         "0130_farm_v2_workshop_wallet_contract.sql",
         "0131_farm_v2_friend_operation_barrier.sql",
+        "0132_farm_v2_atomic_pot_settlement.sql",
       ]) {
         await storage.pool.query(
           readFileSync(`${root}/supabase/migrations/${file}`, "utf8"),
@@ -253,6 +254,458 @@ describe.skipIf(!enabled)(
         settleFarmV2Farmer({ userId: "someone-else", requestId: "isolated" }),
       ).rejects.toThrow("FARM_PLAYER_STATE_NOT_FOUND");
     });
+    async function authorizedPot(
+      requestId: string,
+      command = {
+        kind: "synthesize" as const,
+        species: 1,
+        grade: "黃" as const,
+        useDisplayed: false,
+      },
+    ) {
+      const { withFarmAuthority } = await import("./farm-v2-authority");
+      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      return withFarmAuthority(
+        {
+          userId,
+          requestId,
+          launchToken: "test",
+          action: "POST:/farm/v2/workshop",
+        },
+        () =>
+          mutateFarmV2Workshop({
+            userId,
+            requestId,
+            launchToken: "test",
+            command,
+          }),
+      );
+    }
+    it("atomic pot: a late Farm commit failure rolls back Core, crops, materials, pot, gallery and journal together", async () => {
+      await workshopFixture();
+      vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "1");
+      const before = (
+        await storage.pool.query(
+          "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+          [userId],
+        )
+      ).rows[0].warehouse_state;
+      await storage.pool.query("INSERT INTO farm_test_failures VALUES(true)");
+      try {
+        await expect(authorizedPot("atomic-rollback")).rejects.toThrow();
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+              [userId],
+            )
+          ).rows[0].warehouse_state,
+        ).toEqual(before);
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+              [userId],
+            )
+          ).rows[0].coin_balance,
+        ).toBe(100);
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT count(*)::int n FROM core_wallet_ledger WHERE reason='farm_pot_synthesis'",
+            )
+          ).rows[0].n,
+        ).toBe(0);
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT count(*)::int n FROM farm_v2_mutation WHERE request_id='atomic-rollback'",
+            )
+          ).rows[0].n,
+        ).toBe(0);
+      } finally {
+        vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "");
+      }
+    });
+    it("atomic pot: missing enablement blocks a new public-authorized synthesis", async () => {
+      await workshopFixture();
+      vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "");
+      await expect(authorizedPot("atomic-disabled")).rejects.toThrow(
+        "FARM_ATOMIC_POT_NOT_CONFIGURED",
+      );
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT count(*)::int n FROM core_wallet_ledger WHERE reason='farm_pot_synthesis'",
+          )
+        ).rows[0].n,
+      ).toBe(0);
+    });
+    it("atomic pot: concurrent keys grant one first reward; replay cannot copy and independent Core compensation is rejected", async () => {
+      await workshopFixture();
+      vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "1");
+      try {
+        await Promise.all([
+          authorizedPot("atomic-a"),
+          authorizedPot("atomic-b"),
+        ]);
+        await authorizedPot("atomic-a");
+        const w = (
+          await storage.pool.query(
+            "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+            [userId],
+          )
+        ).rows[0].warehouse_state;
+        expect(w.workshop.pots).toHaveLength(2);
+        expect(w.crops[1]).toBe(14);
+        expect(w.workshop.materials.蘊靈砂).toBe(8);
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+              [userId],
+            )
+          ).rows[0].coin_balance,
+        ).toBe(109);
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT count(*)::int n FROM farm_v2_atomic_pot_receipts",
+            )
+          ).rows[0].n,
+        ).toBe(2);
+        await expect(
+          storage.pool.query(
+            "SELECT farm_v2_operator_wallet_reconcile($1,'atomic-a','compensate','local-case','local-test','isolated')",
+            [userId],
+          ),
+        ).rejects.toThrow("FARM_ATOMIC_COMPENSATION_NOT_ALLOWED");
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+              [userId],
+            )
+          ).rows[0].coin_balance,
+        ).toBe(109);
+      } finally {
+        vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "");
+      }
+    });
+    it("atomic pot: gross affordability decline rolls back and the same key can safely retry after funds exist", async () => {
+      await workshopFixture();
+      vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "1");
+      try {
+        await storage.pool.query(
+          "UPDATE core_wallets SET coin_balance=2 WHERE owner_id=$1",
+          [userId],
+        );
+        await expect(authorizedPot("atomic-gross")).rejects.toThrow(
+          "INSUFFICIENT_FUNDS",
+        );
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT count(*)::int n FROM farm_v2_mutation WHERE request_id='atomic-gross'",
+            )
+          ).rows[0].n,
+        ).toBe(0);
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT count(*)::int n FROM farm_v2_atomic_pot_receipts",
+            )
+          ).rows[0].n,
+        ).toBe(0);
+        await storage.pool.query(
+          "UPDATE core_wallets SET coin_balance=3 WHERE owner_id=$1",
+          [userId],
+        );
+        await authorizedPot("atomic-gross");
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+              [userId],
+            )
+          ).rows[0].coin_balance,
+        ).toBe(15);
+      } finally {
+        vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "");
+      }
+    });
+    it("atomic pot: a fresh remote-only permit cannot mutate a different Farm database or clone", async () => {
+      await workshopFixture();
+      vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "1");
+      const originalFetch = globalThis.fetch;
+      vi.stubGlobal("fetch", async (url: unknown, init: RequestInit) => {
+        if (String(url).endsWith("/authorization")) {
+          const body = JSON.parse(String(init.body));
+          return Response.json(
+            body.phase === "begin"
+              ? { operationId: body.operationId, effectivePaidCrystals: 600 }
+              : { settled: true },
+          );
+        }
+        return originalFetch(url as string, init);
+      });
+      try {
+        await expect(authorizedPot("atomic-other-db")).rejects.toThrow(
+          "FARM_ATOMIC_AUTHORITY_MISMATCH",
+        );
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT count(*)::int n FROM core_wallet_ledger",
+            )
+          ).rows[0].n,
+        ).toBe(0);
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT count(*)::int n FROM farm_v2_mutation WHERE request_id='atomic-other-db'",
+            )
+          ).rows[0].n,
+        ).toBe(0);
+      } finally {
+        vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "");
+        vi.stubGlobal("fetch", originalFetch);
+      }
+    });
+    it("atomic pot: displayed upgrade replaces consumed pots and display in one commit", async () => {
+      await workshopFixture();
+      vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "1");
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(warehouse_state,'{workshop,pots}',$2) WHERE user_id=$1",
+        [
+          userId,
+          JSON.stringify(
+            Array.from({ length: 3 }, (_, i) => ({
+              id: "old-" + i,
+              species: 1,
+              grade: "黃",
+              displayed: i === 0,
+              acquiredAt: 0,
+            })),
+          ),
+        ],
+      );
+      try {
+        const { withFarmAuthority } = await import("./farm-v2-authority"),
+          { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+        const command = {
+          kind: "synthesize" as const,
+          species: 1,
+          grade: "玄" as const,
+          useDisplayed: true,
+        };
+        const run = () =>
+          withFarmAuthority(
+            {
+              userId,
+              requestId: "atomic-upgrade",
+              launchToken: "test",
+              action: "POST:/farm/v2/workshop",
+            },
+            () =>
+              mutateFarmV2Workshop({
+                userId,
+                requestId: "atomic-upgrade",
+                launchToken: "test",
+                command,
+              }),
+          );
+        await run();
+        await run();
+        const w = (
+          await storage.pool.query(
+            "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+            [userId],
+          )
+        ).rows[0].warehouse_state;
+        expect(w.workshop.pots).toHaveLength(1);
+        expect(w.workshop.pots[0]).toMatchObject({
+          species: 1,
+          grade: "玄",
+          displayed: true,
+        });
+        expect(w.workshop.materials.蘊靈砂).toBe(9);
+        expect(Object.keys(w.workshop.potGallery)).toEqual(["1:玄"]);
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+              [userId],
+            )
+          ).rows[0].coin_balance,
+        ).toBe(123);
+      } finally {
+        vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "");
+      }
+    });
+    it("atomic pot: a suspended Core wallet and a canceled request never create Farm assets", async () => {
+      await workshopFixture();
+      vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "1");
+      try {
+        await storage.pool.query(
+          "UPDATE core_wallets SET status='suspended' WHERE owner_id=$1",
+          [userId],
+        );
+        await expect(authorizedPot("atomic-suspended")).rejects.toThrow(
+          "WALLET_NOT_ACTIVE",
+        );
+        await storage.pool.query(
+          "UPDATE core_wallets SET status='active' WHERE owner_id=$1",
+          [userId],
+        );
+        await storage.pool.query(
+          "SELECT farm_v2_operator_wallet_reconcile($1,'atomic-canceled','cancel','local-case','local-test','isolated')",
+          [userId],
+        );
+        await expect(authorizedPot("atomic-canceled")).rejects.toThrow(
+          "FARM_MUTATION_COMPENSATED",
+        );
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT count(*)::int n FROM farm_v2_atomic_pot_receipts",
+            )
+          ).rows[0].n,
+        ).toBe(0);
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+              [userId],
+            )
+          ).rows[0].coin_balance,
+        ).toBe(100);
+      } finally {
+        vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "");
+      }
+    });
+    it("atomic pot: pre-cutover Saga journals recover by their original key without pretending they are atomic", async () => {
+      await workshopFixture();
+      const { mutateLegacyFarmV2Workshop } = await import("./farm-v2-workshop");
+      const command = {
+        kind: "synthesize" as const,
+        species: 1,
+        grade: "黃" as const,
+        useDisplayed: false,
+      };
+      dropWalletResponse = true;
+      await expect(
+        mutateLegacyFarmV2Workshop({
+          userId,
+          requestId: "legacy-cutover",
+          launchToken: "test",
+          command,
+        }),
+      ).rejects.toThrow("TEST_LOST_CORE_RESPONSE");
+      vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "1");
+      try {
+        await authorizedPot("legacy-cutover");
+        vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "");
+        await authorizedPot("legacy-cutover");
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT count(*)::int n FROM farm_v2_atomic_pot_receipts",
+            )
+          ).rows[0].n,
+        ).toBe(0);
+        expect(
+          (
+            await storage.pool.query(
+              "SELECT count(*)::int n FROM core_wallet_ledger WHERE reason='farm_pot_synthesis'",
+            )
+          ).rows[0].n,
+        ).toBe(1);
+        const w = (
+          await storage.pool.query(
+            "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+            [userId],
+          )
+        ).rows[0].warehouse_state;
+        expect(w.workshop.pots).toHaveLength(1);
+      } finally {
+        vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "");
+      }
+    });
+    it("atomic pot: an in-flight Core posting is invisible; a killed domain connection rolls back and can retry safely", async () => {
+      await workshopFixture();
+      vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "1");
+      const gate = await corePool.connect();
+      let operation: Promise<unknown> | undefined;
+      try {
+        await gate.query("SELECT pg_advisory_lock(993341237)");
+        await storage.pool.query(
+          "CREATE FUNCTION farm_test_atomic_visibility() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN PERFORM pg_advisory_xact_lock(993341237);RETURN NEW;END$$; CREATE TRIGGER farm_test_atomic_visibility BEFORE UPDATE OF warehouse_state ON farm_v2_player_state FOR EACH ROW EXECUTE FUNCTION farm_test_atomic_visibility()",
+        );
+        operation = authorizedPot("atomic-visibility");
+        const failure = expect(operation).rejects.toThrow();
+        let pid: number | undefined;
+        for (let i = 0; i < 100 && !pid; i++) {
+          const r = await corePool.query(
+            "SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND wait_event='advisory' AND query LIKE 'update \"farm_v2_player_state\"%' AND pid<>pg_backend_pid()",
+          );
+          pid = r.rows[0]?.pid;
+          if (!pid) await new Promise((r) => setTimeout(r, 20));
+        }
+        expect(pid).toBeDefined();
+        expect(
+          (
+            await corePool.query(
+              "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+              [userId],
+            )
+          ).rows[0].coin_balance,
+        ).toBe(100);
+        expect(
+          (
+            await corePool.query(
+              "SELECT count(*)::int n FROM farm_v2_atomic_pot_receipts",
+            )
+          ).rows[0].n,
+        ).toBe(0);
+        expect(
+          (
+            await corePool.query(
+              "SELECT count(*)::int n FROM farm_v2_mutation WHERE request_id='atomic-visibility'",
+            )
+          ).rows[0].n,
+        ).toBe(0);
+        await corePool.query("SELECT pg_terminate_backend($1)", [pid]);
+        await failure;
+        await storage.pool.query(
+          "DROP TRIGGER farm_test_atomic_visibility ON farm_v2_player_state; DROP FUNCTION farm_test_atomic_visibility()",
+        );
+        await authorizedPot("atomic-visibility");
+        expect(
+          (
+            await corePool.query(
+              "SELECT coin_balance FROM core_wallets WHERE owner_id=$1",
+              [userId],
+            )
+          ).rows[0].coin_balance,
+        ).toBe(112);
+        expect(
+          (
+            await corePool.query(
+              "SELECT count(*)::int n FROM farm_v2_atomic_pot_receipts",
+            )
+          ).rows[0].n,
+        ).toBe(1);
+      } finally {
+        await gate.query("SELECT pg_advisory_unlock(993341237)");
+        gate.release();
+        await operation?.catch(() => {});
+        await storage.pool.query(
+          "DROP TRIGGER IF EXISTS farm_test_atomic_visibility ON farm_v2_player_state; DROP FUNCTION IF EXISTS farm_test_atomic_visibility()",
+        );
+        vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "");
+      }
+    });
     async function workshopFixture() {
       await storage.pool.query(
         "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(warehouse_state,'{workshop}',$2) WHERE user_id=$1",
@@ -270,7 +723,8 @@ describe.skipIf(!enabled)(
     }
     it("POT-GALLERY-004/TX-IDEMPOTENCY-001: concurrent synthesis grants first reward once; replay cannot copy assets", async () => {
       await workshopFixture();
-      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+        await import("./farm-v2-workshop");
       const command = {
         kind: "synthesize" as const,
         species: 1,
@@ -315,7 +769,8 @@ describe.skipIf(!enabled)(
     });
     it("POT-ATOMIC-001: gross funds required despite positive reward; Core rejects forged amount", async () => {
       await workshopFixture();
-      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+        await import("./farm-v2-workshop");
       await storage.pool.query(
         "UPDATE core_wallets SET coin_balance=2 WHERE owner_id=$1",
         [userId],
@@ -386,7 +841,8 @@ describe.skipIf(!enabled)(
     });
     it("POT-ATOMIC-001: lost Core response reserves inputs and recovers exact result without double reward", async () => {
       await workshopFixture();
-      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+        await import("./farm-v2-workshop");
       const input = {
         userId,
         launchToken: "token",
@@ -431,7 +887,8 @@ describe.skipIf(!enabled)(
     });
     it("POT-GALLERY-004: interrupted Farm commit recovers gallery and asset together", async () => {
       await workshopFixture();
-      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+        await import("./farm-v2-workshop");
       const input = {
         userId,
         launchToken: "token",
@@ -460,7 +917,8 @@ describe.skipIf(!enabled)(
     });
     it("DECOR-PURCHASE-001/DECOR-LOCATION-001: purchase, placement and removal persist a single instance", async () => {
       await workshopFixture();
-      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+        await import("./farm-v2-workshop");
       const first = await mutateFarmV2Workshop({
         userId,
         launchToken: "token",
@@ -514,7 +972,8 @@ describe.skipIf(!enabled)(
         "UPDATE farm_v2_player_state SET mission_state=$2 WHERE user_id=$1",
         [userId, missions],
       );
-      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+        await import("./farm-v2-workshop");
       const input = {
         userId,
         launchToken: "token",
@@ -561,7 +1020,8 @@ describe.skipIf(!enabled)(
         "UPDATE farm_v2_player_state SET effective_paid_crystals=999,pet_state=$2 WHERE user_id=$1",
         [userId, { owned: ["噬時諦聽"], activePetId: null, activeUntil: null }],
       );
-      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+        await import("./farm-v2-workshop");
       await mutateFarmV2Workshop({
         userId,
         launchToken: "token",
@@ -601,7 +1061,8 @@ describe.skipIf(!enabled)(
     });
     it("POT-ATOMIC-001: unrecoverable reserved input compensates net posting once and cannot reopen", async () => {
       await workshopFixture();
-      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+        await import("./farm-v2-workshop");
       const input = {
         userId,
         launchToken: "token",
@@ -654,7 +1115,8 @@ describe.skipIf(!enabled)(
         "UPDATE core_wallets SET coin_balance=500,crystal_balance=500 WHERE owner_id=$1",
         [userId],
       );
-      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+        await import("./farm-v2-workshop");
       await mutateFarmV2Workshop({
         userId,
         launchToken: "token",
@@ -785,7 +1247,8 @@ describe.skipIf(!enabled)(
         lands: [],
         pets: { owned: [], activePetId: null, activeUntil: null },
       });
-      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+        await import("./farm-v2-workshop");
       await expect(
         mutateFarmV2Workshop({
           userId,
@@ -822,7 +1285,8 @@ describe.skipIf(!enabled)(
         const express = (await import("express")).default;
         const { build } = await import("esbuild");
         const { fileURLToPath } = await import("node:url");
-        const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+        const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+          await import("./farm-v2-workshop");
         const { chromium } = await import(
           process.env.FARM_V2_PLATFORM_CHECKOUT +
             "/node_modules/@playwright/test/index.mjs"
@@ -1136,7 +1600,8 @@ describe.skipIf(!enabled)(
       20000,
     );
     it("festival rights persist with workshop idempotency; client cannot choose a right or change a window", async () => {
-      const { mutateFarmV2Workshop } = await import("./farm-v2-workshop");
+      const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+        await import("./farm-v2-workshop");
       const now = Date.now(),
         codeHash = "a".repeat(64);
       vi.stubEnv(
@@ -1416,7 +1881,7 @@ describe.skipIf(!enabled)(
       dropWalletResponse = false;
       dropFarmCommit = false;
       await storage.pool.query(
-        `truncate farm_v2_land, farm_v2_mutation, farm_v2_player_state, farm_test_failures, farm_v2_authorization_attempt, farm_v2_reconciliation_event, farm_v2_reconciliation_case; truncate farm_v2_friend_operations, farm_v2_paid_operations, farm_v2_wallet_closures, farm_v2_wallet_reconciliation_audit; truncate core.wallet_ledgers; insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','credit',600,'payment','fixture-payment'); truncate core_wallet_ledger, core_wallets; select core_wallet_get_or_create('${userId}'); update core_wallets set coin_balance=100;`,
+        `truncate farm_v2_land, farm_v2_mutation, farm_v2_player_state, farm_test_failures, farm_v2_authorization_attempt, farm_v2_reconciliation_event, farm_v2_reconciliation_case; truncate farm_v2_friend_operations, farm_v2_paid_operations, farm_v2_wallet_closures, farm_v2_wallet_reconciliation_audit; truncate core.wallet_ledgers; insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','credit',600,'payment','fixture-payment'); truncate farm_v2_atomic_pot_receipts, core_wallet_ledger, core_wallets; select core_wallet_get_or_create('${userId}'); update core_wallets set coin_balance=100;`,
       );
       const warehouse = {
         seeds: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },

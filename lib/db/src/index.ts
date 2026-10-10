@@ -17,6 +17,13 @@ export function createDatabaseConnection(
     connectionString: process.env.DATABASE_URL,
     ...options,
   });
+  // pg removes failed clients itself. Active-client and idle-pool error
+  // listeners keep a broken connection from crashing the API after rollback.
+  // Do not log the driver error: it may contain connection details.
+  pool.on("connect", (client) => {
+    client.on("error", () => console.error("PG_CONNECTION_FAILED"));
+  });
+  pool.on("error", () => console.error("PG_POOL_IDLE_CONNECTION_FAILED"));
   return { pool, db: drizzle(pool, { schema }) };
 }
 
