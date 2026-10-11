@@ -41,7 +41,7 @@ export function revokeRolesSql(runtime, operator) {
  BEGIN;
  REVOKE ALL PRIVILEGES ON public.farm_v2_player_state,public.farm_v2_land,public.farm_v2_mutation,public.farm_v2_authorization_attempt,public.farm_v2_reconciliation_case,public.farm_v2_reconciliation_event FROM ${roles.join(",")};
  REVOKE ALL PRIVILEGES ON SEQUENCE public.farm_v2_reconciliation_event_id_seq FROM ${roles.join(",")};
- REVOKE EXECUTE ON FUNCTION public.farm_v2_apply_atomic_pot_wallet(uuid,uuid,text,jsonb,text) FROM ${roles.join(",")};
+ REVOKE EXECUTE ON FUNCTION public.farm_v2_apply_atomic_pot_wallet(uuid,uuid,text,jsonb,text),public.farm_v2_inspect_recovery(uuid,text),public.farm_v2_observe_recovery(uuid,text) FROM ${roles.join(",")};
  COMMIT;
  -- If object revocation fails, NOLOGIN/password removal and session containment above remain committed.`;
 }

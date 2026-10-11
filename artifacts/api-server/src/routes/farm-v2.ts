@@ -1,3 +1,4 @@
+import { pool } from "@workspace/db";
 import { mutateFarmV2Friend } from "../lib/farm-v2-friend-actions";
 import { withFarmFriendAuthority } from "../lib/farm-v2-friend-authority";
 import { readFarmV2Friends, visitFarmV2Cave } from "../lib/farm-v2-friends";
@@ -82,6 +83,21 @@ router.post("/farm/v2/session", async (req, res, next) => {
 });
 
 router.use("/farm/v2", requireFarmV2LaunchIdentity);
+router.post("/farm/v2/recovery", async (req, res, next) => {
+  try {
+    const requestId = req.header("x-request-id") ?? "";
+    if (!/^[A-Za-z0-9._:-]{1,120}$/.test(requestId))
+      throw new Error("REQUEST_ID_REQUIRED");
+    const result = await pool.query(
+      "SELECT public.farm_v2_observe_recovery($1::uuid,$2) AS result",
+      [String(res.locals.authenticatedUserId), requestId],
+    );
+    res.setHeader("Cache-Control", "no-store");
+    res.json(result.rows[0].result);
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get(
   "/farm/v2/state",

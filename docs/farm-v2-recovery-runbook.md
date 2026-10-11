@@ -1,0 +1,26 @@
+# Original-key recovery (local engineering, 2026-10-11)
+
+Candidate Farm 0003 / version 20261011000203 follows Platform 0123–0133 and Farm 0001/0002. Original files are unchanged. The candidate is hash-pinned in the review manifest and cannot be applied by the offline authority tool. Separate migration approval is required.
+
+`farm_v2_inspect_recovery(uuid,text)` is STABLE / SECURITY DEFINER / empty search_path / postgres-owned under the migration operator gate. It only reads owner+original request journal, Core primary idempotency key, inverse references and immutable atomic receipt. PUBLIC/anon/authenticated/service_role cannot execute it. Dedicated runtime/operator receive only explicitly reviewed execution. Operators receive SELECT only on all six Farm tables; no sequence, transaction, Core DML or observation-write RPC privileges.
+
+`farm_v2_observe_recovery(uuid,text)` is runtime-only. It calls the same inspection and appends RECOVERY_OBSERVED evidence to the immutable event journal, using actual database session_user. It creates an OPEN tracking case if absent; it NEVER rewrites a transaction/Wallet/asset or automatically closes a case. Repeated observations are distinct audit events, not repeated debits/rewards.
+
+API: POST `/api/farm/v2/recovery`, original `x-request-id`, existing valid Session bearer. Owner comes exclusively from authenticated middleware, not request body. Entry-off still rejects it. Results are no-store. Missing RPC permissions fail readiness. Timeout/55P03/lost observation acknowledgement does not mean the financial transaction failed; use the SAME original key to inspect again. An audit transaction interrupted before commit rolls back rather than inventing evidence.
+
+CLI: `--list` and original `--user UUID --request KEY` inspection only. It no longer reads a service-role secret or calls a compensation RPC. `--apply`/`--authorization` refuse. Inspection runs BEGIN READ ONLY on one pinned client. Previous mutating reconciliation library has no CLI invocation; direct elevated use is not authorized by this runbook.
+
+| Result | Permitted next action |
+|---|---|
+| VERIFIED_COMPLETED | Atomic receipt, primary Ledger and completed Farm journal agree; retrieve the existing response via original handler. Never debit/reward again |
+| REPLAY_ORIGINAL_HANDLER | Replay EXACT original endpoint/body/owner/idempotency key. Existing idempotency, action check, authority and Saga recovery remain authoritative; inspection does not itself mark complete |
+| UNKNOWN | Absence is not rollback proof. Inspect again, or replay the exact original handler under its existing locks. Never fabricate failure/success or generate a new key |
+| AUTHORITY_REVIEW_REQUIRED | Receipt/journal mismatch, legacy primary without completion, or compensation state: retain case and request key, escalate. Operator cannot close, fence or add Ledger entries |
+
+There is deliberately no generic settlement RPC: it cannot prove all legacy domain asset plans merely from a Wallet row. Legacy COMPENSATING, inconsistent atomic receipt and stale OPEN authorization need a separately reviewed authority/domain recovery decision. This remains a release blocker if such records exist; do not restore direct operator settlement or compensate only the Wallet half of atomic pot.
+
+Local tests: 6 targeted Node/isolated-PG tests across recovery, role policy and Journal tool; actual 55P03 under table-lock contention, original-key retry after lock release, service interruption before COMMIT, duplicate observations, audit count/rollback, completed Ledger/balance unchanged, mismatched completion escalation, operator raw/RPC/audit writes denied, source Core RPC unchanged. Fixture transactions use the existing Core RPC, not recovery direct Ledger writes; cloned receipts/journals explicitly simulate committed states. Node 24 API build and API TypeScript pass. This is not production acceptance.
+
+API project supplied by user: qiankun-farm-v2-api / prj_0QZ4HyWNmMYkb1pgB4QJnTTDjmLL / Node 24.x / no GitHub link / no deployment. No project creation remains necessary. Root ., Other framework, API build, output unset and existing vercel.json remain unchanged. Function requests 60s; HTTP acknowledgment 50s; DB statement15s/lock3s/idle8s/acquisition5s; three pools max1 each per warm instance. Capacity requires 3*N <= min(60-reserved-otherPeak-maintenanceReserve, supplierRemainingPoolBudget), not 60 or the snapshot six as the Farm allocation. Same Drizzle transaction holds assets+restricted Core RPC; no new Pool or background worker was added.
+
+Remaining formal evidence: actual API maxDuration/plan/instance budget, live role/TLS session/direct affinity and physical same database, current Journal/candidate collision/catalog/grants, approval to install 0003 and bind credentials, unfiltered legacy OPEN/compensation cutover checks and designated incident authority. Project existence is supplied evidence, not a deployed runtime proof. No formal migration, role, deployment or data operation occurred.

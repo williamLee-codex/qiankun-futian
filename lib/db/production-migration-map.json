@@ -23,6 +23,19 @@
       "sha256": "ec2027f41da1170cd7698c692ff2fcf30b084fbc7ce7d35198678101ccbb09b5",
       "targets": ["farm_v2_player_state", "farm_v2_land", "farm_v2_mutation"],
       "executionAuthorized": false
+    },
+    {
+      "id": "0003",
+      "name": "farm_v2_recovery_observation",
+      "file": "lib/db/migrations/0003_farm_v2_recovery_observation.sql",
+      "version": "20261011000203",
+      "sha256": "6279639a99162e455eabc9c284ed0f09acf58fc225af3059aa1d3b51602aa0d2",
+      "targets": [],
+      "functions": [
+        "public.farm_v2_inspect_recovery(uuid,text)",
+        "public.farm_v2_observe_recovery(uuid,text)"
+      ],
+      "executionAuthorized": false
     }
   ]
 }

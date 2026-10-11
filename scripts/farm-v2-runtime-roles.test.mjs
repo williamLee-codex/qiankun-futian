@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -58,6 +59,12 @@ test(
       "postgres",
     );
     try {
+      sql(
+        readFileSync(
+          "lib/db/migrations/0003_farm_v2_recovery_observation.sql",
+          "utf8",
+        ),
+      );
       sql(createRolesSql(r, o));
       assert.equal(
         sql(
@@ -86,8 +93,12 @@ test(
           sql(`SET ROLE ${r}; UPDATE public.core_wallets SET coin_balance=0`),
         /permission denied/,
       );
-      sql(
-        `SET ROLE ${o}; INSERT INTO public.farm_v2_reconciliation_case(id,user_id,request_id,actor,evidence,status) VALUES('runtime-review','test','runtime-review','operator','isolated','OPEN'); INSERT INTO public.farm_v2_reconciliation_event(case_id,actor,action,evidence) VALUES('runtime-review','operator','OPEN','isolated');`,
+      assert.throws(
+        () =>
+          sql(
+            `SET ROLE ${o}; INSERT INTO public.farm_v2_reconciliation_case(id,user_id,request_id,actor,evidence,status) VALUES('runtime-review','test','runtime-review','operator','isolated','OPEN'); INSERT INTO public.farm_v2_reconciliation_event(case_id,actor,action,evidence) VALUES('runtime-review','operator','OPEN','isolated');`,
+          ),
+        /permission denied/,
       );
       assert.throws(
         () =>

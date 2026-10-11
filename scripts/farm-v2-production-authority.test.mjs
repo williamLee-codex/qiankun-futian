@@ -14,7 +14,7 @@ test("offline sources, ordered versions and unauthorized execution", () => {
   const ms = loadFarmMigrations(platform);
   assert.deepEqual(
     ms.map((m) => m.version),
-    ["20261011000201", "20261011000202"],
+    ["20261011000201", "20261011000202", "20261011000203"],
   );
   for (const m of ms) {
     assert.equal(m.executionAuthorized, false);
@@ -103,6 +103,7 @@ test(
         "0",
       );
       sql(reviewedSql(ms[1]));
+      sql(reviewedSql(ms[2]));
       sql(`CREATE ROLE ${runtime}; CREATE ROLE ${operator};`);
       const insert = `INSERT INTO public.farm_v2_authorization_attempt(id,user_id,request_id,action,state) VALUES('00000000-0000-0000-0000-000000000011','test','key','test','OPEN')`;
       assert.throws(
@@ -127,8 +128,12 @@ test(
           ),
         /permission denied/,
       );
-      sql(
-        `SET ROLE ${operator}; INSERT INTO public.farm_v2_reconciliation_case(id,user_id,request_id,actor,evidence,status) VALUES('case','test','key','actor','evidence','OPEN'); INSERT INTO public.farm_v2_reconciliation_event(case_id,actor,action,evidence) VALUES('case','actor','OPEN','evidence')`,
+      assert.throws(
+        () =>
+          sql(
+            `SET ROLE ${operator}; INSERT INTO public.farm_v2_reconciliation_case(id,user_id,request_id,actor,evidence,status) VALUES('case','test','key','actor','evidence','OPEN'); INSERT INTO public.farm_v2_reconciliation_event(case_id,actor,action,evidence) VALUES('case','actor','OPEN','evidence')`,
+          ),
+        /permission denied/,
       );
       assert.throws(
         () =>

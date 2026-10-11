@@ -28,7 +28,7 @@ console.log(JSON.stringify({statuses}));server.close();process.exit(0);
 writeFileSync(child, code);
 try {
   await admin.query(
-    `CREATE ROLE ${role} LOGIN; GRANT USAGE ON SCHEMA public,core TO ${role}; GRANT SELECT,INSERT,UPDATE ON farm_v2_player_state,farm_v2_land,farm_v2_mutation,farm_v2_authorization_attempt TO ${role}; GRANT EXECUTE ON FUNCTION farm_v2_apply_atomic_pot_wallet(uuid,uuid,text,jsonb,text) TO ${role}`,
+    `CREATE ROLE ${role} LOGIN; GRANT USAGE ON SCHEMA public,core TO ${role}; GRANT SELECT,INSERT,UPDATE ON farm_v2_player_state,farm_v2_land,farm_v2_mutation,farm_v2_authorization_attempt TO ${role}; GRANT EXECUTE ON FUNCTION farm_v2_apply_atomic_pot_wallet(uuid,uuid,text,jsonb,text),farm_v2_inspect_recovery(uuid,text),farm_v2_observe_recovery(uuid,text) TO ${role}`,
   );
   url.username = role;
   const result = spawnSync(process.execPath, [child], {

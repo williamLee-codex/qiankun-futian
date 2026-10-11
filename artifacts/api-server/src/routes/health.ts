@@ -31,6 +31,8 @@ router.get("/healthz/ready", async (_req, res) => {
       AND to_regclass('public.farm_v2_authorization_attempt') IS NOT NULL
       AND to_regclass('public.farm_v2_atomic_pot_receipts') IS NOT NULL
       AND has_function_privilege(current_user,to_regprocedure('public.farm_v2_apply_atomic_pot_wallet(uuid,uuid,text,jsonb,text)'),'EXECUTE')
+      AND has_function_privilege(current_user,to_regprocedure('public.farm_v2_inspect_recovery(uuid,text)'),'EXECUTE')
+      AND has_function_privilege(current_user,to_regprocedure('public.farm_v2_observe_recovery(uuid,text)'),'EXECUTE')
       AND has_table_privilege(current_user,to_regclass('public.farm_v2_player_state'),'SELECT,INSERT,UPDATE')
       AND (SELECT bool_and(has_table_privilege(current_user,t,p))
         FROM unnest(ARRAY['public.farm_v2_player_state','public.farm_v2_land','public.farm_v2_mutation','public.farm_v2_authorization_attempt']) t
