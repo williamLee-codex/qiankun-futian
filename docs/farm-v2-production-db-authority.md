@@ -47,3 +47,5 @@ Compiled Node 24 handler smoke: three scenarios PASS (restricted-role readiness/
 ## Remaining formal blockers
 
 Live collision/catalog/Journal evidence; creation/binding of dedicated roles with exact grants; runtime identity/TLS and supplier session/direct proof; Vercel API project/account maxDuration/Node/resources/instance capacity; explicit migration, credentials, deployment and later opening approval. No formal operation was performed.
+
+Runtime-role amendment: docs/farm-v2-runtime-setup.md and scripts/farm-v2-runtime-roles.mjs now provide LOGIN role creation (initially disabled with connection limit 0/password NULL), effective definer/membership inventory and emergency containment. Operator grants on the four game/authority tables are now SELECT only; case/event rights remain. Earlier descriptions of operator transaction UPDATE rights are superseded. Legacy CLI direct settlement is intentionally blocked, pending a separately approved authority workflow.

@@ -100,7 +100,9 @@ export function grantsSql(runtime, operator) {
    .join("\n")}
  END $roles$;
  GRANT USAGE ON SCHEMA public,core TO ${runtime},${operator};
- GRANT SELECT,INSERT,UPDATE ON ${tables} TO ${runtime},${operator};
+ GRANT SELECT,INSERT,UPDATE ON ${tables} TO ${runtime};
+ REVOKE INSERT,UPDATE,DELETE,TRUNCATE ON ${tables} FROM ${operator};
+ GRANT SELECT ON ${tables} TO ${operator};
  GRANT EXECUTE ON FUNCTION public.farm_v2_apply_atomic_pot_wallet(uuid,uuid,text,jsonb,text) TO ${runtime};
  GRANT SELECT,INSERT,UPDATE ON public.farm_v2_reconciliation_case TO ${operator};
  GRANT SELECT,INSERT ON public.farm_v2_reconciliation_event TO ${operator};
