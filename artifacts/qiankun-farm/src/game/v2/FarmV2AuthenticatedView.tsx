@@ -1,3 +1,4 @@
+import { farmV2ErrorMessage } from "./farmV2ErrorMessage";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
 import { FarmSceneInteractionLayer } from "./FarmSceneInteractionLayer";
@@ -66,7 +67,7 @@ export function FarmV2AuthenticatedView(props: {
     return (
       <section role="alert">
         <p>無法取得正式農田資料，已停止所有操作。</p>
-        {error && <p>{error}</p>}
+        {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
         {pendingWorkshop.map((command, index) => (
           <button
             key={index}
@@ -128,7 +129,7 @@ export function FarmV2AuthenticatedView(props: {
           }}
         />
         {notice && <p role="status">{notice}</p>}
-        {error && <p role="alert">{error}</p>}
+        {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
       </>
     );
   return (
@@ -249,7 +250,7 @@ export function FarmV2AuthenticatedView(props: {
       >
         結束遊玩並登出
       </button>
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
       {notice && <p role="status">{notice}</p>}
       <button
         type="button"
