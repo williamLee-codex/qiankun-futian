@@ -9,9 +9,18 @@ BEGIN
  SELECT * INTO m FROM public.farm_v2_mutation WHERE user_id=p_owner::text AND request_id=p_request;
  SELECT * INTO l FROM public.core_wallet_ledger WHERE owner_id=p_owner AND idempotency_key='farm-v2:'||p_request||':primary';
  SELECT * INTO r FROM public.farm_v2_atomic_pot_receipts WHERE user_id=p_owner AND request_id=p_request;
- SELECT count(*) INTO v_inverse FROM public.core_wallet_ledger WHERE owner_id=p_owner AND reversal_of=l.id;
+ SELECT count(*) INTO v_inverse FROM public.core_wallet_ledger WHERE reversal_of=l.id;
  v_status:='UNKNOWN';
- IF r.transaction_id IS NOT NULL THEN
+ -- Conflicting authority evidence takes precedence over every replay/completion label.
+ IF v_inverse>0 OR l.reversal_of IS NOT NULL
+   OR m.transaction_state IN ('COMPENSATING','COMPENSATED')
+   OR EXISTS(SELECT 1 FROM public.core_wallet_ledger WHERE owner_id=p_owner
+     AND idempotency_key='farm-v2:'||p_request||':compensation')
+   OR EXISTS(SELECT 1 FROM public.farm_v2_wallet_closures WHERE user_id=p_owner AND request_id=p_request)
+   OR (m.wallet_transaction->>'coreTransactionId' IS NOT NULL
+     AND m.wallet_transaction->>'coreTransactionId' IS DISTINCT FROM l.id::text)
+ THEN v_status:='AUTHORITY_REVIEW_REQUIRED';
+ ELSIF r.transaction_id IS NOT NULL THEN
   IF l.id IS NOT DISTINCT FROM r.transaction_id AND l.reversal_of IS NULL AND v_inverse=0
     AND m.transaction_state='COMPLETED' AND m.response IS NOT NULL
     AND m.wallet_transaction->>'coreTransactionId'=l.id::text

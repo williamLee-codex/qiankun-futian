@@ -29,7 +29,7 @@
       "name": "farm_v2_recovery_observation",
       "file": "lib/db/migrations/0003_farm_v2_recovery_observation.sql",
       "version": "20261011000203",
-      "sha256": "6279639a99162e455eabc9c284ed0f09acf58fc225af3059aa1d3b51602aa0d2",
+      "sha256": "280dd47e58c49fddc5476db0ae2bf82484fae16e09af70a644903a05bad41a21",
       "targets": [],
       "functions": [
         "public.farm_v2_inspect_recovery(uuid,text)",
