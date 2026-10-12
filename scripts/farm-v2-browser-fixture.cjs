@@ -165,6 +165,13 @@ const fs = require("node:fs");
     });
     await page.goto("http://127.0.0.1:4174/?launchToken=fixture-only");
     await page.getByRole("button", { name: "微芒凡土，待播種" }).waitFor();
+    const sceneImage = page.locator('[data-testid="farm-v2-scene"] img');
+    await sceneImage.evaluate(async image => { await image.decode(); });
+    const imageState = await sceneImage.evaluate(image => ({src:image.currentSrc,width:image.naturalWidth,height:image.naturalHeight,renderedWidth:image.width,renderedHeight:image.height}));
+    assert.equal(new URL(imageState.src).pathname, `/images/farm/farm-scene-${width >= 640 ? "desktop" : "mobile"}.png`);
+    assert.equal(imageState.width, width >= 640 ? 1215 : 941);
+    assert.equal(imageState.height, width >= 640 ? 1295 : 1672);
+    assert.ok(Math.abs(imageState.renderedWidth / imageState.renderedHeight - imageState.width / imageState.height) < .002);
     for (let id = 1; id <= 6; id++) {
       await page
         .getByRole("button", { name: `${names[id - 1]}，待播種` })
@@ -172,14 +179,7 @@ const fs = require("node:fs");
       await page
         .getByRole("button", { name: `${names[id - 1]}，生長中` })
         .waitFor();
-      if (width === 320 && id === 1) {
-        assert.equal(
-          await page
-            .locator(".farm-v2-flight")
-            .evaluate((el) => getComputedStyle(el).animationName),
-          "none",
-        );
-      }
+      assert.equal(await page.locator(".farm-v2-flight").count(), 0);
       Object.assign(snapshot.lands[id - 1], {
         lifecycle: "MATURE",
         maturesAt: new Date(Date.now() - 1000).toISOString(),
@@ -222,7 +222,8 @@ const fs = require("node:fs");
       width,
       operations: 13,
       consoleErrors: errors.length,
-      reducedMotion: width === 320,
+      reducedMotionRequested: width === 320,
+      warehouseFlights: "suppressed pending verified anchors",
       source: "browser with intercepted fixture API; not live Core",
     });
   }

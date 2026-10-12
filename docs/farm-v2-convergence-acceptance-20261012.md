@@ -44,9 +44,9 @@
 | Pool滿載／同玩家並發 | 已修正但待驗證 | journal獨立max2 pool避免被主交易pool等待鎖占滿；尚未多連線壓測 |
 | 換帳號不帶入舊玩家請求 | 已符合並驗證 | hook session epoch；A→B、舊POST回應、401原ID三個測試 |
 | 原始世界座標／真實場景 | 尚未符合 | FINAL FARM-SCENE-001/002要求LandEntity世界模型；当前畫面仍是舊手機底圖hotspot，沒有核准世界場景資產／座標文件 |
-| 桌機／手機正式底圖 | 已修正但待驗證 | 使用者提供0915手機版(4)/電腦版(4)及本機public/images/farm截圖；原圖已納入V2靜態資產。正式view仍引用舊图；世界座標與render接線尚未驗收 |
+| 桌機／手機正式底圖 | 已修正但待驗證 | 使用者提供0915手機版(4)/電腦版(4)及本機public/images/farm截圖；原圖已納入V2靜態資產。正式view已接原圖與既有美術定位；世界座標／LandEntity仍未符合 |
 | 五階作物畫面 | 已修正但待驗證 | 既有emoji階段依server時間；未取得符合原場景規格的CropEntity美術；未判定正式視覺通過 |
-| 播種／收成飛行動畫 | 已修正但待驗證 | 成功POST+GET後播放；受控瀏覽器操作及reduced-motion通過；弧線與核准世界錨點尚未符合 |
+| 播種／收成飛行動畫 | 尚未符合 | 原倉庫16%,35%錨點在新原圖落在山水／崖壁；已移除錯位動畫，等待可查證倉庫世界錨點。收成入庫功能仍運作 |
 | 倉庫、角色、靈獸 | 尚未符合 | 正式UI只有種子／作物數量；角色及靈獸未按伺服器狀態與核准立繪完整展示 |
 | 響應式與操作文字可見 | 已符合並驗證 | 修復黑底黑字、禁止捲动與遮圖重複面板；320/390/768/1440無橫向溢出 |
 | 瀏覽器Console | 已符合並驗證 | 四尺寸受控API／字型fixture Console error 0；不能推論正式Core／外部CDN無錯誤 |
@@ -138,3 +138,12 @@
 原圖逐byte保留於 `artifacts/qiankun-farm/public/images/farm/farm-scene-desktop.png`（1215×1295，SHA2567615f3f13bee097708726716cce9239cb471089e470f55cfbdcb9ae53cea7691）及 `farm-scene-mobile.png`（941×1672，SHA25685d384d4fdb0e9f312ce69c26fc105915a44833020e857aa6951a5cbc1bf5010）。Vite public目錄由artifact提供靜態資產。沒有重畫、裁切或改圖。
 
 `PORT=4173 BASE_PATH=/ pnpm --filter @workspace/qiankun-farm build`通過；dist/public/images/farm二圖與附件SHA256一致。這次只完成資產入庫與来源確認；正式view仍用舊圖，沒有把舊點擊範圍套到新圖。世界座標／LandEntity及桌機手機視覺Gate仍未通過。
+
+
+## 原底圖接線與美術定位修正
+
+正式view改用picture：640px以上desktop、以下mobile，保留原图比例，不再將桌機鎖在390px手機場景。六田視覺定位唯一來源為平台scene blob `f1cda92d4655aea98cd8419151fb5bbe0eaeb5b9` 的既有FARM_LAND_HOTSPOTS；提取到 `farmV2ScenePlacement.ts`，只帶美術頂點，不引用V1 runtime/catalog/API/經濟數值。依伺服器plot.id+1查找田號，點擊與作物共用定位；rect為原頂點外框、clip形狀依原頂點換算，不重新猜座標。
+
+這是既有底圖與錯位修正，**不是LandEntity世界場景完成**；兩份美術projection尚未轉為可查證單一world/camera模型。獨立review發現舊倉庫飛行錨點16%,35%在新圖落在山水／崖壁，已刪除錯位flight狀態、markup與keyframes；等待倉庫權威位置才恢復動畫，不能將無動畫說成動畫驗收成功。庫存與交易不受影響。
+
+完整155 tests＋4 guards與workspace Typecheck/Build通過。瀏覽器320/390/768/1440各13次操作、Console error0；直接檢查currentSrc及naturalWidth/Height，確定手機941×1672、桌機1215×1295正確載入且顯示比例無拉伸。新fixture驗證所有操作無錯位warehouse flight；320要求reduced-motion，但動畫Gate尚未通過。實際四尺寸畫面更新至既有視覺證據包；API為受控fixture。整體仍NO-GO。

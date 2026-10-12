@@ -1,5 +1,5 @@
-import farmBackground from '@assets/file_00000000095072069ef62748d273ae91_1783571778589.png';
-import { useEffect, useRef, useState } from 'react';
+import { farmV2ScenePlacement } from './farmV2ScenePlacement';
+import { useEffect, useState } from 'react';
 import type { FarmV2Operation } from './farmV2ApiClient';
 import { useFarmV2Scene } from './useFarmV2Scene';
 import { CROP_DATA } from '../types';
@@ -12,23 +12,6 @@ import { CROP_DATA } from '../types';
  * Intentionally separate from the legacy scene until platform routing is
  * approved. No simulated wallet, entitlement or success messages.
  */
-const PLOT_HOTSPOTS = [
-  { left: '4%', top: '43%', width: '30%', height: '15%' },
-  { left: '35%', top: '42%', width: '30%', height: '15%' },
-  { left: '63%', top: '42%', width: '29%', height: '15%' },
-  { left: '2%', top: '59%', width: '33%', height: '12%' },
-  { left: '34%', top: '58%', width: '32%', height: '12%' },
-  { left: '65%', top: '58%', width: '31%', height: '12%' },
-] as const;
-
-// All plot overlays and flight targets derive from the same hotspot geometry.
-function hotspotCenter(hotspot: (typeof PLOT_HOTSPOTS)[number]) {
-  return {
-    x: `${Number.parseFloat(hotspot.left) + Number.parseFloat(hotspot.width) / 2}%`,
-    y: `${Number.parseFloat(hotspot.top) + Number.parseFloat(hotspot.height) / 2}%`,
-  };
-}
-
 function cropVisual(plot: { state: string; growthEndTime: number | null; growthHours: number; cropEmoji: string }, now: number) {
   if (plot.state === 'ready') return { icon: plot.cropEmoji, label: '成熟可收成' };
   if (plot.state !== 'growing' || !plot.growthEndTime) return null;
@@ -44,6 +27,15 @@ function cropVisual(plot: { state: string; growthEndTime: number | null; growthH
 export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken: string }) {
   const { data, error, loading, busy, refresh, mutate, pendingRetry } =
     useFarmV2Scene(props.apiBaseUrl, props.launchToken);
+  const [desktopView, setDesktopView] = useState(() => window.matchMedia('(min-width: 640px)').matches);
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 640px)');
+    const update = () => setDesktopView(media.matches);
+    media.addEventListener('change', update);
+    update();
+    return () => media.removeEventListener('change', update);
+  }, []);
+  const sceneAssetBase = `${import.meta.env.BASE_URL}images/farm/`;
   const [notice, setNotice] = useState<string | null>(null);
   useEffect(() => {
     document.body.classList.add('farm-v2-authenticated');
@@ -55,22 +47,9 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
     return () => clearInterval(interval);
   }, []);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
-  const [flight, setFlight] = useState<{ operation: 'sow' | 'harvest'; landId: number; icon: string; sequence: number } | null>(null);
-  const flightSequence = useRef(0);
-  useEffect(() => {
-    if (!flight) return;
-    const timeout = setTimeout(() => setFlight(current => current?.sequence === flight.sequence ? null : current), 900);
-    return () => clearTimeout(timeout);
-  }, [flight]);
-
   async function execute(operation: FarmV2Operation, landId: number, quantity?: number) {
     setNotice(null);
     const ok = await mutate(operation, landId, quantity);
-    if (ok && (operation === 'sow' || operation === 'harvest')) {
-      const plot = data?.plots.find(item => item.id + 1 === landId);
-      const sequence = ++flightSequence.current;
-      setFlight({ operation, landId, icon: operation === 'sow' ? '🌱' : (plot?.cropEmoji ?? '🌾'), sequence });
-    }
     setNotice(ok ? (operation === 'claimChaosSeeds' ? '混沌種子已收入倉庫。' : '操作已完成。') : '操作未確認，請檢查錯誤並重新讀取。');
   }
 
@@ -109,10 +88,13 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
   );
 
   return (
-    <section className="farm-v2-surface" aria-label="乾坤福田正式農田" style={{ maxWidth: 720, margin: "0 auto" }}>
-      <style>{`@keyframes farmV2Flight { from { left: var(--from-x); top: var(--from-y); opacity: 1; transform: translate(-50%, -50%) scale(.8); } to { left: var(--to-x); top: var(--to-y); opacity: 0; transform: translate(-50%, -50%) scale(1.2); } } @media (prefers-reduced-motion: reduce) { .farm-v2-flight { animation: none !important; } }`}</style>
-      <div style={{ position: "relative", width: "min(100%, 390px)", aspectRatio: "390 / 843", margin: "0 auto", overflow: "hidden" }}>
-        <img src={farmBackground} alt="乾坤福田六田場景" style={{ display: "block", width: "100%", height: "100%", objectFit: "fill" }} />
+    <section className="farm-v2-surface" aria-label="乾坤福田正式農田" style={{ maxWidth: 1100, margin: "0 auto" }}>
+
+      <div style={{ position: "relative", width: "100%", margin: "0 auto", overflow: "hidden" }} data-testid="farm-v2-scene">
+        <picture>
+          <source media="(min-width: 640px)" srcSet={`${sceneAssetBase}farm-scene-desktop.png`} />
+          <img src={`${sceneAssetBase}farm-scene-mobile.png`} alt="乾坤福田六田場景" style={{ display: "block", width: "100%", height: "auto" }} />
+        </picture>
         {data.plots.map((plot, index) => (
           <button
             key={plot.id}
@@ -122,7 +104,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
             disabled={busy || loading || !!pendingRetry}
             onClick={() => { void handlePlotClick(plot); }}
             style={{
-              position: 'absolute', ...PLOT_HOTSPOTS[index],
+              position: 'absolute', ...(() => { const { center, ...style } = farmV2ScenePlacement(plot.id + 1, desktopView); return style; })(),
               border: selectedLand === plot.id + 1 ? '2px solid #f8d58a' : '1px solid transparent',
               background: selectedLand === plot.id + 1 ? 'rgba(255,215,130,.2)' : 'transparent',
               cursor: 'pointer',
@@ -133,7 +115,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
           const serverNow = data.serverTime + Math.max(0, now - data.receivedAt);
           const visual = plot.unlocked ? cropVisual(plot, serverNow) : { icon: '🔒', label: '尚未解鎖' };
           if (!visual) return null;
-          const center = hotspotCenter(PLOT_HOTSPOTS[index]);
+          const center = farmV2ScenePlacement(plot.id + 1, desktopView).center;
           return (
             <span key={`visual-${plot.id}`} aria-hidden="true"
               style={{
@@ -150,28 +132,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
             </span>
           );
         })}
-        {flight && (() => {
-          const plot = PLOT_HOTSPOTS[flight.landId - 1];
-          if (!plot) return null;
-          const { x: targetX, y: targetY } = hotspotCenter(plot);
-          const warehouseX = '16%';
-          const warehouseY = '35%';
-          return (
-            <span key={flight.sequence} className="farm-v2-flight" aria-hidden="true"
-              style={{
-                position: 'absolute', pointerEvents: 'none', zIndex: 30, fontSize: 28,
-                left: flight.operation === 'sow' ? targetX : warehouseX,
-                top: flight.operation === 'sow' ? targetY : warehouseY,
-                ['--from-x' as string]: flight.operation === 'sow' ? warehouseX : targetX,
-                ['--from-y' as string]: flight.operation === 'sow' ? warehouseY : targetY,
-                ['--to-x' as string]: flight.operation === 'sow' ? targetX : warehouseX,
-                ['--to-y' as string]: flight.operation === 'sow' ? targetY : warehouseY,
-                animation: 'farmV2Flight 850ms ease-in-out both',
-              }}>
-              {flight.icon}
-            </span>
-          );
-        })()}
+        {/* Warehouse flights require verified original-scene anchors. */}
       </div>
       <h2>乾坤福田</h2>
       {error && <p role="alert">{error}</p>}
