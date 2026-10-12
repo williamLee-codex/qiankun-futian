@@ -23,6 +23,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [pendingRetry, setPendingRetry] = useState<{ operation: 'sow' | 'harvest' | 'purchaseSeeds' | 'exchangeCrops'; landId: number; quantity?: number } | null>(null);
   const mutationInFlight = useRef(false);
   const readSequence = useRef(0);
   const uncertainMutation = useRef<{ key: string; requestId: string } | null>(null);
@@ -90,11 +91,17 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       // A successful mutation response confirms the operation; a failed state
       // refresh must not cause the completed operation to be submitted again.
       uncertainMutation.current = null;
+      setPendingRetry(null);
       return await refresh();
     } catch (cause) {
       // Explicit HTTP rejection is definitive; transport failure is ambiguous.
       // Preserve the ID only for ambiguous failures, never for a new action.
-      if (cause instanceof FarmV2ApiError) uncertainMutation.current = null;
+      if (cause instanceof FarmV2ApiError) {
+        uncertainMutation.current = null;
+        setPendingRetry(null);
+      } else {
+        setPendingRetry({ operation, landId, quantity });
+      }
       // A failed mutation must not leave the previously loaded state looking current.
       setData(null);
       setError(cause instanceof Error ? cause.message : 'FARM_V2_MUTATION_FAILED');
@@ -105,5 +112,5 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     }
   }, [baseUrl, launchToken, refresh]);
 
-  return { data, error, loading, busy, refresh, mutate };
+  return { data, error, loading, busy, refresh, mutate, pendingRetry };
 }
