@@ -44,7 +44,7 @@
 | Pool滿載／同玩家並發 | 已修正但待驗證 | journal獨立max2 pool避免被主交易pool等待鎖占滿；尚未多連線壓測 |
 | 換帳號不帶入舊玩家請求 | 已符合並驗證 | hook session epoch；A→B、舊POST回應、401原ID三個測試 |
 | 原始世界座標／真實場景 | 尚未符合 | FINAL FARM-SCENE-001/002要求LandEntity世界模型；当前畫面仍是舊手機底圖hotspot，沒有核准世界場景資產／座標文件 |
-| 桌機／手機正式底圖 | 原始規格證據不足，待確認 | 現引用舊853×1844手機圖；沒有已核准V2桌機圖證據。不猜座標、不換底圖 |
+| 桌機／手機正式底圖 | 已修正但待驗證 | 使用者提供0915手機版(4)/電腦版(4)及本機public/images/farm截圖；原圖已納入V2靜態資產。正式view仍引用舊图；世界座標與render接線尚未驗收 |
 | 五階作物畫面 | 已修正但待驗證 | 既有emoji階段依server時間；未取得符合原場景規格的CropEntity美術；未判定正式視覺通過 |
 | 播種／收成飛行動畫 | 已修正但待驗證 | 成功POST+GET後播放；受控瀏覽器操作及reduced-motion通過；弧線與核准世界錨點尚未符合 |
 | 倉庫、角色、靈獸 | 尚未符合 | 正式UI只有種子／作物數量；角色及靈獸未按伺服器狀態與核准立繪完整展示 |
@@ -92,7 +92,7 @@
 ## 上線阻擋與下一個具體動作
 
 1. **Core整合**：對照兩個草稿分支完成Core正式Catalog／Wallet／paid-value契約；需要使用者授權才能合併與部署。現在不能使用V1端點替代。
-2. **原場景**：定位／提供已核准V2世界場景資產與六田錨點。禁止以舊手機hotspot繼續假定原場景已完成。
+2. **原場景**：原底圖已由使用者提供並入庫；仍須核對六田世界錨點與視覺映射，完成LandEntity場景接線。禁止將舊手機hotspot直接套到不同底圖。
 3. **缺接線**：以既有FINAL規格完成田2/3支付解鎖、原規格的角色／農夫／倉庫等持久流程；未定Core契約不臆造。
 4. **真正交易Gate**：在可啟動独立PostgreSQL的隔離環境執行至少11個並發請求、同ID／不同ID、Core成功後丟回應、journal寫入失敗、Farm提交失敗、補償丟回應、進程重啟後重試、退款與資格讀取競態；本環境不能啟動OS PostgreSQL服務，PGlite不冒充這一Gate。
 5. **正式資料庫**：migration SQL與基本約束／ACL／RLS已在PGlite驗證；仍需確認核准目標、真實PostgreSQL及backend角色，正式套用須另外授權。
@@ -129,3 +129,12 @@
 `pnpm run test`：155 Vitest案例＋4 guards通過。`PORT=4173 BASE_PATH=/ pnpm run build`（含Typecheck）、`git diff --check`通過。真正PostgreSQL Gate仍未通過：系統沒有postgres/initdb，實際非root身份切換因PermissionError被拒絕；CapEff=0、NoNewPrivs=1。未以PGlite代替跨連線驗收，未修改遠端資料庫／部署／合併。
 
 本輪再次執行四尺寸瀏覽器fixture：320/390/768/1440各13操作、Console error 0；320 reduced-motion通過。獨立review無新增Critical/Important。仍是受控API，非正式Core玩家驗收。
+
+
+## 使用者提供原底圖：2026-10-12
+
+使用者提供0915手機版(4).png、0915電腦版(4).png與Windows檔案總管截圖，指向 `C:\ImperialCompass\qiankun-futian-main\public\images\farm`。附件實際已可讀取，不需重傳。截圖檔名為farm-scene-desktop/mobile。Farm repository main未有該目錄；平台repository main則有同名圖片但blob SHA不同，未以同名假定檔案相同。
+
+原圖逐byte保留於 `artifacts/qiankun-farm/public/images/farm/farm-scene-desktop.png`（1215×1295，SHA2567615f3f13bee097708726716cce9239cb471089e470f55cfbdcb9ae53cea7691）及 `farm-scene-mobile.png`（941×1672，SHA25685d384d4fdb0e9f312ce69c26fc105915a44833020e857aa6951a5cbc1bf5010）。Vite public目錄由artifact提供靜態資產。沒有重畫、裁切或改圖。
+
+`PORT=4173 BASE_PATH=/ pnpm --filter @workspace/qiankun-farm build`通過；dist/public/images/farm二圖與附件SHA256一致。這次只完成資產入庫與来源確認；正式view仍用舊圖，沒有把舊點擊範圍套到新圖。世界座標／LandEntity及桌機手機視覺Gate仍未通過。
