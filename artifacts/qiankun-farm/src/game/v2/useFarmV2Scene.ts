@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createFarmV2Api } from './farmV2ApiClient';
+import { createFarmV2Api, FarmV2ApiError } from './farmV2ApiClient';
 import { mapServerLands, mapServerWarehouse } from './farmV2SceneAdapter';
 import type { Plot, CropInventory } from '../types';
 
@@ -25,6 +25,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   const [busy, setBusy] = useState(false);
   const mutationInFlight = useRef(false);
   const readSequence = useRef(0);
+  const uncertainMutation = useRef<{ key: string; requestId: string } | null>(null);
 
   const refresh = useCallback(async () => {
     const sequence = ++readSequence.current;
@@ -67,20 +68,33 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   ) => {
     if (!launchToken || mutationInFlight.current) return false;
     if (!Number.isInteger(landId) || landId < 1 || landId > 6) return false;
+    const key = `${operation}:${landId}:${quantity ?? ''}`;
+    // An ambiguous network failure must not be retried with a fresh ID.
+    if (uncertainMutation.current && uncertainMutation.current.key !== key) {
+      setError('FARM_V2_PREVIOUS_MUTATION_UNCONFIRMED');
+      return false;
+    }
+    const requestId = uncertainMutation.current?.requestId ?? crypto.randomUUID();
+    uncertainMutation.current = { key, requestId };
     mutationInFlight.current = true;
     setBusy(true);
     try {
       const api = createFarmV2Api({ baseUrl, launchToken });
-      if (operation === 'sow') await api.sow(landId);
-      else if (operation === 'harvest') await api.harvest(landId);
+      if (operation === 'sow') await api.sow(landId, requestId);
+      else if (operation === 'harvest') await api.harvest(landId, requestId);
       else {
         if (!Number.isSafeInteger(quantity) || (quantity ?? 0) <= 0) throw new Error('INVALID_QUANTITY');
-        if (operation === 'purchaseSeeds') await api.purchaseSeeds(landId, quantity!);
-        else await api.exchangeCrops(landId, quantity!);
+        if (operation === 'purchaseSeeds') await api.purchaseSeeds(landId, quantity!, requestId);
+        else await api.exchangeCrops(landId, quantity!, requestId);
       }
-      // Always re-read committed server state, including inventory and access.
+      // A successful mutation response confirms the operation; a failed state
+      // refresh must not cause the completed operation to be submitted again.
+      uncertainMutation.current = null;
       return await refresh();
     } catch (cause) {
+      // Explicit HTTP rejection is definitive; transport failure is ambiguous.
+      // Preserve the ID only for ambiguous failures, never for a new action.
+      if (cause instanceof FarmV2ApiError) uncertainMutation.current = null;
       // A failed mutation must not leave the previously loaded state looking current.
       setData(null);
       setError(cause instanceof Error ? cause.message : 'FARM_V2_MUTATION_FAILED');
