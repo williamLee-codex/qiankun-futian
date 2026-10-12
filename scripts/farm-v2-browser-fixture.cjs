@@ -52,6 +52,7 @@ const fs = require("node:fs");
   process.on("exit", () => server.kill());
   const outcomes = [];
   const page = await browser.newPage();
+  let worldCoordinates = null;
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 900 });
     await page.emulateMedia({
@@ -66,9 +67,16 @@ const fs = require("node:fs");
     });
     const fontDir = process.env.FARM_V2_FONT_DIR;
     if (fontDir) {
-      const fontCss = fs
+      let fontCss = fs
         .readFileSync(fontDir + "/index.css", "utf8")
         .replaceAll("./files/", "https://test-font.local/");
+      const emojiFontDir = process.env.FARM_V2_EMOJI_FONT_DIR;
+      if (emojiFontDir)
+        fontCss +=
+          fs
+            .readFileSync(emojiFontDir + "/index.css", "utf8")
+            .replaceAll("./files/", "https://test-font.local/emoji/") +
+          "\nbody.farm-v2-authenticated{font-family:'Microsoft JhengHei','Noto Sans TC','Noto Emoji',Arial,sans-serif !important;}";
       await page.route("https://fonts.googleapis.com/**", (r) =>
         r.fulfill({ status: 200, contentType: "text/css", body: fontCss }),
       );
@@ -80,7 +88,14 @@ const fs = require("node:fs");
           status: 200,
           headers: { "access-control-allow-origin": "*" },
           body: fs.readFileSync(
-            fontDir + "/files/" + new URL(r.request().url()).pathname.slice(1),
+            new URL(r.request().url()).pathname.startsWith("/emoji/") &&
+              emojiFontDir
+              ? emojiFontDir +
+                  "/files/" +
+                  new URL(r.request().url()).pathname.slice(7)
+              : fontDir +
+                  "/files/" +
+                  new URL(r.request().url()).pathname.slice(1),
           ),
         }),
       );
@@ -198,6 +213,43 @@ const fs = require("node:fs");
           imageState.width / imageState.height,
       ) < 0.002,
     );
+    const entities = page.locator(".farm-v2-land-entity");
+    const readEntities = () =>
+      entities.evaluateAll((nodes) =>
+        nodes.map((node) => ({
+          id: node.getAttribute("data-land-id"),
+          x: node.getAttribute("data-world-x"),
+          y: node.getAttribute("data-world-y"),
+          lifecycle: node.getAttribute("data-lifecycle"),
+        })),
+      );
+    const initialEntities = await readEntities();
+    assert.equal(initialEntities.length, 6);
+    const coordinates = initialEntities.map(({ id, x, y }) => ({ id, x, y }));
+    if (worldCoordinates) assert.deepEqual(coordinates, worldCoordinates);
+    else worldCoordinates = coordinates;
+    const writesBeforeResize = ids.length;
+    await page.setViewportSize({
+      width: width >= 640 ? 390 : 768,
+      height: 900,
+    });
+    await page.waitForFunction(
+      (expected) =>
+        document
+          .querySelector('[data-testid="farm-v2-scene"] img')
+          .currentSrc.includes(expected),
+      width >= 640 ? "mobile" : "desktop",
+    );
+    assert.deepEqual(await readEntities(), initialEntities);
+    assert.equal(ids.length, writesBeforeResize);
+    await page.setViewportSize({ width, height: width === 1440 ? 1000 : 900 });
+    await page.waitForFunction(
+      (expected) =>
+        document
+          .querySelector('[data-testid="farm-v2-scene"] img')
+          .currentSrc.includes(expected),
+      width >= 640 ? "desktop" : "mobile",
+    );
     await page.locator("summary").filter({ hasText: "福田倉庫" }).click();
     const warehouseTable = page.getByRole("table", {
       name: "福田倉庫種子與靈植",
@@ -217,6 +269,40 @@ const fs = require("node:fs");
         .getByRole("button", { name: `${names[id - 1]}，生長中` })
         .waitFor();
       assert.equal(await page.locator(".farm-v2-flight").count(), 0);
+      if (id === 1) {
+        const growingEntities = await readEntities();
+        const writes = ids.length;
+        await page.setViewportSize({
+          width: width >= 640 ? 390 : 768,
+          height: 900,
+        });
+        await page.waitForFunction(
+          (expected) =>
+            document
+              .querySelector('[data-testid="farm-v2-scene"] img')
+              .currentSrc.includes(expected),
+          width >= 640 ? "mobile" : "desktop",
+        );
+        assert.deepEqual(await readEntities(), growingEntities);
+        assert.equal(ids.length, writes);
+        await page.setViewportSize({
+          width,
+          height: width === 1440 ? 1000 : 900,
+        });
+        await page.waitForFunction(
+          (expected) =>
+            document
+              .querySelector('[data-testid="farm-v2-scene"] img')
+              .currentSrc.includes(expected),
+          width >= 640 ? "desktop" : "mobile",
+        );
+        if (width === 320)
+          await page.screenshot({
+            path: `${evidence}/farm-growing-320.png`,
+            fullPage: true,
+          });
+      }
+
       Object.assign(snapshot.lands[id - 1], {
         lifecycle: "MATURE",
         maturesAt: new Date(Date.now() - 1000).toISOString(),

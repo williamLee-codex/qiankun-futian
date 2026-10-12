@@ -43,8 +43,8 @@
 | 已扣款、Farm失敗復原／補償 | 已修正但待驗證 | durable WALLET_APPLIED／COMPENSATING／COMPENSATED；saga mock檢查；真實兩庫中斷待驗證 |
 | Pool滿載／同玩家並發 | 已修正但待驗證 | journal獨立max2 pool避免被主交易pool等待鎖占滿；尚未多連線壓測 |
 | 換帳號不帶入舊玩家請求 | 已符合並驗證 | hook session epoch；A→B、舊POST回應、401原ID三個測試 |
-| 原始世界座標／真實場景 | 尚未符合 | FINAL FARM-SCENE-001/002要求LandEntity世界模型；当前畫面仍是舊手機底圖hotspot，沒有核准世界場景資產／座標文件 |
-| 桌機／手機正式底圖 | 已修正但待驗證 | 使用者提供0915手機版(4)/電腦版(4)及本機public/images/farm截圖；原圖已納入V2靜態資產。正式view已接原圖與既有美術定位；世界座標／LandEntity仍未符合 |
+| 共用六田實體／世界座標基本接線 | 已符合並驗證 | 六田共用immutable world surfaces與server snapshot；一個LandEntity元件各自綁定作物與操作。兩張原圖透過原有terrain correspondences呈現同一世界。四尺寸及空田／生長中跨640切換保留身份、world座標與狀態，無額外POST；完整場景美術／動畫仍另待驗收 |
+| 桌機／手機正式底圖 | 已修正但待驗證 | 使用者提供0915手機版(4)/電腦版(4)及本機public/images/farm截圖；原圖已納入V2靜態資產。正式view已接原圖與既有美術定位；共用LandEntity已接線；完整場景美術／動畫仍待驗收 |
 | 五階作物畫面 | 已修正但待驗證 | 既有emoji階段依server時間；未取得符合原場景規格的CropEntity美術；未判定正式視覺通過 |
 | 播種／收成飛行動畫 | 尚未符合 | 原倉庫16%,35%錨點在新原圖落在山水／崖壁；已移除錯位動畫，等待可查證倉庫世界錨點。收成入庫功能仍運作 |
 | 倉庫種子／靈植集中庫存 | 已符合並驗證 | 正式UI可開啟倉庫，六田按canonical順序顯示伺服器庫存；四尺寸實際收成與混沌領取同步檢查。其他四類資產尚未持久化 |
@@ -76,7 +76,7 @@
 | `git ls-remote origin refs/heads/...` | 兩個指定HEAD吻合原指令；push前再核對修正分支 |
 | `pnpm install --frozen-lockfile` | 首次invalid allowBuilds阻擋；修正esbuild設定後完成 |
 | `pnpm run typecheck` | 通過 |
-| `pnpm run test` | 40個Vitest檔、156案例通過；另4個Node guard案例通過 |
+| `pnpm run test` | 41個Vitest檔、158案例通過；另4個Node guard案例通過 |
 | `PORT=4173 BASE_PATH=/ pnpm run build` | API、Farm、mockup全workspace build通過；PORT/BASE_PATH是原sandbox config所需環境值 |
 | `pnpm run test:browser:fixture` | 配合測試瀏覽器／本地字型環境，320/390/768/1440各13次操作（六田播種／收成＋混沌領取）、無溢出、Console error 0；320另驗證reduced-motion |
 | `git diff --check` | 通過 |
@@ -94,7 +94,7 @@
 ## 上線阻擋與下一個具體動作
 
 1. **Core整合**：對照兩個草稿分支完成Core正式Catalog／Wallet／paid-value契約；需要使用者授權才能合併與部署。現在不能使用V1端點替代。
-2. **原場景**：原底圖已由使用者提供並入庫；仍須核對六田世界錨點與視覺映射，完成LandEntity場景接線。禁止將舊手機hotspot直接套到不同底圖。
+2. **完整場景**：原圖與共用六田實體／世界面／美術投影已接線；原規格的角色、靈獸、完整CropEntity美術及倉庫飛行動畫尚未驗收。不得恢復錯位倉庫錨點。
 3. **缺接線**：以既有FINAL規格完成田2/3支付解鎖、原規格的角色／農夫／倉庫等持久流程；未定Core契約不臆造。
 4. **真正交易Gate**：在可啟動独立PostgreSQL的隔離環境執行至少11個並發請求、同ID／不同ID、Core成功後丟回應、journal寫入失敗、Farm提交失敗、補償丟回應、進程重啟後重試、退款與資格讀取競態；本環境不能啟動OS PostgreSQL服務，PGlite不冒充這一Gate。
 5. **正式資料庫**：migration SQL與基本約束／ACL／RLS已在PGlite驗證；仍需確認核准目標、真實PostgreSQL及backend角色，正式套用須另外授權。
@@ -169,3 +169,16 @@
 盆栽runtime升階需金幣、首次圖鑑需金幣獎勵；Core草稿目前只有seed purchase、crop exchange、compensation原因，沒有盆栽扣款／獎勵契約。正式盆栽持久化、材料與Core交易未接通，不假冒購種／兌換／補償來入帳。
 
 本輪`pnpm run test`156案例＋4 guards、workspace Typecheck/Build通過；四尺寸browser仍15次mutation，另開啟倉庫實測六行初始庫存、各田收成×6作物同步、混沌領取後種子3；Console0、無橫向溢出。新截圖含倉庫表格。這只是種子／靈植集中庫存，不代表六分類完整倉庫或盆栽流程完成。仍NO-GO。
+
+
+## 共用六田實體與世界面
+
+撤回先前自行加入的「全場景必須共用一個平面相機投影」判定；原規格沒有此限制，也未要求更換兩張原圖。沒有據此修改規格或要求使用者重新批准。
+
+`farmV2SceneWorld.ts`建立同一組immutable六田世界面，基準來自已查證的既有定位，不自行猜座標。每個實體按固定田號绑定validated server snapshot；缺田／重複田號拒絕。`FarmV2LandEntity.tsx`讓各田同時擁有作物顯示及操作身份，取代整張圖片上的獨立button-map＋crop-map。原底圖為背景；viewport不生成遊戲狀態。hook只有收到新server snapshot才建立新實體快照，換尺寸只更新render projection。
+
+Renderer直接接受entity.world幾何：桌機使用世界頂點，手機依原有四角correspondence做bilinear terrain mapping；六個terrain surface共用世界定義，不施加全場景共平面的額外假設，不改原定位。獨立review逐田數值檢查手機bounds與原定位差異小於1e-8百分點。
+
+`pnpm run test`41檔158案例＋4 guards通過；`PORT=4173 BASE_PATH=/ pnpm run build`包含Typecheck通過；`git diff --check`通過。四尺寸browser各15操作，Console0；每尺寸另於空田及第一田已播種時跨640切換，檢查全部六田ID、world coordinates、lifecycle保持不變，沒有新增POST。倉庫／收成／混沌／農夫流程仍通過。兩個新world單元案例核對身份、world immutability及缺田／重複拒絕。中途元件拆分的JSX閉合、import path與重複landId型別問題已由Typecheck抓出並修復。
+
+新增生長中320截圖。Portable Chromium原先缺emoji字型而顯示tofu；以測試環境本地Noto Emoji補齐，同繁中字型皆為受控fixture，不加入產品依賴、不生成新美術。截圖證據包包含四尺寸及生長中畫面。原規格完整CropEntity美術／人物／靈獸／倉庫動畫、Core契約與真正多連線Gate仍未完成，整體NO-GO。

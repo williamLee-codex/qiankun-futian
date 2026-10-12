@@ -1,3 +1,7 @@
+import {
+  createFarmV2SceneEntities,
+  type FarmV2SceneLandEntity,
+} from "./farmV2SceneWorld";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createFarmV2Api,
@@ -33,6 +37,7 @@ type SceneData = {
   chaosPending: number;
   farmer: { entitled: boolean; enabledByLand: Record<number, boolean> } | null;
   plots: Plot[];
+  entities: FarmV2SceneLandEntity[];
   seedInventory: CropInventory;
   cropInventory: CropInventory;
 };
@@ -105,13 +110,15 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
           ))
       )
         throw new Error("INVALID_FARMER_STATE");
+      const plots = mapServerLands(snapshot.lands, snapshot.serverTime);
       const nextData = {
         farmer: snapshot.player.farmerState ?? null,
         chaosPending,
         sessionEpoch: epoch,
         serverTime: snapshot.serverTime,
         receivedAt: Date.now(),
-        plots: mapServerLands(snapshot.lands, snapshot.serverTime),
+        plots,
+        entities: createFarmV2SceneEntities(plots),
         ...mapServerWarehouse(snapshot.player.warehouseState),
       };
       if (sequence !== readSequence.current || epoch !== session.current.epoch)

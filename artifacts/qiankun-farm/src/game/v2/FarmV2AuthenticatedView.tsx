@@ -1,4 +1,4 @@
-import { farmV2ScenePlacement } from './farmV2ScenePlacement';
+import { FarmV2LandEntity } from './FarmV2LandEntity';
 import { useEffect, useState } from 'react';
 import type { FarmV2Operation } from './farmV2ApiClient';
 import { useFarmV2Scene } from './useFarmV2Scene';
@@ -12,18 +12,6 @@ import { CROP_DATA } from '../types';
  * Intentionally separate from the legacy scene until platform routing is
  * approved. No simulated wallet, entitlement or success messages.
  */
-function cropVisual(plot: { state: string; growthEndTime: number | null; growthHours: number; cropEmoji: string }, now: number) {
-  if (plot.state === 'ready') return { icon: plot.cropEmoji, label: '成熟可收成' };
-  if (plot.state !== 'growing' || !plot.growthEndTime) return null;
-  const duration = plot.growthHours * 3_600_000;
-  const progress = Math.max(0, Math.min(1, (now - (plot.growthEndTime - duration)) / duration));
-  if (progress >= 1) return { icon: plot.cropEmoji, label: '等待成熟確認' };
-  if (progress < 0.25) return { icon: '🌱', label: '萌芽' };
-  if (progress < 0.5) return { icon: '🌿', label: '幼苗' };
-  if (progress < 0.75) return { icon: '🌳', label: '生長' };
-  return { icon: plot.cropEmoji, label: '將熟' };
-}
-
 export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken: string }) {
   const { data, error, loading, busy, refresh, mutate, pendingRetry } =
     useFarmV2Scene(props.apiBaseUrl, props.launchToken);
@@ -95,43 +83,10 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
           <source media="(min-width: 640px)" srcSet={`${sceneAssetBase}farm-scene-desktop.png`} />
           <img src={`${sceneAssetBase}farm-scene-mobile.png`} alt="乾坤福田六田場景" style={{ display: "block", width: "100%", height: "auto" }} />
         </picture>
-        {data.plots.map((plot, index) => (
-          <button
-            key={plot.id}
-            type="button"
-            aria-label={`${plot.name}，${!plot.unlocked ? '尚未解鎖' : plot.state === 'ready' ? '已成熟' : plot.state === 'growing' ? '生長中' : '待播種'}`}
-            aria-pressed={selectedLand === plot.id + 1}
-            disabled={busy || loading || !!pendingRetry}
-            onClick={() => { void handlePlotClick(plot); }}
-            style={{
-              position: 'absolute', ...(() => { const { center, ...style } = farmV2ScenePlacement(plot.id + 1, desktopView); return style; })(),
-              border: selectedLand === plot.id + 1 ? '2px solid #f8d58a' : '1px solid transparent',
-              background: selectedLand === plot.id + 1 ? 'rgba(255,215,130,.2)' : 'transparent',
-              cursor: 'pointer',
-            }}
-          />
-        ))}
-        {data.plots.map((plot, index) => {
-          const serverNow = data.serverTime + Math.max(0, now - data.receivedAt);
-          const visual = plot.unlocked ? cropVisual(plot, serverNow) : { icon: '🔒', label: '尚未解鎖' };
-          if (!visual) return null;
-          const center = farmV2ScenePlacement(plot.id + 1, desktopView).center;
-          return (
-            <span key={`visual-${plot.id}`} aria-hidden="true"
-              style={{
-                position: 'absolute',
-                left: center.x,
-                top: center.y,
-                transform: 'translate(-50%, -50%)',
-                display: 'grid', justifyItems: 'center', gap: 2,
-                pointerEvents: 'none', color: 'white',
-                textShadow: '0 1px 4px black',
-              }}>
-              <span style={{ fontSize: 26 }}>{visual.icon}</span>
-              <span style={{ fontSize: 10, background: 'rgba(0,0,0,.6)', borderRadius: 4, padding: '1px 4px' }}>{visual.label}</span>
-            </span>
-          );
-        })}
+        {data.entities.map(entity => <FarmV2LandEntity key={entity.landId} entity={entity} desktopView={desktopView}
+          selected={selectedLand === entity.landId} disabled={busy || loading || !!pendingRetry}
+          serverNow={data.serverTime + Math.max(0, now - data.receivedAt)}
+          onActivate={landId => { const land=data.entities.find(item=>item.landId===landId); if(land) void handlePlotClick(land.plot); }} />)}
         {/* Warehouse flights require verified original-scene anchors. */}
       </div>
       <h2>乾坤福田</h2>
