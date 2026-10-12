@@ -29,11 +29,14 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
     document.body.classList.add('farm-v2-authenticated');
     return () => document.body.classList.remove('farm-v2-authenticated');
   }, []);
-  const [now, setNow] = useState(Date.now());
+  const [clockTick, setClockTick] = useState(Date.now());
   useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    const interval = setInterval(() => setClockTick(Date.now()), 30_000);
     return () => clearInterval(interval);
   }, []);
+  const serverNow = data
+    ? data.serverTime + Math.max(0, clockTick - data.receivedAt)
+    : 0;
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
   const [seedPackInput, setSeedPackInput] = useState("1");
   const seedPackCount = Number(seedPackInput);
@@ -95,7 +98,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
         </picture>
         {data.entities.map(entity => <FarmV2LandEntity key={entity.landId} entity={entity} desktopView={desktopView}
           selected={selectedLand === entity.landId} disabled={busy || loading || !!pendingRetry}
-          serverNow={data.serverTime + Math.max(0, now - data.receivedAt)}
+          serverNow={serverNow}
           onActivate={landId => { const land=data.entities.find(item=>item.landId===landId); if(land) void handlePlotClick(land.plot); }} />)}
         {/* Warehouse flights require verified original-scene anchors. */}
       </div>
@@ -162,7 +165,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
               )}
               <p>種子：{seeds}／整批 {plot.maxSeeds}；倉庫作物：{crops}</p>
               {plot.unlocked && plot.state === 'growing' && plot.growthEndTime && (
-                <p>預計成熟：{new Date(plot.growthEndTime).toLocaleString('zh-TW')}</p>
+                <p>{serverNow >= plot.growthEndTime ? '已到預計成熟時間，正在向伺服器確認。' : `預計成熟：${new Date(plot.growthEndTime).toLocaleString('zh-TW')}`}</p>
               )}
               <button type="button" disabled={busy || loading || !!pendingRetry || !canSow}
                 onClick={() => { void execute('sow', plot.id + 1); }}>整批播種</button>

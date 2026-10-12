@@ -139,3 +139,37 @@ it('requires historical land2 before offering land3 and does not resell inactive
  await act(async()=>renderer.root.findAllByType('button').find(b=>b.props['aria-label']==='幽熒沃土，尚未解鎖')!.props.onClick());
  expect(renderer.root.findAllByType('button').filter(b=>b.children.join('')==='支付 88 金幣，永久解鎖')).toHaveLength(0);
 });
+
+it("renders five growth stages from the server maturity time", async () => {
+  const start = 1_000_000;
+  const duration = 4 * 60 * 60 * 1000;
+  const end = start + duration;
+  const stages = [
+    [0.1, "萌芽"],
+    [0.3, "幼苗"],
+    [0.55, "生長"],
+    [0.8, "將熟"],
+    [1, "成熟可收成"],
+  ] as const;
+  for (const [progress, label] of stages) {
+    state.value.data.plots[0] = {
+      ...state.value.data.plots[0],
+      state: progress === 1 ? "ready" : "growing",
+      growthHours: 4,
+      growthEndTime: end,
+    };
+    state.value.data.entities = createFarmV2SceneEntities(state.value.data.plots);
+    state.value.data.serverTime = start + duration * progress;
+    state.value.data.receivedAt = Date.now();
+    await mount();
+    expect(renderer.root.findAllByType("span").some((node) =>
+      node.children.join("").includes(label),
+    )).toBe(true);
+    if (progress === 1) {
+      const land = renderer.root.findByProps({ "aria-label": "微芒凡土，已成熟" });
+      await act(async () => land.props.onClick());
+      expect(state.value.mutate).toHaveBeenCalledWith("harvest", 1, undefined);
+    }
+    await act(async () => renderer.unmount());
+  }
+});
