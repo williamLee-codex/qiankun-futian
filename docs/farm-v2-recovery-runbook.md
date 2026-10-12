@@ -1,6 +1,6 @@
 # Original-key recovery (local engineering, 2026-10-11)
 
-Candidate Farm 0003 / version 20261011000203 follows Platform 0123–0133 and Farm 0001/0002. Original files are unchanged. The candidate is hash-pinned in the review manifest and cannot be applied by the offline authority tool. Separate migration approval is required.
+Candidate Farm 0003 / version 20261011000203 follows Platform 0123–0133 and Farm 0001/0002. Platform 0123–0133 and Farm 0001/0002 are unchanged. Candidate 0003 includes the locally verified compensation-conflict classification fix from Farm commit `32a8f54f6226f143ddda2c4068e1eea4995e0c7e`; it is not installed in production. The candidate is hash-pinned in the review manifest and cannot be applied by the offline authority tool. Separate migration approval is required.
 
 `farm_v2_inspect_recovery(uuid,text)` is STABLE / SECURITY DEFINER / empty search_path / postgres-owned under the migration operator gate. It only reads owner+original request journal, Core primary idempotency key, inverse references and immutable atomic receipt. PUBLIC/anon/authenticated/service_role cannot execute it. Dedicated runtime/operator receive only explicitly reviewed execution. Operators receive SELECT only on all six Farm tables; no sequence, transaction, Core DML or observation-write RPC privileges.
 
@@ -13,9 +13,9 @@ CLI: `--list` and original `--user UUID --request KEY` inspection only. It no lo
 | Result | Permitted next action |
 |---|---|
 | VERIFIED_COMPLETED | Atomic receipt, primary Ledger and completed Farm journal agree; retrieve the existing response via original handler. Never debit/reward again |
-| REPLAY_ORIGINAL_HANDLER | Replay EXACT original endpoint/body/owner/idempotency key. Existing idempotency, action check, authority and Saga recovery remain authoritative; inspection does not itself mark complete |
-| UNKNOWN | Absence is not rollback proof. Inspect again, or replay the exact original handler under its existing locks. Never fabricate failure/success or generate a new key |
-| AUTHORITY_REVIEW_REQUIRED | Receipt/journal mismatch, legacy primary without completion, or compensation state: retain case and request key, escalate. Operator cannot close, fence or add Ledger entries |
+| REPLAY_ORIGINAL_HANDLER | A conditional classification, not automatic retry approval. Check original intent and current authority, then invoke only the EXACT original endpoint/body/owner/idempotency key through its existing locks. Never bypass the handler or mark complete from this label |
+| UNKNOWN | Absence is not rollback proof and does not authorize replay. Repeat read-only inspection with the original key; establish original intent, authoritative journal/Ledger/receipt evidence and absence of compensation/closure conflicts before any separately approved original-handler retry. Missing evidence requires escalation, never a new key |
+| AUTHORITY_REVIEW_REQUIRED | Inverse Ledger, compensation key, immutable closure, mismatched transaction ID/receipt, or compensation state: stop replay for the affected request, retain case and original key, escalate. Operator cannot close, fence or add Ledger entries |
 
 There is deliberately no generic settlement RPC: it cannot prove all legacy domain asset plans merely from a Wallet row. Legacy COMPENSATING, inconsistent atomic receipt and stale OPEN authorization need a separately reviewed authority/domain recovery decision. This remains a release blocker if such records exist; do not restore direct operator settlement or compensate only the Wallet half of atomic pot.
 
@@ -24,3 +24,11 @@ Local tests: 6 targeted Node/isolated-PG tests across recovery, role policy and 
 API project supplied by user: qiankun-farm-v2-api / prj_0QZ4HyWNmMYkb1pgB4QJnTTDjmLL / Node 24.x / no GitHub link / no deployment. No project creation remains necessary. Root ., Other framework, API build, output unset and existing vercel.json remain unchanged. Function requests 60s; HTTP acknowledgment 50s; DB statement15s/lock3s/idle8s/acquisition5s; three pools max1 each per warm instance. Capacity requires 3*N <= min(60-reserved-otherPeak-maintenanceReserve, supplierRemainingPoolBudget), not 60 or the snapshot six as the Farm allocation. Same Drizzle transaction holds assets+restricted Core RPC; no new Pool or background worker was added.
 
 Remaining formal evidence: actual API maxDuration/plan/instance budget, live role/TLS session/direct affinity and physical same database, current Journal/candidate collision/catalog/grants, approval to install 0003 and bind credentials, unfiltered legacy OPEN/compensation cutover checks and designated incident authority. Project existence is supplied evidence, not a deployed runtime proof. No formal migration, role, deployment or data operation occurred.
+
+## Classification safety amendment
+
+Conflict evidence is evaluated before legacy COMPLETED/PENDING/WALLET_PENDING/WALLET_APPLIED replay classification. COMPENSATED alone is not financial or business completion proof. Cross-owner journal references cannot authorize replay; owner-scoped keys do not reveal another owner's transaction. An inverse reference is conflicting evidence even if its owner is inconsistent.
+
+The read-only CLI inspection and runtime observation API are distinct: POST recovery appends audit evidence, so it must not be called during a strictly read-only production review. Observation is not settlement and cannot debit, compensate or finalize a transaction. For systemic contradictions across accounts, suspend V2 writes under the approved incident procedure; preserve V1 and all audit/asset records.
+
+Current local regression evidence: 16 PASS / 0 FAIL / 0 SKIPPED across recovery classification, role restrictions and Migration authority checks, as recorded for commit `32a8f54f6226f143ddda2c4068e1eea4995e0c7e`. No tests were rerun for this documentation amendment. Production Schema/Journal, role/TLS/connection mode/capacity and unresolved-transaction evidence remain BLOCKED until an authorized read-only connection is available.
