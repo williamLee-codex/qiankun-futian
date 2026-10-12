@@ -52,7 +52,7 @@
 | 響應式與操作文字可見 | 已符合並驗證 | 修復黑底黑字、禁止捲动與遮圖重複面板；320/390/768/1440無橫向溢出 |
 | 瀏覽器Console | 已符合並驗證 | 四尺寸受控API／字型fixture Console error 0；不能推論正式Core／外部CDN無錯誤 |
 | 農夫登入結算與逐田ON/OFF | 已符合並驗證 | 正式API／UI已接原runtime；隔離SQL3批60株新手入庫360、庫存種子扣除、重讀不重複、退款停止；HTTP逐田開關及四尺寸操作通過。真實Core仍待驗證 |
-| 好友、任務、盆栽、洞府 | 尚未符合 | 純runtime存在；完整持久API及UI尚未接通 |
+| 好友、任務、盆栽、洞府 | 尚未符合 | 純runtime存在；完整持久API及UI尚未接通。任務進度已隨播種／收成／兌換寫入mission_state，但沒有正式讀取／領獎流程；領獎同時包含Core金幣及材料，現有Core Wallet bridge拒絕mission reward reason，Farm玩家表也沒有材料庫存欄位，因此必須先定義Core入帳與材料持久化契約 |
 | RLS／migration／資料隔離ACL | 已修正但待驗證 | 實際migration在PGlite執行；三表RLS、anon/authenticated全表權限撤銷、service_role讀取通過。遠端套用、真實backend連線角色及Supabase API隔離未驗證 |
 | Wallet Catalog驗價／帳本一致性 | 尚未符合 | Core草稿接收Farm傳入amount；本輪不修改Core權威。需獨立Core契約與正式Ledger驗證 |
 
@@ -95,7 +95,7 @@
 
 1. **Core整合**：Core coin-land contract 與 Farm V2持久化API／UI已分別推到隔離分支；仍須整合進核准主線，並在正式Core Catalog／Wallet／paid-value及資料庫環境完成驗證。現在不能使用V1端點替代。
 2. **完整場景**：原圖與共用六田實體／世界面／美術投影已接線；原規格的角色、靈獸、完整CropEntity美術及倉庫飛行動畫尚未驗收。不得恢復錯位倉庫錨點。
-3. **缺接線**：田2/3解鎖已有 staged contract/API/UI；原規格的角色素材、完整倉庫與好友／任務／盆栽／洞府等持久流程仍缺，未定Core契約不臆造。
+3. **缺接線**：田2/3解鎖已有 staged contract/API/UI；任務領獎需先新增Core核准獎勵入帳契約及Farm材料持久化欄位，再接claim流程。好友／盆栽／洞府完整持久流程與角色素材仍缺，未定契約或素材不臆造。
 4. **真正交易Gate**：在可啟動独立PostgreSQL的隔離環境執行至少11個並發請求、同ID／不同ID、Core成功後丟回應、journal寫入失敗、Farm提交失敗、補償丟回應、進程重啟後重試、退款與資格讀取競態；本環境不能啟動OS PostgreSQL服務，PGlite不冒充這一Gate。
 5. **正式資料庫**：migration SQL與基本約束／ACL／RLS已在PGlite驗證；仍需確認核准目標、真實PostgreSQL及backend角色，正式套用須另外授權。
 
