@@ -91,6 +91,15 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
       <h2>乾坤福田</h2>
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
+      {pendingRetry && (
+        <div role="alert">
+          <p>上一筆操作的結果尚未確認，請重試原操作；在確認前無法執行其他交易。</p>
+          <button type="button" disabled={busy || loading}
+            onClick={() => { void execute(pendingRetry.operation, pendingRetry.landId, pendingRetry.quantity); }}>
+            重試尚未確認的操作（沿用原交易編號）
+          </button>
+        </div>
+      )}
       <button type="button" disabled={busy || loading} onClick={() => { void refresh(); }}>
         更新農田
       </button>
