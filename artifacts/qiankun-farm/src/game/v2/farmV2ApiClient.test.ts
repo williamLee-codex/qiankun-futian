@@ -66,6 +66,17 @@ describe('Farm V2 API contract', () => {
     }
   });
 
+  it('reuses an explicitly supplied request ID for retrying the same mutation', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'new-request' });
+    const api = createFarmV2Api({ baseUrl: 'https://example.test/api', launchToken: 'token' });
+    await api.sow(1, 'original-request');
+    await api.sow(1, 'original-request');
+    expect(fetchMock.mock.calls[0][1].headers['x-request-id']).toBe('original-request');
+    expect(fetchMock.mock.calls[1][1].headers['x-request-id']).toBe('original-request');
+  });
+
   it('does not turn server rejections into successful mutations', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false, status: 403, json: async () => ({ error: 'LAND_NOT_ACCESSIBLE' }),
