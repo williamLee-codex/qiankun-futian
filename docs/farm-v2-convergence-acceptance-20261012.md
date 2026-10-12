@@ -74,7 +74,7 @@
 | `git ls-remote origin refs/heads/...` | 兩個指定HEAD吻合原指令；push前再核對修正分支 |
 | `pnpm install --frozen-lockfile` | 首次invalid allowBuilds阻擋；修正esbuild設定後完成 |
 | `pnpm run typecheck` | 通過 |
-| `pnpm run test` | 40個Vitest檔、153案例通過；另4個Node guard案例通過 |
+| `pnpm run test` | 40個Vitest檔、155案例通過；另4個Node guard案例通過 |
 | `PORT=4173 BASE_PATH=/ pnpm run build` | API、Farm、mockup全workspace build通過；PORT/BASE_PATH是原sandbox config所需環境值 |
 | `pnpm run test:browser:fixture` | 配合測試瀏覽器／本地字型環境，320/390/768/1440各13次操作（六田播種／收成＋混沌領取）、無溢出、Console error 0；320另驗證reduced-motion |
 | `git diff --check` | 通過 |
@@ -120,3 +120,12 @@
 現有SQL／HTTP流程改為執行這份migration，移除重複手寫測試DDL。初始空migration測試6項失敗；補齊後6項通過，包括非法田號／負數拒絕、客戶端七類表權限全部撤銷、實際SELECT/DELETE拒絕、service_role讀取與三表RLS確認。測試角色僅建立在PGlite記憶體DB。`pnpm run test`（153案例＋4 guards）、`PORT=4173 BASE_PATH=/ pnpm run build`通過；UI未更動，沿用先前四尺寸實際截圖。
 
 沒有執行db push、遠端migration或正式資料庫變更。這項補齊可重現SQL來源，但不宣稱真實Supabase／多連線交易驗收通過。整體仍NO-GO。
+
+
+## 後續收斂：過期讀取不能覆蓋交易結果
+
+重現失敗：先啟動GET，POST因網路中斷未確認，較早GET最後返回；舊hook重新顯示舊資料並清除錯誤。現在於mutation開始和失敗時淘汰在途read sequence，清除過期loading；保留原request ID與pending retry。另實測POST已成功但GET失敗，重新讀取只有GET，不重送已完成POST；介面明确提示操作已完成、無須重做交易。
+
+`pnpm run test`：155 Vitest案例＋4 guards通過。`PORT=4173 BASE_PATH=/ pnpm run build`（含Typecheck）、`git diff --check`通過。真正PostgreSQL Gate仍未通過：系統沒有postgres/initdb，實際非root身份切換因PermissionError被拒絕；CapEff=0、NoNewPrivs=1。未以PGlite代替跨連線驗收，未修改遠端資料庫／部署／合併。
+
+本輪再次執行四尺寸瀏覽器fixture：320/390/768/1440各13操作、Console error 0；320 reduced-motion通過。獨立review無新增Critical/Important。仍是受控API，非正式Core玩家驗收。

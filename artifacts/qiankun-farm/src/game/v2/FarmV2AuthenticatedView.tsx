@@ -94,7 +94,9 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
   if (loading && !data && !pendingRetry) return <section role="status">正在讀取正式農田資料…</section>;
   if (!data) return (
     <section role="alert">
-      <p>無法取得正式農田資料，已停止所有操作。</p>
+      <p>{error === 'FARM_V2_MUTATION_CONFIRMED_STATE_REFRESH_FAILED'
+        ? '操作已完成，但最新農田資料讀取失敗。請重新讀取，無須重做交易。'
+        : '無法取得正式農田資料，已停止所有操作。'}</p>
       {error && <p>{error}</p>}
       {pendingRetry ? (
         <button type="button" disabled={busy || loading} onClick={() => { void execute(pendingRetry.operation, pendingRetry.landId, pendingRetry.quantity); }}>

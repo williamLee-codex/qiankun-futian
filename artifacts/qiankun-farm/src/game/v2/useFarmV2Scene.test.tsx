@@ -108,4 +108,60 @@ describe("server-owned recovery and session isolation", () => {
     });
     expect(ids[0]).toBe(ids[1]);
   });
+  it("does not restore a stale read after an ambiguous mutation failure", async () => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    let finishRead!: (response: Response) => void;
+    let reads = 0;
+    vi.stubGlobal("fetch", async (_url: any, options: any) => {
+      if (options.method === "POST") throw new Error("NETWORK_INTERRUPTED");
+      if (++reads === 1) return json(snapshot(20));
+      return new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+    });
+    await act(async () => {
+      renderer = create(<Harness token="A" />);
+    });
+    let read!: Promise<boolean>;
+    await act(async () => {
+      read = value.refresh();
+    });
+    await act(async () => {
+      expect(await value.mutate("sow", 1)).toBe(false);
+    });
+    await act(async () => {
+      finishRead(json(snapshot(20)));
+      await read;
+    });
+    expect(value.data).toBe(null);
+    expect(value.error).toBe("NETWORK_INTERRUPTED");
+    expect(value.pendingRetry?.operation).toBe("sow");
+    expect(value.loading).toBe(false);
+  });
+  it("keeps a confirmed POST separate from a failed state refresh", async () => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    let reads = 0;
+    let writes = 0;
+    vi.stubGlobal("fetch", async (_url: any, options: any) => {
+      if (options.method === "POST") {
+        writes++;
+        return json({});
+      }
+      if (++reads === 2) throw new Error("STATE_UNAVAILABLE");
+      return json(snapshot(reads === 1 ? 20 : 0));
+    });
+    await act(async () => {
+      renderer = create(<Harness token="A" />);
+    });
+    await act(async () => {
+      expect(await value.mutate("sow", 1)).toBe(false);
+    });
+    expect(value.error).toBe("FARM_V2_MUTATION_CONFIRMED_STATE_REFRESH_FAILED");
+    expect(value.pendingRetry).toBe(null);
+    await act(async () => {
+      expect(await value.refresh()).toBe(true);
+    });
+    expect(writes).toBe(1);
+    expect(value.data?.seedInventory.yaojin).toBe(0);
+  });
 });

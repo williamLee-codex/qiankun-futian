@@ -196,6 +196,9 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         uncertainMutation.current?.requestId ?? crypto.randomUUID();
       uncertainMutation.current = { key, requestId };
       mutationInFlight.current = true;
+      // A read started before this write cannot confirm its outcome.
+      readSequence.current += 1;
+      setLoading(false);
       setBusy(true);
       try {
         const api = createFarmV2Api({ baseUrl, launchToken });
@@ -231,6 +234,9 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
           setPendingRetry({ operation, landId, quantity });
           retryEpoch.current = epoch;
         }
+        // Also discard reads started while the operation was in flight.
+        readSequence.current += 1;
+        setLoading(false);
         // A failed mutation must not leave the previously loaded state looking current.
         setData(null);
         setError(
