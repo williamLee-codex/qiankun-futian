@@ -69,6 +69,11 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   ) => {
     if (!launchToken || mutationInFlight.current) return false;
     if (!Number.isInteger(landId) || landId < 1 || landId > 6) return false;
+    if ((operation === 'purchaseSeeds' || operation === 'exchangeCrops') &&
+        (!Number.isSafeInteger(quantity) || (quantity ?? 0) <= 0)) {
+      setError('INVALID_QUANTITY');
+      return false;
+    }
     const key = `${operation}:${landId}:${quantity ?? ''}`;
     // An ambiguous network failure must not be retried with a fresh ID.
     if (uncertainMutation.current && uncertainMutation.current.key !== key) {
@@ -84,7 +89,6 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       if (operation === 'sow') await api.sow(landId, requestId);
       else if (operation === 'harvest') await api.harvest(landId, requestId);
       else {
-        if (!Number.isSafeInteger(quantity) || (quantity ?? 0) <= 0) throw new Error('INVALID_QUANTITY');
         if (operation === 'purchaseSeeds') await api.purchaseSeeds(landId, quantity!, requestId);
         else await api.exchangeCrops(landId, quantity!, requestId);
       }
