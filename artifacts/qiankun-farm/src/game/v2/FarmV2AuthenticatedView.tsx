@@ -32,6 +32,23 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
     setNotice(ok ? '操作已由伺服器確認。' : '操作未確認，請檢查錯誤並重新讀取。');
   }
 
+  async function handlePlotClick(plot: NonNullable<typeof data>['plots'][number]) {
+    setSelectedLand(plot.id + 1);
+    if (busy || loading || !plot.unlocked) return;
+    if (plot.state === 'ready') {
+      await execute('harvest', plot.id + 1);
+      return;
+    }
+    if (plot.state === 'empty') {
+      const seeds = data?.seedInventory[plot.cropId] ?? 0;
+      if (seeds < plot.maxSeeds) {
+        setNotice('種子不足，請先在下方購買種子；未執行播種。');
+        return;
+      }
+      await execute('sow', plot.id + 1);
+    }
+  }
+
   if (loading && !data) return <section role="status">正在讀取正式農田資料…</section>;
   if (!data) return (
     <section role="alert">
@@ -52,7 +69,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
             aria-label={`${plot.name}，${!plot.unlocked ? '尚未解鎖' : plot.state === 'ready' ? '已成熟' : plot.state === 'growing' ? '生長中' : '待播種'}`}
             aria-pressed={selectedLand === plot.id + 1}
             disabled={busy || loading}
-            onClick={() => setSelectedLand(plot.id + 1)}
+            onClick={() => { void handlePlotClick(plot); }}
             style={{
               position: 'absolute', ...PLOT_HOTSPOTS[index],
               border: selectedLand === plot.id + 1 ? '2px solid #f8d58a' : '1px solid transparent',
@@ -71,7 +88,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
       <button type="button" disabled={busy || loading} onClick={() => { void refresh(); }}>
         更新農田
       </button>
-      {selectedLand === null && <p>請點選 2D 場景中的農田查看操作。</p>}
+      {selectedLand === null && <p>點擊空田直接播種，點擊成熟田直接收成；其他田地可查看狀態。</p>}
       <div>
         {data.plots.filter(plot => selectedLand === plot.id + 1).map(plot => {
           const seeds = data.seedInventory[plot.cropId] ?? 0;
