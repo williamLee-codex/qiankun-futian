@@ -197,3 +197,14 @@ Renderer直接接受entity.world幾何：桌機使用世界頂點，手機依原
 Chromium官方下載遭截斷；改用scratch中的portable Chromium 153及本地測試字型。初始解壓因chown環境限制失敗，完整解壓後啟動成功；不修改產品依賴或正式環境。320/390/768/1440各20筆不同ID mutation，包含原有六田播種收成、混沌領取、農夫開關與田1–5各購買3包。實際請求packs=3，種子分別增加60/30/18/12/9，作物庫存與田地生命週期不變；田2鎖定仍可購種，資格仍鎖定。非法包數禁用且不送POST，田6無購種控制。新控制顯示時無橫向溢出，Console error 0。320截圖發現輸入框缺少可見邊界，補邊框、44px高度及鍵盤焦點標示後重新驗證。
 
 這是實際React與受控API的瀏覽器驗證，不代表Core扣款／Ledger正式驗收。場景建築動畫仍未接通。未推送：自動審核要求明確GitHub推送授權，使用者後續單點訊息未當成該授權。
+
+## Core coin-land unlock contract: staged, not wired
+
+Added `contracts/core/farm-v2-coin-land-unlock.sql` for FINAL LAND-UNLOCK-001/003 and UNLOCK-ATOMIC-001. It accepts verified Auth owner ID, land ID and request ID, never caller price. It maps Core identity, uses existing platform lifetime entitlements, requires Land 2 before Land 3 and fixes the costs to 88/888 coins. Debit, Core ledger, permanent entitlement and purchase event are a single Core transaction. Wallet-row locking serializes the owner; replay preserves the first grant without additional debit; conflicting request reuse is rejected. SECURITY INVOKER and service-role-only RPC access avoid an additional privileged client API.
+
+Eleven SQL contract tests execute actual pinned Core wallet/entitlement migrations on PGlite. They verify prerequisites, fixed debits, both replay forms, conflict, insufficient funds, isolation, event-failure full rollback, role denial/trusted execution, invalid inputs and suspended wallets. The suspended-wallet regression initially debited; adding a post-lock status check fixed it. Complete Farm suite: 172 cases + 4 guards; workspace Typecheck/Build and diff check pass.
+
+This is **staged executable Core contract evidence only**. Reference migrations are test inputs, not deployment instructions. The full current platform migration chain, live launch authentication, true multi-connection locking, trusted Core endpoints, Farm entitlement reconciliation, persistent request recovery and unlock UI are not validated or implemented by this contract. Land 2/3 remain NO-GO. No V1 unlock fallback, remote migration, merge or deployment occurred.
+
+
+Independent review reproduced two related historical-state defects: inactive lifetime rights were omitted from duplicate detection and Land 3 prerequisites. Both were fixed without reactivating inactive rights. A follow-up review caught the valid old-inactive/new-active regrant case; current access is now resolved independently from earliest historical grant metadata. Suspended/revoked/expired and regrant regressions verify no repeat charge and preserved first unlock time.
