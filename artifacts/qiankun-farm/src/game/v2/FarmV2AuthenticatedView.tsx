@@ -43,6 +43,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
   }, []);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
   const [flight, setFlight] = useState<{ operation: 'sow' | 'harvest'; landId: number; icon: string; sequence: number } | null>(null);
+  const [flightSequence, setFlightSequence] = useState(0);
   useEffect(() => {
     if (!flight) return;
     const timeout = setTimeout(() => setFlight(current => current?.sequence === flight.sequence ? null : current), 900);
@@ -54,7 +55,8 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
     const ok = await mutate(operation, landId, quantity);
     if (ok && (operation === 'sow' || operation === 'harvest')) {
       const plot = data?.plots.find(item => item.id + 1 === landId);
-      setFlight({ operation, landId, icon: operation === 'sow' ? '🌱' : (plot?.cropEmoji ?? '🌾'), sequence: Date.now() });
+      setFlightSequence(previous => previous + 1);
+      setFlight({ operation, landId, icon: operation === 'sow' ? '🌱' : (plot?.cropEmoji ?? '🌾'), sequence: flightSequence + 1 });
     }
     setNotice(ok ? '操作已由伺服器確認。' : '操作未確認，請檢查錯誤並重新讀取。');
   }
@@ -76,13 +78,13 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
     }
   }
 
-  if (loading && !data) return <section role="status">正在讀取正式農田資料…</section>;
+  if (loading && !data && !pendingRetry) return <section role="status">正在讀取正式農田資料…</section>;
   if (!data) return (
     <section role="alert">
       <p>無法取得正式農田資料，已停止所有操作。</p>
       {error && <p>{error}</p>}
       {pendingRetry ? (
-        <button type="button" disabled={busy || loading} onClick={() => { void mutate(pendingRetry.operation, pendingRetry.landId, pendingRetry.quantity); }}>
+        <button type="button" disabled={busy || loading} onClick={() => { void execute(pendingRetry.operation, pendingRetry.landId, pendingRetry.quantity); }}>
           重試尚未確認的操作（沿用原交易編號）
         </button>
       ) : (
@@ -102,7 +104,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
             type="button"
             aria-label={`${plot.name}，${!plot.unlocked ? '尚未解鎖' : plot.state === 'ready' ? '已成熟' : plot.state === 'growing' ? '生長中' : '待播種'}`}
             aria-pressed={selectedLand === plot.id + 1}
-            disabled={busy || loading}
+            disabled={busy || loading || !!pendingRetry}
             onClick={() => { void handlePlotClick(plot); }}
             style={{
               position: 'absolute', ...PLOT_HOTSPOTS[index],
