@@ -208,3 +208,12 @@ This is **staged executable Core contract evidence only**. Reference migrations 
 
 
 Independent review reproduced two related historical-state defects: inactive lifetime rights were omitted from duplicate detection and Land 3 prerequisites. Both were fixed without reactivating inactive rights. A follow-up review caught the valid old-inactive/new-active regrant case; current access is now resolved independently from earliest historical grant metadata. Suspended/revoked/expired and regrant regressions verify no repeat charge and preserved first unlock time.
+
+## Scene follow-up: server clock and legacy anchor audit
+
+The authenticated scene now derives its display clock from the last server snapshot (`serverTime + elapsed since receipt`), rather than the device wall clock. Crop growth remains a visual projection; sow/harvest eligibility still comes from the server snapshot. The maturity timer in the existing scene hook triggers a server refresh at the boundary. A component regression exercises the five displayed states and confirms the mature interaction routes through the existing harvest mutation. Scene tests (8), workspace Typecheck, workspace Build and `git diff --check` passed.
+
+The only warehouse-flight anchor found in the checked-in legacy code is `(13%, 22%)` in `HarvestAnimation.tsx`, calibrated to the old 390×843 scene and its separate `PLOT_CENTERS`. It is not a verified anchor for either current original artwork. The current image files show warehouse-like buildings, but no source hotspot/anchor metadata exists for them; no new coordinates were inferred or added. The checked-in public asset directory contains only the two scene backgrounds and generic site art, with no approved farmer/pet portrait sprites or crop-stage sprites. Those visual deliverables remain open.
+
+Verification limits this follow-up: the full Vitest run had 187 passing tests and one HTTP integration test blocked because the sandbox rejects binding `127.0.0.1` (`listen EPERM`). The browser fixture could not launch portable Chromium in this run; Chromium terminated with `sandbox_host_linux` “Operation not permitted” (`SIGTRAP`). Neither failure is counted as a product assertion pass. No database, merge or deployment action occurred.
+
