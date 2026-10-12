@@ -182,3 +182,18 @@ Renderer直接接受entity.world幾何：桌機使用世界頂點，手機依原
 `pnpm run test`41檔158案例＋4 guards通過；`PORT=4173 BASE_PATH=/ pnpm run build`包含Typecheck通過；`git diff --check`通過。四尺寸browser各15操作，Console0；每尺寸另於空田及第一田已播種時跨640切換，檢查全部六田ID、world coordinates、lifecycle保持不變，沒有新增POST。倉庫／收成／混沌／農夫流程仍通過。兩個新world單元案例核對身份、world immutability及缺田／重複拒絕。中途元件拆分的JSX閉合、import path與重複landId型別問題已由Typecheck抓出並修復。
 
 新增生長中320截圖。Portable Chromium原先缺emoji字型而顯示tofu；以測試環境本地Noto Emoji補齐，同繁中字型皆為受控fixture，不加入產品依賴、不生成新美術。截圖證據包包含四尺寸及生長中畫面。原規格完整CropEntity美術／人物／靈獸／倉庫動畫、Core契約與真正多連線Gate仍未完成，整體NO-GO。
+
+## 後續收斂：種子多包購買入口
+
+依 FINAL SEED-ASSET-002 補齊正式畫面的包數輸入。田1–5使用既有 purchaseSeeds mutation、伺服器驗價及原request-ID復原流程；每包仍1金幣、種子數仍20/10/6/4/3，不新增Wallet契約。畫面顯示包數與總成本，拒絕空白、零、負數、小數及非安全整數。鎖田仍可囤種；購買不自動播種；田6仍不販售。選田或換登入身份後包數回1。
+
+新增正式view元件回歸：3包傳入既有mutation、非法包數禁用、鎖田購種不播種。先重現畫面沒有包數輸入，再補UI。完整161案例＋4 guards通過；Typecheck/Build通過。元件测试的hook為受控fixture，不代表正式Core扣款驗證。瀏覽器fixture本輪因環境缺少Chromium及headless-shell，啟動失敗，未執行四尺寸視覺驗收；先前截圖不代表本次新控制項已驗收。
+
+曾嘗試以場景外文字倉庫入口作飛行終點；確認不符合場景倉庫驗收後已完整撤除，沒有將替代動畫留入產品。場景動畫、Core契約與其他原有缺口仍為NO-GO。
+
+
+### 種子多包購買：四尺寸瀏覽器補驗
+
+Chromium官方下載遭截斷；改用scratch中的portable Chromium 153及本地測試字型。初始解壓因chown環境限制失敗，完整解壓後啟動成功；不修改產品依賴或正式環境。320/390/768/1440各20筆不同ID mutation，包含原有六田播種收成、混沌領取、農夫開關與田1–5各購買3包。實際請求packs=3，種子分別增加60/30/18/12/9，作物庫存與田地生命週期不變；田2鎖定仍可購種，資格仍鎖定。非法包數禁用且不送POST，田6無購種控制。新控制顯示時無橫向溢出，Console error 0。320截圖發現輸入框缺少可見邊界，補邊框、44px高度及鍵盤焦點標示後重新驗證。
+
+這是實際React與受控API的瀏覽器驗證，不代表Core扣款／Ledger正式驗收。場景建築動畫仍未接通。未推送：自動審核要求明確GitHub推送授權，使用者後續單點訊息未當成該授權。

@@ -35,6 +35,16 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
     return () => clearInterval(interval);
   }, []);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
+  const [seedPackInput, setSeedPackInput] = useState("1");
+  const seedPackCount = Number(seedPackInput);
+  const validSeedPackCount =
+    seedPackInput.trim() !== "" &&
+    Number.isSafeInteger(seedPackCount) &&
+    seedPackCount > 0;
+  useEffect(
+    () => setSeedPackInput("1"),
+    [selectedLand, props.apiBaseUrl, props.launchToken],
+  );
   async function execute(operation: FarmV2Operation, landId: number, quantity?: number) {
     setNotice(null);
     const ok = await mutate(operation, landId, quantity);
@@ -149,8 +159,48 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
                 onClick={() => { void execute('sow', plot.id + 1); }}>整批播種</button>
               <button type="button" disabled={busy || loading || !!pendingRetry || !canHarvest}
                 onClick={() => { void execute('harvest', plot.id + 1); }}>收成入庫</button>
-              {canPurchase && <button type="button" disabled={busy || loading || !!pendingRetry}
-                onClick={() => { void execute('purchaseSeeds', plot.id + 1, 1); }}>購買一包種子（1 金幣）</button>}
+              {canPurchase && (
+                <div>
+                  <label>
+                    購買包數{" "}
+                    <input
+                      aria-label="購買種子包數"
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={Number.MAX_SAFE_INTEGER}
+                      step={1}
+                      value={seedPackInput}
+                      disabled={busy || loading || !!pendingRetry}
+                      onChange={(event) =>
+                        setSeedPackInput(event.target.value)
+                      }
+                    />
+                  </label>
+                  <p>每包 {plot.maxSeeds} 顆種子，1 金幣；購買後存入倉庫。</p>
+                  <button
+                    type="button"
+                    disabled={
+                      busy || loading || !!pendingRetry || !validSeedPackCount
+                    }
+                    onClick={() => {
+                      if (validSeedPackCount)
+                        void execute(
+                          "purchaseSeeds",
+                          plot.id + 1,
+                          seedPackCount,
+                        );
+                    }}
+                  >
+                    {validSeedPackCount
+                      ? `購買 ${seedPackCount} 包種子（${seedPackCount} 金幣）`
+                      : "購買種子"}
+                  </button>
+                  {!validSeedPackCount && (
+                    <p role="status">請輸入大於 0 的整數包數。</p>
+                  )}
+                </div>
+              )}
               {plot.id === 5 && <>
                 <p>待領混沌種子：{data.chaosPending} 顆（每 72 小時產生 1 顆，待領最多 3 顆）</p>
                 <button type="button" disabled={busy || loading || !!pendingRetry || data.chaosPending === 0}

@@ -1934,3 +1934,6 @@ body.farm-v2-authenticated { overflow: auto; color: #f5ecd7; font-family: "Micro
 .farm-v2-warehouse caption { padding: 8px; }
 .farm-v2-warehouse th, .farm-v2-warehouse td { padding: 8px 4px; border-top: 1px solid #536449; }
 .farm-v2-warehouse td { text-align: right; font-variant-numeric: tabular-nums; }
+
+.farm-v2-surface input[type="number"] { width: 6rem; min-height: 44px; margin: 4px 8px; padding: 6px 8px; border: 1px solid #ad8741; border-radius: 6px; background: #202a23; color: #f5ecd7; font-size: 16px; }
+.farm-v2-surface input[type="number"]:focus-visible { outline: 2px solid #f8d58a; outline-offset: 2px; }

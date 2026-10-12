@@ -135,6 +135,7 @@ const fs = require("node:fs");
       })),
     };
     const ids = [];
+    const purchases = [];
     await page.route("http://localhost:5000/api/**", async (route) => {
       const req = route.request();
       const path = new URL(req.url()).pathname;
@@ -148,6 +149,15 @@ const fs = require("node:fs");
         });
       if (req.method() === "POST") {
         ids.push(req.headers()["x-request-id"]);
+        const purchaseMatch = path.match(/seeds\/(\d+)\/purchase/);
+        if (purchaseMatch) {
+          const landId = +purchaseMatch[1];
+          const packs = req.postDataJSON().packs;
+          assert.equal(packs, 3);
+          purchases.push({ landId, packs });
+          snapshot.player.warehouseState.seeds[landId] +=
+            sizes[landId - 1] * packs;
+        }
         const farmerMatch = path.match(/lands\/(\d+)\/farmer/);
         if (farmerMatch)
           snapshot.player.farmerState.enabledByLand[+farmerMatch[1]] =
@@ -360,8 +370,64 @@ const fs = require("node:fs");
     await page
       .getByRole("button", { name: "微芒凡土農夫：OFF", exact: true })
       .waitFor();
-    assert.equal(ids.length, 15);
-    assert.equal(new Set(ids).size, 15);
+    // Multi-pack entry uses the existing POST contract and changes seeds only.
+    // Land 2 is locked to verify that storing seeds does not unlock or sow it.
+    snapshot.lands[1].accessActive = false;
+    await page.getByRole("button", { name: "更新農田", exact: true }).click();
+    for (let id = 1; id <= 5; id++) {
+      await page
+        .getByRole("button", {
+          name: `${names[id - 1]}，${id === 2 ? "尚未解鎖" : "待播種"}`,
+          exact: true,
+        })
+        .click();
+      const packsInput = page.getByRole("spinbutton", { name: "購買種子包數" });
+      const writes = ids.length;
+      for (const invalid of ["", "0", "-1", "1.5"]) {
+        await packsInput.fill(invalid);
+        assert.equal(
+          await page
+            .getByRole("button", { name: "購買種子", exact: true })
+            .isDisabled(),
+          true,
+        );
+      }
+      assert.equal(ids.length, writes);
+      const crops = { ...snapshot.player.warehouseState.crops };
+      await packsInput.fill("3");
+      await page
+        .getByRole("button", { name: "購買 3 包種子（3 金幣）", exact: true })
+        .click();
+      await page.waitForFunction(
+        ({ id, count }) =>
+          document.querySelector(`table tr[data-land-id="${id}"] td`)
+            ?.textContent === String(count),
+        { id, count: sizes[id - 1] * 3 },
+      );
+      assert.deepEqual(snapshot.player.warehouseState.crops, crops);
+      assert.equal(snapshot.lands[id - 1].lifecycle, "EMPTY");
+      assert.equal(snapshot.lands[1].accessActive, false);
+      assert.equal(await packsInput.isEnabled(), true);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      if (id === 1) {
+        await page.screenshot({ path: `${evidence}/farm-packs-${width}.png`, fullPage: true });
+      }
+    }
+    assert.deepEqual(
+      purchases,
+      [1, 2, 3, 4, 5].map((landId) => ({ landId, packs: 3 })),
+    );
+    snapshot.lands[5].accessActive = false;
+    await page.getByRole("button", { name: "更新農田", exact: true }).click();
+    await page
+      .getByRole("button", { name: "黑金晶土，尚未解鎖", exact: true })
+      .click();
+    assert.equal(
+      await page.getByRole("spinbutton", { name: "購買種子包數" }).count(),
+      0,
+    );
+    assert.equal(ids.length, 20);
+    assert.equal(new Set(ids).size, 20);
     await page.locator(".farm-v2-flight").waitFor({ state: "detached" });
     await page.evaluate(() => document.fonts.ready);
     await page.screenshot({
@@ -371,7 +437,8 @@ const fs = require("node:fs");
     assert.deepEqual(errors, []);
     outcomes.push({
       width,
-      operations: 15,
+      operations: 20,
+      multiPackPurchases: purchases,
       consoleErrors: errors.length,
       reducedMotionRequested: width === 320,
       warehouseFlights: "suppressed pending verified anchors",
