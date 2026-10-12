@@ -1,3 +1,4 @@
+import { setFarmV2FarmerPreference } from "../lib/farm-v2-farmer";
 import { claimFarmV2ChaosSeeds } from "../lib/farm-v2-chaos-claim";
 import { Router, type IRouter } from "express";
 import { and, eq, notInArray, isNotNull } from "drizzle-orm";
@@ -36,6 +37,7 @@ router.get("/farm/v2/state", async (req, res, next) => {
       userId,
       launchToken,
       requestId: "farm-v2:core-paid-refresh:v1",
+      settleFarmer: true,
     });
     // Return the committed, post-reconciliation state rather than the
     // pre-reconciliation snapshot.
@@ -76,6 +78,43 @@ router.get("/farm/v2/state", async (req, res, next) => {
             }
           : null,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/farm/v2/lands/:landId/farmer", async (req, res, next) => {
+  try {
+    const userId = String(res.locals.authenticatedUserId ?? "").trim();
+    const launchToken = String(res.locals.launchToken ?? "").trim();
+    const requestId = String(req.header("x-request-id") ?? "").trim();
+    if (!userId || !launchToken) {
+      res.status(401).json({ error: "AUTH_REQUIRED" });
+      return;
+    }
+    if (!requestId) {
+      res.status(400).json({ error: "REQUEST_ID_REQUIRED" });
+      return;
+    }
+    if (typeof req.body?.enabled !== "boolean") {
+      res
+        .status(400)
+        .json({ error: "INVALID_FARMER_PREFERENCE", definitive: true });
+      return;
+    }
+    await reconcileFarmV2PaidAccessFromCore({
+      userId,
+      launchToken,
+      requestId: "farm-v2:core-paid-refresh:v1",
+    });
+    res.json(
+      await setFarmV2FarmerPreference({
+        userId,
+        requestId,
+        landId: Number(req.params.landId),
+        enabled: req.body.enabled,
+      }),
+    );
   } catch (error) {
     next(error);
   }

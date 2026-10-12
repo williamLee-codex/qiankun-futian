@@ -8,6 +8,7 @@ export type FarmV2Operation =
   | "harvest"
   | "purchaseSeeds"
   | "exchangeCrops"
+  | "setFarmerEnabled"
   | "claimChaosSeeds";
 
 export type FarmV2Land = {
@@ -109,6 +110,13 @@ export function createFarmV2Api(input: {
   }
 
   return {
+    setFarmerEnabled: (landId: number, enabled: boolean, requestId?: string) =>
+      request<unknown>(
+        `farm/v2/lands/${landId}/farmer`,
+        "POST",
+        { enabled },
+        requestId,
+      ),
     claimChaosSeeds: (requestId?: string) =>
       request<unknown>(
         "farm/v2/chaos-seeds/claim",

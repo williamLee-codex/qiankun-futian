@@ -1,3 +1,4 @@
+import { settleFarmV2Farmer } from "./farm-v2-farmer";
 import { and, eq, isNotNull, notInArray } from "drizzle-orm";
 import { fetchFarmV2CorePaidQualification } from "./farm-v2-core-paid-value";
 import {
@@ -10,7 +11,7 @@ import type { ChaosSeedState } from "../../../qiankun-farm/src/game/v2/chaosSeed
 import { reconcileEffectivePaidBenefits } from "../../../qiankun-farm/src/game/v2/effectivePaidBenefitsTransaction";
 import {
   farmV2LandRowToEntity,
-  farmV2LandEntityToPersistence,
+  farmV2VersionedLandPersistence,
 } from "./farm-v2-mappers";
 import {
   decodeFarmAccessState,
@@ -25,6 +26,7 @@ export async function reconcileFarmV2PaidAccess(input: {
   requestId: string;
   effectivePaidCrystals: number;
   now?: number;
+  settleFarmer?: boolean;
 }) {
   if (
     !Number.isInteger(input.effectivePaidCrystals) ||
@@ -72,7 +74,7 @@ export async function reconcileFarmV2PaidAccess(input: {
         .orderBy(farmV2LandTable.landId);
       if (rows.length !== 6) throw new Error("FARM_INITIALIZATION_INCOMPLETE");
 
-      const result = reconcileEffectivePaidBenefits({
+      const benefits = reconcileEffectivePaidBenefits({
         access: decodeFarmAccessState(player.accessState),
         lands: rows.map(farmV2LandRowToEntity),
         warehouse: player.warehouseState as FarmWarehouse,
@@ -85,6 +87,9 @@ export async function reconcileFarmV2PaidAccess(input: {
         now,
       });
 
+      const result = input.settleFarmer
+        ? settleFarmV2Farmer(benefits, player.firstFarmEnteredAt, now)
+        : benefits;
       await tx
         .update(farmV2PlayerStateTable)
         .set({
@@ -101,7 +106,12 @@ export async function reconcileFarmV2PaidAccess(input: {
       for (const land of result.lands) {
         await tx
           .update(farmV2LandTable)
-          .set(farmV2LandEntityToPersistence(land))
+          .set(
+            farmV2VersionedLandPersistence(
+              land,
+              rows.find((row) => row.landId === land.landId)!,
+            ),
+          )
           .where(
             and(
               eq(farmV2LandTable.userId, input.userId),
@@ -131,6 +141,7 @@ export async function reconcileFarmV2PaidAccessFromCore(input: {
   launchToken: string;
   requestId: string;
   now?: number;
+  settleFarmer?: boolean;
 }) {
   const now = input.now ?? Date.now();
   return runFarmV2IdempotentMutation({
@@ -177,7 +188,7 @@ export async function reconcileFarmV2PaidAccessFromCore(input: {
         .where(eq(farmV2LandTable.userId, input.userId))
         .orderBy(farmV2LandTable.landId);
       if (rows.length !== 6) throw new Error("FARM_INITIALIZATION_INCOMPLETE");
-      const result = reconcileEffectivePaidBenefits({
+      const benefits = reconcileEffectivePaidBenefits({
         access: decodeFarmAccessState(player.accessState),
         lands: rows.map(farmV2LandRowToEntity),
         warehouse: player.warehouseState as FarmWarehouse,
@@ -189,6 +200,9 @@ export async function reconcileFarmV2PaidAccessFromCore(input: {
         effectivePaidCrystals,
         now,
       });
+      const result = input.settleFarmer
+        ? settleFarmV2Farmer(benefits, player.firstFarmEnteredAt, now)
+        : benefits;
       await tx
         .update(farmV2PlayerStateTable)
         .set({
@@ -204,7 +218,12 @@ export async function reconcileFarmV2PaidAccessFromCore(input: {
       for (const land of result.lands) {
         await tx
           .update(farmV2LandTable)
-          .set(farmV2LandEntityToPersistence(land))
+          .set(
+            farmV2VersionedLandPersistence(
+              land,
+              rows.find((row) => row.landId === land.landId)!,
+            ),
+          )
           .where(
             and(
               eq(farmV2LandTable.userId, input.userId),

@@ -2,6 +2,8 @@ import type { ErrorRequestHandler } from "express";
 import { FarmWalletRejectedError } from "../lib/farm-v2-wallet-client";
 
 const FARM_V2_STATUS_BY_ERROR: Readonly<Record<string, number>> = {
+  INVALID_FARMER_PREFERENCE: 400,
+  FARMER_NOT_ENTITLED: 403,
   ACTOR_UID_REQUIRED: 401,
   AUTH_REQUIRED: 401,
   REQUEST_ID_REQUIRED: 400,
@@ -53,10 +55,14 @@ export const farmV2ErrorHandler: ErrorRequestHandler = (
     return;
   }
 
-  res
-    .status(status)
-    .json({
-      error: code,
-      ...(code === "FARM_MUTATION_COMPENSATED" ? { definitive: true } : {}),
-    });
+  res.status(status).json({
+    error: code,
+    ...([
+      "FARM_MUTATION_COMPENSATED",
+      "FARMER_NOT_ENTITLED",
+      "INVALID_FARMER_PREFERENCE",
+    ].includes(code)
+      ? { definitive: true }
+      : {}),
+  });
 };

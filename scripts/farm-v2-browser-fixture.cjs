@@ -98,6 +98,12 @@ const fs = require("node:fs");
       serverTime: Date.now(),
       pendingMutation: null,
       player: {
+        farmerState: {
+          entitled: true,
+          enabledByLand: Object.fromEntries(
+            sizes.map((_, i) => [i + 1, false]),
+          ),
+        },
         chaosSeedState: { pending: 3 },
         warehouseState: {
           seeds: Object.fromEntries(sizes.map((n, i) => [i + 1, n])),
@@ -127,6 +133,10 @@ const fs = require("node:fs");
         });
       if (req.method() === "POST") {
         ids.push(req.headers()["x-request-id"]);
+        const farmerMatch = path.match(/lands\/(\d+)\/farmer/);
+        if (farmerMatch)
+          snapshot.player.farmerState.enabledByLand[+farmerMatch[1]] =
+            req.postDataJSON().enabled;
         const match = path.match(/lands\/(\d+)\/(sow|harvest)/);
         if (path.endsWith("/chaos-seeds/claim")) {
           snapshot.player.warehouseState.seeds[6] +=
@@ -166,12 +176,28 @@ const fs = require("node:fs");
     await page.goto("http://127.0.0.1:4174/?launchToken=fixture-only");
     await page.getByRole("button", { name: "微芒凡土，待播種" }).waitFor();
     const sceneImage = page.locator('[data-testid="farm-v2-scene"] img');
-    await sceneImage.evaluate(async image => { await image.decode(); });
-    const imageState = await sceneImage.evaluate(image => ({src:image.currentSrc,width:image.naturalWidth,height:image.naturalHeight,renderedWidth:image.width,renderedHeight:image.height}));
-    assert.equal(new URL(imageState.src).pathname, `/images/farm/farm-scene-${width >= 640 ? "desktop" : "mobile"}.png`);
+    await sceneImage.evaluate(async (image) => {
+      await image.decode();
+    });
+    const imageState = await sceneImage.evaluate((image) => ({
+      src: image.currentSrc,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      renderedWidth: image.width,
+      renderedHeight: image.height,
+    }));
+    assert.equal(
+      new URL(imageState.src).pathname,
+      `/images/farm/farm-scene-${width >= 640 ? "desktop" : "mobile"}.png`,
+    );
     assert.equal(imageState.width, width >= 640 ? 1215 : 941);
     assert.equal(imageState.height, width >= 640 ? 1295 : 1672);
-    assert.ok(Math.abs(imageState.renderedWidth / imageState.renderedHeight - imageState.width / imageState.height) < .002);
+    assert.ok(
+      Math.abs(
+        imageState.renderedWidth / imageState.renderedHeight -
+          imageState.width / imageState.height,
+      ) < 0.002,
+    );
     for (let id = 1; id <= 6; id++) {
       await page
         .getByRole("button", { name: `${names[id - 1]}，待播種` })
@@ -211,6 +237,22 @@ const fs = require("node:fs");
       ),
       true,
     );
+    const farmerButton = page.getByRole("button", {
+      name: "微芒凡土農夫：OFF",
+      exact: true,
+    });
+    await farmerButton.click();
+    await page
+      .getByRole("button", { name: "微芒凡土農夫：ON", exact: true })
+      .waitFor();
+    await page
+      .getByRole("button", { name: "微芒凡土農夫：ON", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "微芒凡土農夫：OFF", exact: true })
+      .waitFor();
+    assert.equal(ids.length, 15);
+    assert.equal(new Set(ids).size, 15);
     await page.locator(".farm-v2-flight").waitFor({ state: "detached" });
     await page.evaluate(() => document.fonts.ready);
     await page.screenshot({
@@ -220,7 +262,7 @@ const fs = require("node:fs");
     assert.deepEqual(errors, []);
     outcomes.push({
       width,
-      operations: 13,
+      operations: 15,
       consoleErrors: errors.length,
       reducedMotionRequested: width === 320,
       warehouseFlights: "suppressed pending verified anchors",

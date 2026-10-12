@@ -135,6 +135,13 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
         {/* Warehouse flights require verified original-scene anchors. */}
       </div>
       <h2>乾坤福田</h2>
+      {data.farmer?.entitled && <fieldset className="farm-v2-farmer-controls" disabled={busy || loading || !!pendingRetry}>
+        <legend>專屬農夫・各田自動耕作</legend>
+        {data.plots.map(plot => {
+          const enabled = data.farmer?.enabledByLand[plot.id + 1] === true;
+          return <button key={plot.id} type="button" aria-pressed={enabled} onClick={() => { void execute('setFarmerEnabled', plot.id + 1, enabled ? 0 : 1); }}>{plot.name}農夫：{enabled ? 'ON' : 'OFF'}</button>;
+        })}
+      </fieldset>}
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
       {pendingRetry && (

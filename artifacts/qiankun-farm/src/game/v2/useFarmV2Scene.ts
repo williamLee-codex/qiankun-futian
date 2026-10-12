@@ -16,6 +16,7 @@ type Snapshot = {
     quantity: number;
   } | null;
   player: {
+    farmerState?: { entitled: boolean; enabledByLand: Record<number, boolean> };
     chaosSeedState?: { pending: number } | null;
     warehouseState: {
       seeds: Record<string, number>;
@@ -30,6 +31,7 @@ type SceneData = {
   serverTime: number;
   receivedAt: number;
   chaosPending: number;
+  farmer: { entitled: boolean; enabledByLand: Record<number, boolean> } | null;
   plots: Plot[];
   seedInventory: CropInventory;
   cropInventory: CropInventory;
@@ -94,7 +96,17 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         chaosPending > 3
       )
         throw new Error("INVALID_CHAOS_PENDING");
+      const farmer = snapshot.player.farmerState;
+      if (
+        farmer &&
+        (typeof farmer.entitled !== "boolean" ||
+          ![1, 2, 3, 4, 5, 6].every(
+            (id) => typeof farmer.enabledByLand?.[id] === "boolean",
+          ))
+      )
+        throw new Error("INVALID_FARMER_STATE");
       const nextData = {
+        farmer: snapshot.player.farmerState ?? null,
         chaosPending,
         sessionEpoch: epoch,
         serverTime: snapshot.serverTime,
@@ -186,6 +198,8 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         setError("INVALID_QUANTITY");
         return false;
       }
+      if (operation === "setFarmerEnabled" && quantity !== 0 && quantity !== 1)
+        return false;
       const key = `${operation}:${landId}:${quantity ?? ""}`;
       // An ambiguous network failure must not be retried with a fresh ID.
       if (uncertainMutation.current && uncertainMutation.current.key !== key) {
@@ -202,7 +216,9 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       setBusy(true);
       try {
         const api = createFarmV2Api({ baseUrl, launchToken });
-        if (operation === "sow") await api.sow(landId, requestId);
+        if (operation === "setFarmerEnabled")
+          await api.setFarmerEnabled(landId, quantity === 1, requestId);
+        else if (operation === "sow") await api.sow(landId, requestId);
         else if (operation === "harvest") await api.harvest(landId, requestId);
         else if (operation === "claimChaosSeeds")
           await api.claimChaosSeeds(requestId);

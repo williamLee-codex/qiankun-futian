@@ -76,6 +76,47 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 describe("Farm V2 isolated PostgreSQL engine", () => {
+  it("settles enabled farmer cycles into persisted warehouse once without claiming chaos", async () => {
+    await ensureFarmV2PlayerInitialized({ userId: "farmer", now: 0 });
+    await pg.query(
+      `UPDATE farm_v2_player_state SET farmer_state='{"entitled":true,"enabledByLand":{"1":true,"2":false,"3":false,"4":false,"5":false,"6":false}}', warehouse_state=jsonb_set(warehouse_state,'{seeds,1}','60') WHERE user_id='farmer'`,
+    );
+    await pg.query(
+      "UPDATE farm_v2_land SET lifecycle='GROWING',planted_quantity=20,planted_at=to_timestamp(0),matures_at=to_timestamp(14400) WHERE user_id='farmer' AND land_id=1",
+    );
+    await reconcileFarmV2PaidAccess({
+      userId: "farmer",
+      requestId: "farmer-login",
+      settleFarmer: true,
+      effectivePaidCrystals: 999,
+      now: 13 * 3600000,
+    });
+    const first = await ensureFarmV2PlayerInitialized({ userId: "farmer" });
+    expect((first.player.warehouseState as any).crops[1]).toBe(360);
+    expect((first.player.warehouseState as any).seeds[1]).toBe(0);
+    expect(first.lands[0].plantedAt?.getTime()).toBe(12 * 3600000);
+    await reconcileFarmV2PaidAccess({
+      userId: "farmer",
+      requestId: "farmer-login-again",
+      settleFarmer: true,
+      effectivePaidCrystals: 999,
+      now: 13 * 3600000,
+    });
+    const second = await ensureFarmV2PlayerInitialized({ userId: "farmer" });
+    expect(second.player.warehouseState).toEqual(first.player.warehouseState);
+    expect(second.player.chaosSeedState).toEqual(first.player.chaosSeedState);
+    await reconcileFarmV2PaidAccess({
+      userId: "farmer",
+      requestId: "farmer-refund",
+      settleFarmer: true,
+      effectivePaidCrystals: 0,
+      now: 20 * 3600000,
+    });
+    const paused = await ensureFarmV2PlayerInitialized({ userId: "farmer" });
+    expect(paused.player.warehouseState).toEqual(second.player.warehouseState);
+    expect(paused.lands[0].plantedAt).toEqual(second.lands[0].plantedAt);
+    expect((paused.player.farmerState as any).entitled).toBe(false);
+  });
   it("migration protects backend-only state from direct client reads and writes", async () => {
     const tables = ["farm_v2_player_state", "farm_v2_land", "farm_v2_mutation"];
     for (const role of ["anon", "authenticated"]) {
@@ -190,6 +231,7 @@ describe("Farm V2 isolated PostgreSQL engine", () => {
     const endpoint = `http://127.0.0.1:${address.port}/api/farm/v2`;
     const nativeFetch = globalThis.fetch;
     const walletRequests: any[] = [];
+    let paidQualification = 600;
     vi.stubEnv("PLATFORM_BASE_URL", "https://core.test");
     vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test-only");
     vi.stubGlobal("fetch", async (url: any, init: any) => {
@@ -203,7 +245,9 @@ describe("Farm V2 isolated PostgreSQL engine", () => {
           }),
         );
       if (path.endsWith("/paid-value"))
-        return new Response(JSON.stringify({ effectivePaidCrystals: 600 }));
+        return new Response(
+          JSON.stringify({ effectivePaidCrystals: paidQualification }),
+        );
       if (path.endsWith("/wallet")) {
         walletRequests.push(payload);
         return new Response(
@@ -312,6 +356,49 @@ describe("Farm V2 isolated PostgreSQL engine", () => {
       ).toBe(200);
       expect(walletRequests).toHaveLength(1);
       expect(walletRequests[0].amount).toBe(2);
+      const farmerHeaders = { ...headers, "x-request-id": "farmer-on" };
+      const farmerRequest = () =>
+        nativeFetch(`${endpoint}/lands/1/farmer`, {
+          method: "POST",
+          headers: farmerHeaders,
+          body: JSON.stringify({ enabled: true }),
+        });
+      expect((await farmerRequest()).status).toBe(403);
+      await pg.query(
+        "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(warehouse_state,'{seeds,1}','20') WHERE user_id='http-alice'",
+      );
+      paidQualification = 999;
+      const enabled = await farmerRequest();
+      expect(enabled.status).toBe(200);
+      expect(await enabled.json()).toMatchObject({
+        farmer: { entitled: true, enabledByLand: { 1: true } },
+      });
+      expect((await farmerRequest()).status).toBe(200);
+      const afterFarmer: any = await (
+        await nativeFetch(`${endpoint}/state`, { headers })
+      ).json();
+      expect(afterFarmer.lands[0].lifecycle).toBe("GROWING");
+      expect(afterFarmer.player.warehouseState.seeds[1]).toBe(0);
+      expect(afterFarmer.lands[0].plantedQuantity).toBe(20);
+      expect(
+        (
+          await nativeFetch(`${endpoint}/lands/1/farmer`, {
+            method: "POST",
+            headers: { ...headers, "x-request-id": "farmer-off" },
+            body: JSON.stringify({ enabled: false }),
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await nativeFetch(`${endpoint}/lands/1/farmer`, {
+            method: "POST",
+            headers: { ...headers, "x-request-id": "invalid-farmer" },
+            body: JSON.stringify({ enabled: "false" }),
+          })
+        ).status,
+      ).toBe(400);
+      expect(walletRequests).toHaveLength(1);
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }

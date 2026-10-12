@@ -50,7 +50,8 @@
 | 倉庫、角色、靈獸 | 尚未符合 | 正式UI只有種子／作物數量；角色及靈獸未按伺服器狀態與核准立繪完整展示 |
 | 響應式與操作文字可見 | 已符合並驗證 | 修復黑底黑字、禁止捲动與遮圖重複面板；320/390/768/1440無橫向溢出 |
 | 瀏覽器Console | 已符合並驗證 | 四尺寸受控API／字型fixture Console error 0；不能推論正式Core／外部CDN無錯誤 |
-| 農夫、好友、任務、盆栽、洞府 | 尚未符合 | 多個純runtime存在，但正式V2目前state/sow/harvest/purchase/exchange/chaos-claim/reconcile七類API；完整持久流程及UI未接通 |
+| 農夫登入結算與逐田ON/OFF | 已符合並驗證 | 正式API／UI已接原runtime；隔離SQL3批60株新手入庫360、庫存種子扣除、重讀不重複、退款停止；HTTP逐田開關及四尺寸操作通過。真實Core仍待驗證 |
+| 好友、任務、盆栽、洞府 | 尚未符合 | 純runtime存在；完整持久API及UI尚未接通 |
 | RLS／migration／資料隔離ACL | 已修正但待驗證 | 實際migration在PGlite執行；三表RLS、anon/authenticated全表權限撤銷、service_role讀取通過。遠端套用、真實backend連線角色及Supabase API隔離未驗證 |
 | Wallet Catalog驗價／帳本一致性 | 尚未符合 | Core草稿接收Farm傳入amount；本輪不修改Core權威。需獨立Core契約與正式Ledger驗證 |
 
@@ -74,7 +75,7 @@
 | `git ls-remote origin refs/heads/...` | 兩個指定HEAD吻合原指令；push前再核對修正分支 |
 | `pnpm install --frozen-lockfile` | 首次invalid allowBuilds阻擋；修正esbuild設定後完成 |
 | `pnpm run typecheck` | 通過 |
-| `pnpm run test` | 40個Vitest檔、155案例通過；另4個Node guard案例通過 |
+| `pnpm run test` | 40個Vitest檔、156案例通過；另4個Node guard案例通過 |
 | `PORT=4173 BASE_PATH=/ pnpm run build` | API、Farm、mockup全workspace build通過；PORT/BASE_PATH是原sandbox config所需環境值 |
 | `pnpm run test:browser:fixture` | 配合測試瀏覽器／本地字型環境，320/390/768/1440各13次操作（六田播種／收成＋混沌領取）、無溢出、Console error 0；320另驗證reduced-motion |
 | `git diff --check` | 通過 |
@@ -147,3 +148,14 @@
 這是既有底圖與錯位修正，**不是LandEntity世界場景完成**；兩份美術projection尚未轉為可查證單一world/camera模型。獨立review發現舊倉庫飛行錨點16%,35%在新圖落在山水／崖壁，已刪除錯位flight狀態、markup與keyframes；等待倉庫權威位置才恢復動畫，不能將無動畫說成動畫驗收成功。庫存與交易不受影響。
 
 完整155 tests＋4 guards與workspace Typecheck/Build通過。瀏覽器320/390/768/1440各13次操作、Console error0；直接檢查currentSrc及naturalWidth/Height，確定手機941×1672、桌機1215×1295正確載入且顯示比例無拉伸。新fixture驗證所有操作無錯位warehouse flight；320要求reduced-motion，但動畫Gate尚未通過。實際四尺寸畫面更新至既有視覺證據包；API為受控fixture。整體仍NO-GO。
+
+
+## 農夫正式接線
+
+依FINAL FARMER-SETTLE/PREF/SEED/SCOPE/CHAOS/NEWBIE規則，把既有executeFarmerLandTransaction接入两條paid reconciliation交易的明確settleFarmer選項，只有正式state GET啟用；其他mutation的資格刷新不順帶自動耕作；未確認Wallet早退出仍在結算之前。使用Core當前999資格、逐田開關、實際庫存種子及既有作物時間。Warehouse與六田在同一鎖定交易寫回，田地狀態變更才遞增version；不買種、不換幣、不領pending混沌、不領任務，不修改Wallet或經濟。
+
+新增 `POST /farm/v2/lands/:landId/farmer`：launch身份、request ID、strict boolean、Core刷新、玩家行鎖、既有idempotency；僅保存該玩家的逐田設定。前端讀伺服器farmerState，有999資格時顯示六田ON/OFF；未確認操作沿用原ID，其他操作停用。API回傳已失去資格可確認此設定未執行。
+
+最初SQL回歸舊實作收成0、預期360；接線後通過：已有20株與60顆種子，13h結算3批60株×6入庫360，剩餘一批在12h播種／16h成熟；重讀無重复、退款後不收成且保留作物時間。HTTP實測600資格403、999開啟、相同ID重送200、state用20顆庫存播整批、關閉、字串boolean400、Wallet呼叫數不增加。
+
+`pnpm run test`156案例＋4 guards通過；workspace Typecheck/Build、diff check通過。四尺寸瀏覽器fixture各15次操作（原13＋農夫ON/OFF），15個不同request ID，Console0。獨立review無新增Critical/Important，另實跑farmer runtime＋SQL共13案例。新截圖包含逐田農夫設定；資料仍為受控fixture。真實Core、多連線及其他原規格流程尚未完成，整體NO-GO。
