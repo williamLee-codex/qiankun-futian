@@ -1,5 +1,5 @@
 import farmBackground from '@assets/file_00000000095072069ef62748d273ae91_1783571778589.png';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFarmV2Scene } from './useFarmV2Scene';
 import { CROP_DATA } from '../types';
 
@@ -43,7 +43,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
   }, []);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
   const [flight, setFlight] = useState<{ operation: 'sow' | 'harvest'; landId: number; icon: string; sequence: number } | null>(null);
-  const [flightSequence, setFlightSequence] = useState(0);
+  const flightSequence = useRef(0);
   useEffect(() => {
     if (!flight) return;
     const timeout = setTimeout(() => setFlight(current => current?.sequence === flight.sequence ? null : current), 900);
@@ -55,8 +55,8 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
     const ok = await mutate(operation, landId, quantity);
     if (ok && (operation === 'sow' || operation === 'harvest')) {
       const plot = data?.plots.find(item => item.id + 1 === landId);
-      setFlightSequence(previous => previous + 1);
-      setFlight({ operation, landId, icon: operation === 'sow' ? '🌱' : (plot?.cropEmoji ?? '🌾'), sequence: flightSequence + 1 });
+      const sequence = ++flightSequence.current;
+      setFlight({ operation, landId, icon: operation === 'sow' ? '🌱' : (plot?.cropEmoji ?? '🌾'), sequence });
     }
     setNotice(ok ? '操作已由伺服器確認。' : '操作未確認，請檢查錯誤並重新讀取。');
   }
