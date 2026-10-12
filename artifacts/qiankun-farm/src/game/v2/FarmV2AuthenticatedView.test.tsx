@@ -34,6 +34,7 @@ beforeEach(() => {
   state.value = {
     data: {
       plots,
+      coinLandHistory: { 2: true, 3: true },
       entities: createFarmV2SceneEntities(plots),
       seedInventory: { yaojin: 20 },
       cropInventory: {},
@@ -120,4 +121,21 @@ it("allows locked land seed purchases without sowing", async () => {
       .props.onClick(),
   );
   expect(state.value.mutate).toHaveBeenCalledWith("purchaseSeeds", 2, 3);
+});
+
+it('offers the explicit 88 coin land2 purchase only when never owned', async()=>{
+ state.value.data.plots[1].unlocked=false;state.value.data.coinLandHistory={2:false,3:false};await mount();
+ await act(async()=>renderer.root.findAllByType('button').find(b=>b.props['aria-label']==='幽熒沃土，尚未解鎖')!.props.onClick());
+ const buy=renderer.root.findAllByType('button').find(b=>b.children.join('')==='支付 88 金幣，永久解鎖')!;
+ expect(buy).toBeDefined();await act(async()=>buy.props.onClick());expect(state.value.mutate).toHaveBeenCalledWith('unlockCoinLand',2,undefined);
+});
+it('requires historical land2 before offering land3 and does not resell inactive owned land2',async()=>{
+ state.value.data.plots[1].unlocked=false;state.value.data.plots[2].unlocked=false;state.value.data.coinLandHistory={2:false,3:false};await mount();
+ await act(async()=>renderer.root.findAllByType('button').find(b=>b.props['aria-label']==='朱砂烈土，尚未解鎖')!.props.onClick());
+ expect(renderer.root.findAllByType('button').find(b=>b.children.join('')==='支付 888 金幣，永久解鎖')!.props.disabled).toBe(true);
+ state.value.data.coinLandHistory[2]=true;
+ await act(async()=>renderer.update(<FarmV2AuthenticatedView apiBaseUrl="/api" launchToken="A"/>));
+ expect(renderer.root.findAllByType('button').find(b=>b.children.join('')==='支付 888 金幣，永久解鎖')!.props.disabled).toBe(false);
+ await act(async()=>renderer.root.findAllByType('button').find(b=>b.props['aria-label']==='幽熒沃土，尚未解鎖')!.props.onClick());
+ expect(renderer.root.findAllByType('button').filter(b=>b.children.join('')==='支付 88 金幣，永久解鎖')).toHaveLength(0);
 });

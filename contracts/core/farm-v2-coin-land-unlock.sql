@@ -92,4 +92,28 @@ GRANT SELECT ON core.users,platform.products,public.core_wallet_ledger TO servic
 GRANT SELECT,UPDATE ON public.core_wallets TO service_role;
 GRANT SELECT,INSERT ON platform.entitlements TO service_role;
 GRANT INSERT ON platform.entitlement_events TO service_role;
+
+CREATE OR REPLACE FUNCTION public.farm_v2_coin_land_entitlements(p_owner_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER
+SET search_path = pg_catalog, public, platform, core AS $$
+DECLARE v_user_id uuid; v_lands jsonb;
+BEGIN
+ SELECT id INTO v_user_id FROM core.users WHERE auth_user_id=p_owner_id AND status='active';
+ IF v_user_id IS NULL THEN RETURN jsonb_build_object('result_status','identity_unavailable'); END IF;
+ SELECT jsonb_agg(jsonb_build_object(
+   'landId',ids.land_id,
+   'historicallyUnlocked',history.first_granted IS NOT NULL,
+   'accessActive',COALESCE(history.active,false),
+   'firstUnlockedAt',history.first_granted
+ ) ORDER BY ids.land_id) INTO v_lands
+ FROM (VALUES (2),(3)) ids(land_id)
+ LEFT JOIN LATERAL (
+   SELECT min(e.granted_at) AS first_granted, bool_or(e.status='active') AS active
+   FROM platform.entitlements e JOIN platform.products p ON p.id=e.product_id
+   WHERE e.user_id=v_user_id AND p.product_key='qiankun-futian:land:'||ids.land_id::text AND e.entitlement_type='lifetime'
+ ) history ON true;
+ RETURN jsonb_build_object('result_status','ok','lands',v_lands);
+END; $$;
+REVOKE ALL ON FUNCTION public.farm_v2_coin_land_entitlements(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.farm_v2_coin_land_entitlements(uuid) TO service_role;
 COMMIT;

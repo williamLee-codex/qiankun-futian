@@ -15,13 +15,14 @@ type Snapshot = {
   serverTime: number;
   pendingMutation?: {
     requestId: string;
-    operation: "purchaseSeeds" | "exchangeCrops";
+    operation: "purchaseSeeds" | "exchangeCrops" | "unlockCoinLand";
     landId: number;
-    quantity: number;
+    quantity?: number;
   } | null;
   player: {
     farmerState?: { entitled: boolean; enabledByLand: Record<number, boolean> };
     chaosSeedState?: { pending: number } | null;
+    accessState: { historicallyUnlocked: number[] };
     warehouseState: {
       seeds: Record<string, number>;
       crops: Record<string, number>;
@@ -40,6 +41,7 @@ type SceneData = {
   entities: FarmV2SceneLandEntity[];
   seedInventory: CropInventory;
   cropInventory: CropInventory;
+  coinLandHistory: Record<number, boolean>;
 };
 
 /**
@@ -111,6 +113,12 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       )
         throw new Error("INVALID_FARMER_STATE");
       const plots = mapServerLands(snapshot.lands, snapshot.serverTime);
+      if (!Array.isArray(snapshot.player.accessState?.historicallyUnlocked) ||
+          snapshot.player.accessState.historicallyUnlocked.some((id) => ![1, 2, 3, 4, 5, 6].includes(id)))
+        throw new Error("INVALID_COIN_LAND_HISTORY");
+      const coinLandHistory = { 2: false, 3: false } as Record<number, boolean>;
+      for (const id of snapshot.player.accessState.historicallyUnlocked)
+        if (id === 2 || id === 3) coinLandHistory[id] = true;
       const nextData = {
         farmer: snapshot.player.farmerState ?? null,
         chaosPending,
@@ -120,6 +128,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         plots,
         entities: createFarmV2SceneEntities(plots),
         ...mapServerWarehouse(snapshot.player.warehouseState),
+        coinLandHistory,
       };
       if (sequence !== readSequence.current || epoch !== session.current.epoch)
         return false;
@@ -127,23 +136,28 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         const pending = snapshot.pendingMutation;
         if (
           !pending.requestId ||
-          !["purchaseSeeds", "exchangeCrops"].includes(pending.operation) ||
+          !["purchaseSeeds", "exchangeCrops", "unlockCoinLand"].includes(pending.operation) ||
           !Number.isInteger(pending.landId) ||
           pending.landId < 1 ||
           pending.landId > 6 ||
-          !Number.isSafeInteger(pending.quantity) ||
-          pending.quantity <= 0
+          (pending.operation === "unlockCoinLand"
+            ? ![2, 3].includes(pending.landId) || pending.quantity !== undefined
+            : !Number.isSafeInteger(pending.quantity) || pending.quantity! <= 0)
         )
           throw new Error("INVALID_PENDING_MUTATION");
         uncertainMutation.current = {
-          key: `${pending.operation}:${pending.landId}:${pending.quantity}`,
+          key: `${pending.operation}:${pending.landId}:${pending.quantity ?? ""}`,
           requestId: pending.requestId,
         };
         setPendingRetry({
           operation: pending.operation,
           landId: pending.landId,
-          quantity: pending.quantity,
+          ...(pending.quantity === undefined ? {} : { quantity: pending.quantity }),
         });
+        retryEpoch.current = epoch;
+      } else {
+        uncertainMutation.current = null;
+        setPendingRetry(null);
         retryEpoch.current = epoch;
       }
       setData(nextData);
@@ -198,6 +212,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       if (!launchToken || mutationInFlight.current) return false;
       if (operation === "claimChaosSeeds" && landId !== 6) return false;
       if (!Number.isInteger(landId) || landId < 1 || landId > 6) return false;
+      if (operation === "unlockCoinLand" && landId !== 2 && landId !== 3) return false;
       if (
         (operation === "purchaseSeeds" || operation === "exchangeCrops") &&
         (!Number.isSafeInteger(quantity) || (quantity ?? 0) <= 0)
@@ -229,6 +244,8 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         else if (operation === "harvest") await api.harvest(landId, requestId);
         else if (operation === "claimChaosSeeds")
           await api.claimChaosSeeds(requestId);
+        else if (operation === "unlockCoinLand")
+          await api.unlockCoinLand(landId, requestId);
         else {
           if (operation === "purchaseSeeds")
             await api.purchaseSeeds(landId, quantity!, requestId);

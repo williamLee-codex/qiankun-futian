@@ -148,3 +148,11 @@ it("honors an active platform regrant while preserving the first historical gran
   expect(retry.entitlement_id).not.toBe(first.entitlement_id);
   expect(await balance()).toBe(912);
 });
+
+it('reads first acquisition and current access exclusively from Core lifetime rights', async()=>{
+ await unlock(2,'read-land2');
+ const r=await db.query<{result:any}>('select public.farm_v2_coin_land_entitlements($1::uuid) as result',[owner]);
+ expect(r.rows[0].result.lands).toHaveLength(2);
+ expect(r.rows[0].result.lands[0]).toMatchObject({landId:2,historicallyUnlocked:true,accessActive:true});
+ expect(r.rows[0].result.lands[1]).toMatchObject({landId:3,historicallyUnlocked:false,accessActive:false,firstUnlockedAt:null});
+});

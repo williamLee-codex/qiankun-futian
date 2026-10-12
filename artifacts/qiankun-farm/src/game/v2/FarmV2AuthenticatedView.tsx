@@ -48,7 +48,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
   async function execute(operation: FarmV2Operation, landId: number, quantity?: number) {
     setNotice(null);
     const ok = await mutate(operation, landId, quantity);
-    setNotice(ok ? (operation === 'claimChaosSeeds' ? '混沌種子已收入倉庫。' : '操作已完成。') : '操作未確認，請檢查錯誤並重新讀取。');
+    setNotice(ok ? (operation === 'claimChaosSeeds' ? '混沌種子已收入倉庫。' : operation === 'unlockCoinLand' ? '解鎖狀態已更新。' : '操作已完成。') : '操作未確認，請檢查錯誤並重新讀取。');
   }
 
   async function handlePlotClick(plot: NonNullable<typeof data>['plots'][number]) {
@@ -149,8 +149,17 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
               <h3>{plot.name}</h3>
               <p>{!plot.unlocked ? '🔒 尚未解鎖' : plot.state === 'ready' ? '已成熟' : plot.state === 'growing' ? '生長中' : '待播種'}</p>
               {!plot.unlocked && <p>{plot.unlockCoins !== null
-                ? `${plot.id === 2 ? '需先解鎖幽熒沃土，再' : ''}支付 ${plot.unlockCoins} 金幣解鎖。`
+                ? data.coinLandHistory[plot.id + 1]
+                  ? '此田地已永久取得；目前使用資格未啟用。'
+                  : `${plot.id === 2 ? '需先取得幽熒沃土，再' : ''}支付 ${plot.unlockCoins} 金幣永久解鎖。`
                 : `累積有效儲值達 ${plot.unlockCrystals} 水晶後取得使用資格。`}</p>}
+              {!plot.unlocked && (plot.id === 1 || plot.id === 2) && !data.coinLandHistory[plot.id + 1] && (
+                <button type="button"
+                  disabled={busy || loading || !!pendingRetry || (plot.id === 2 && !data.coinLandHistory[2])}
+                  onClick={() => { void execute('unlockCoinLand', plot.id + 1); }}>
+                  支付 {plot.unlockCoins} 金幣，永久解鎖
+                </button>
+              )}
               <p>種子：{seeds}／整批 {plot.maxSeeds}；倉庫作物：{crops}</p>
               {plot.unlocked && plot.state === 'growing' && plot.growthEndTime && (
                 <p>預計成熟：{new Date(plot.growthEndTime).toLocaleString('zh-TW')}</p>

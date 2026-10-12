@@ -165,3 +165,8 @@ describe("Farm V2 API contract", () => {
     } satisfies Partial<FarmV2ApiError>);
   });
 });
+
+it('sends coin-land unlock with original request ID and no price body', async()=>{
+ vi.stubGlobal('fetch',async(_url:any,init:any)=>{expect(init.method).toBe('POST');expect(init.headers['x-request-id']).toBe('original-unlock');expect(init.body).toBeUndefined();return Response.json({ok:true});});
+ await createFarmV2Api({baseUrl:'https://farm.test/api',launchToken:'launch'}).unlockCoinLand(2,'original-unlock');
+});

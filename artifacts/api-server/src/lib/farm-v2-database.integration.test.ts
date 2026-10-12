@@ -248,6 +248,7 @@ describe("Farm V2 isolated PostgreSQL engine", () => {
         return new Response(
           JSON.stringify({ effectivePaidCrystals: paidQualification }),
         );
+      if (path.endsWith('/coin-land-unlocks')) return Response.json({result_status:'ok',lands:[2,3].map(landId=>({landId,historicallyUnlocked:false,accessActive:false,firstUnlockedAt:null}))});
       if (path.endsWith("/wallet")) {
         walletRequests.push(payload);
         return new Response(
@@ -511,4 +512,26 @@ describe("Farm V2 isolated PostgreSQL engine", () => {
     expect(bob.lands.every((l) => l.plantedQuantity === 0)).toBe(true);
     expect(bob.player.firstFarmEnteredAt!.getTime()).toBe(now);
   });
+});
+
+
+it('Core permanent unlock survives a lost response and replays the original Farm request without another debit', async()=>{
+ const {purchaseFarmV2CoinLand}=await import('./farm-v2-coin-land-unlock');
+ await ensureFarmV2PlayerInitialized({userId:'coin-land'});
+ vi.stubEnv('PLATFORM_BASE_URL','https://core.test');vi.stubEnv('REPLIT_APP_SHARED_SECRET','shared');
+ let debits=0,owned=false,lost=true;const requestIds:string[]=[];
+ vi.stubGlobal('fetch',async(_url:any,init:any)=>{
+  const payload=JSON.parse(init.body);
+  if(payload.operation==='purchase') {
+   requestIds.push(init.headers['x-request-id']);if(!owned){owned=true;debits++;}
+   if(lost){lost=false;throw new Error('response lost after Core committed');}
+   return Response.json({result_status:'already_unlocked',land_id:2,cost:0,unlocked_at:'2026-10-12T00:00:00Z',entitlement_id:'core-right'});
+  }
+  return Response.json({result_status:'ok',lands:[{landId:2,historicallyUnlocked:owned,accessActive:owned,firstUnlockedAt:owned?'2026-10-12T00:00:00Z':null},{landId:3,historicallyUnlocked:false,accessActive:false,firstUnlockedAt:null}]});
+ });
+ await expect(purchaseFarmV2CoinLand({userId:'coin-land',launchToken:'launch',requestId:'original-unlock',landId:2})).rejects.toThrow('response lost');
+ expect((await ensureFarmV2PlayerInitialized({userId:'coin-land'})).lands[1].accessActive).toBe(false);
+ await purchaseFarmV2CoinLand({userId:'coin-land',launchToken:'launch',requestId:'original-unlock',landId:2});
+ const result=await ensureFarmV2PlayerInitialized({userId:'coin-land'});expect(result.lands[1]).toMatchObject({lifecycle:'EMPTY',accessActive:true});expect(debits).toBe(1);expect(requestIds).toEqual(['original-unlock','original-unlock']);
+ await purchaseFarmV2CoinLand({userId:'coin-land',launchToken:'launch',requestId:'original-unlock',landId:2});expect(debits).toBe(1);expect(requestIds).toHaveLength(2);
 });

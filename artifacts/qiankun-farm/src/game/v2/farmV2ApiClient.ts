@@ -9,7 +9,8 @@ export type FarmV2Operation =
   | "purchaseSeeds"
   | "exchangeCrops"
   | "setFarmerEnabled"
-  | "claimChaosSeeds";
+  | "claimChaosSeeds"
+  | "unlockCoinLand";
 
 export type FarmV2Land = {
   landId: number;
@@ -153,5 +154,15 @@ export function createFarmV2Api(input: {
         { cropQuantity },
         requestId,
       ),
+    unlockCoinLand: (landId: number, requestId?: string) => {
+      if (landId !== 2 && landId !== 3)
+        throw new Error("INVALID_COIN_LAND_ID");
+      return request<unknown>(
+        `farm/v2/lands/${landId}/unlock`,
+        "POST",
+        undefined,
+        requestId,
+      );
+    },
   };
 }

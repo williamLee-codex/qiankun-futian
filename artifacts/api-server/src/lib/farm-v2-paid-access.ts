@@ -1,3 +1,5 @@
+import { readCoreCoinLands } from './farm-v2-core-coin-land';
+import { projectCoreCoinLands } from '../../../qiankun-farm/src/game/v2/coinLandProjection';
 import { settleFarmV2Farmer } from "./farm-v2-farmer";
 import { and, eq, isNotNull, notInArray } from "drizzle-orm";
 import { fetchFarmV2CorePaidQualification } from "./farm-v2-core-paid-value";
@@ -188,9 +190,11 @@ export async function reconcileFarmV2PaidAccessFromCore(input: {
         .where(eq(farmV2LandTable.userId, input.userId))
         .orderBy(farmV2LandTable.landId);
       if (rows.length !== 6) throw new Error("FARM_INITIALIZATION_INCOMPLETE");
+      const coinRights = await readCoreCoinLands(input.launchToken);
+      const coinProjection = projectCoreCoinLands(decodeFarmAccessState(player.accessState), rows.map(farmV2LandRowToEntity), coinRights);
       const benefits = reconcileEffectivePaidBenefits({
-        access: decodeFarmAccessState(player.accessState),
-        lands: rows.map(farmV2LandRowToEntity),
+        access: coinProjection.access,
+        lands: coinProjection.lands,
         warehouse: player.warehouseState as FarmWarehouse,
         chaosState: player.chaosSeedState as ChaosSeedState | null,
         pets: decodeFarmPetState(player.petState),

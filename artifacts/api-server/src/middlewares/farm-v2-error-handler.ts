@@ -2,6 +2,11 @@ import type { ErrorRequestHandler } from "express";
 import { FarmWalletRejectedError } from "../lib/farm-v2-wallet-client";
 
 const FARM_V2_STATUS_BY_ERROR: Readonly<Record<string, number>> = {
+  CORE_COIN_LAND_NOT_CONFIGURED: 503,
+  CORE_COIN_LAND_UNAVAILABLE: 503,
+  INVALID_CORE_COIN_LAND_RESPONSE: 502,
+  CORE_COIN_LAND_HISTORY_CONFLICT: 503,
+  INVALID_CORE_COIN_LAND_SNAPSHOT: 502,
   INVALID_FARMER_PREFERENCE: 400,
   FARMER_NOT_ENTITLED: 403,
   ACTOR_UID_REQUIRED: 401,

@@ -16,6 +16,9 @@ const fs = require("node:fs");
     args: process.env.CHROMIUM_ARGS
       ? JSON.parse(process.env.CHROMIUM_ARGS)
       : ["--no-sandbox"],
+    ...(process.env.CHROMIUM_IGNORE_DEFAULT_ARGS
+      ? { ignoreDefaultArgs: JSON.parse(process.env.CHROMIUM_IGNORE_DEFAULT_ARGS) }
+      : {}),
   });
   const evidence =
     process.env.FARM_V2_EVIDENCE_DIR ??
@@ -113,6 +116,7 @@ const fs = require("node:fs");
       serverTime: Date.now(),
       pendingMutation: null,
       player: {
+        accessState: { historicallyUnlocked: [] },
         farmerState: {
           entitled: true,
           enabledByLand: Object.fromEntries(
@@ -136,6 +140,9 @@ const fs = require("node:fs");
     };
     const ids = [];
     const purchases = [];
+    const coinUnlockIds = [];
+    const committedCoinUnlocks = new Set();
+    let loseFirstUnlockResponse = true;
     await page.route("http://localhost:5000/api/**", async (route) => {
       const req = route.request();
       const path = new URL(req.url()).pathname;
@@ -149,6 +156,29 @@ const fs = require("node:fs");
         });
       if (req.method() === "POST") {
         ids.push(req.headers()["x-request-id"]);
+        const unlockMatch = path.match(/lands\/(2|3)\/unlock/);
+        if (unlockMatch) {
+          const landId = +unlockMatch[1];
+          const requestId = req.headers()["x-request-id"];
+          coinUnlockIds.push({ landId, requestId });
+          assert.equal(req.postData(), null);
+          if (!committedCoinUnlocks.has(requestId)) {
+            committedCoinUnlocks.add(requestId);
+            snapshot.player.accessState.historicallyUnlocked.push(landId);
+            snapshot.lands[landId - 1].accessActive = true;
+            snapshot.lands[landId - 1].lifecycle = "EMPTY";
+          }
+          if (landId === 2 && loseFirstUnlockResponse) {
+            loseFirstUnlockResponse = false;
+            snapshot.pendingMutation = { requestId, operation: "unlockCoinLand", landId };
+            return route.fulfill({
+              status: 200,
+              contentType: "application/json",
+              body: "{",
+            });
+          }
+          snapshot.pendingMutation = null;
+        }
         const purchaseMatch = path.match(/seeds\/(\d+)\/purchase/);
         if (purchaseMatch) {
           const landId = +purchaseMatch[1];
@@ -333,7 +363,7 @@ const fs = require("node:fs");
     await page
       .getByRole("button", { name: "領取混沌種子", exact: true })
       .click();
-    await page.getByText("混沌種子已收入倉庫。", { exact: true }).waitFor();
+    await page.getByText("混沌種子已收入倉庫。", { exact: true }).waitFor({ state: "attached" });
     assert.equal(
       await page
         .getByRole("button", { name: "領取混沌種子", exact: true })
@@ -382,15 +412,13 @@ const fs = require("node:fs");
         })
         .click();
       const packsInput = page.getByRole("spinbutton", { name: "購買種子包數" });
+      await page.waitForFunction(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const writes = ids.length;
-      for (const invalid of ["", "0", "-1", "1.5"]) {
+      for (const invalid of ["0", "-1", "1.5"]) {
         await packsInput.fill(invalid);
-        assert.equal(
-          await page
-            .getByRole("button", { name: "購買種子", exact: true })
-            .isDisabled(),
-          true,
-        );
+        const purchaseButton = packsInput.locator("xpath=../..").getByRole("button");
+        await purchaseButton.waitFor();
+        assert.equal(await purchaseButton.isDisabled(), true);
       }
       assert.equal(ids.length, writes);
       const crops = { ...snapshot.player.warehouseState.crops };
@@ -428,6 +456,32 @@ const fs = require("node:fs");
     );
     assert.equal(ids.length, 20);
     assert.equal(new Set(ids).size, 20);
+    snapshot.lands[1].accessActive = false;
+    snapshot.lands[1].lifecycle = "LOCKED";
+    snapshot.lands[2].accessActive = false;
+    snapshot.lands[2].lifecycle = "LOCKED";
+    snapshot.player.accessState.historicallyUnlocked = [];
+    await page.getByRole("button", { name: "更新農田", exact: true }).click();
+    await page.getByRole("button", { name: "幽熒沃土，尚未解鎖" }).click();
+    await page.getByRole("button", { name: "支付 88 金幣，永久解鎖" }).click();
+    await page.getByRole("button", { name: "重試尚未確認的操作（沿用原交易編號）" }).waitFor({ state: "attached" });
+    const lostRequestId = ids.at(-1);
+    // The production host supplies a fresh launch token after reload; the
+    // app strips it from browser history and never persists the credential.
+    await page.goto("http://127.0.0.1:4174/?launchToken=fixture-only");
+    await page.getByRole("button", { name: "重試尚未確認的操作（沿用原交易編號）" }).waitFor();
+    await page.getByRole("button", { name: "重試尚未確認的操作（沿用原交易編號）" }).click();
+    await page.getByRole("button", { name: "幽熒沃土，待播種" }).waitFor();
+    assert.equal(coinUnlockIds[0].requestId, lostRequestId);
+    assert.equal(coinUnlockIds[1].requestId, lostRequestId);
+    await page.getByRole("button", { name: "朱砂烈土，尚未解鎖" }).click();
+    await page.getByRole("button", { name: "支付 888 金幣，永久解鎖" }).click();
+    await page.getByRole("button", { name: "朱砂烈土，待播種" }).waitFor();
+    assert.deepEqual(snapshot.player.accessState.historicallyUnlocked.sort(), [2, 3]);
+    assert.equal(coinUnlockIds.length, 3);
+    assert.equal(new Set(coinUnlockIds.map((item) => item.requestId)).size, 2);
+    assert.equal(ids.length, 23);
+    assert.equal(new Set(ids).size, 22);
     await page.locator(".farm-v2-flight").waitFor({ state: "detached" });
     await page.evaluate(() => document.fonts.ready);
     await page.screenshot({
@@ -437,7 +491,7 @@ const fs = require("node:fs");
     assert.deepEqual(errors, []);
     outcomes.push({
       width,
-      operations: 20,
+      operations: 23,
       multiPackPurchases: purchases,
       consoleErrors: errors.length,
       reducedMotionRequested: width === 320,

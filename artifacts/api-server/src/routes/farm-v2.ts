@@ -1,3 +1,4 @@
+import { purchaseFarmV2CoinLand } from '../lib/farm-v2-coin-land-unlock';
 import { setFarmV2FarmerPreference } from "../lib/farm-v2-farmer";
 import { claimFarmV2ChaosSeeds } from "../lib/farm-v2-chaos-claim";
 import { Router, type IRouter } from "express";
@@ -59,7 +60,7 @@ router.get("/farm/v2/state", async (req, res, next) => {
       )
       .orderBy(farmV2MutationTable.createdAt);
     const walletPending = pending.find((item) =>
-      /^(seed-purchase|crop-exchange):/.test(item.action),
+      /^(seed-purchase|crop-exchange|coin-land-unlock):/.test(item.action),
     );
     const parts = walletPending?.action.split(":");
     res.json({
@@ -70,17 +71,28 @@ router.get("/farm/v2/state", async (req, res, next) => {
           ? {
               requestId: walletPending.requestId,
               operation:
-                parts[0] === "seed-purchase"
-                  ? "purchaseSeeds"
-                  : "exchangeCrops",
+                parts[0] === "coin-land-unlock" ? "unlockCoinLand" : parts[0] === "seed-purchase" ? "purchaseSeeds" : "exchangeCrops",
               landId: Number(parts[1]),
-              quantity: Number(parts[2]),
+              ...(parts[0] === "coin-land-unlock" ? {} : { quantity: Number(parts[2]) }),
             }
           : null,
     });
   } catch (error) {
     next(error);
   }
+});
+
+router.post("/farm/v2/lands/:landId/unlock", async (req, res, next) => {
+  try {
+    const userId = String(res.locals.authenticatedUserId ?? '').trim();
+    const launchToken = String(res.locals.launchToken ?? '').trim();
+    const requestId = String(req.header('x-request-id') ?? '').trim();
+    if (!userId || !launchToken) { res.status(401).json({error:'AUTH_REQUIRED'}); return; }
+    if (!requestId) { res.status(400).json({error:'REQUEST_ID_REQUIRED', definitive:true}); return; }
+    if (req.body && Object.keys(req.body).length) { res.status(400).json({error:'INVALID_UNLOCK_REQUEST',definitive:true}); return; }
+    await ensureFarmV2PlayerInitialized({userId});
+    res.json(await purchaseFarmV2CoinLand({userId,launchToken,requestId,landId:Number(req.params.landId)}));
+  } catch(error) { next(error); }
 });
 
 router.post("/farm/v2/lands/:landId/farmer", async (req, res, next) => {

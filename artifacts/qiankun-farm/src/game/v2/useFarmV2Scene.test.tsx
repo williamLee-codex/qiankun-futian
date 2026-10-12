@@ -19,6 +19,7 @@ const snapshot = (stock: number, pendingMutation: any = null) => ({
     maturesAt: null,
   })),
   player: {
+    accessState: { historicallyUnlocked: [1, 2, 3, 4, 5, 6] },
     warehouseState: {
       seeds: Object.fromEntries(
         Array.from({ length: 6 }, (_, i) => [i + 1, stock]),
@@ -164,4 +165,16 @@ describe("server-owned recovery and session isolation", () => {
     expect(writes).toBe(1);
     expect(value.data?.seedInventory.yaojin).toBe(0);
   });
+});
+
+it('restores an unfinished coin-land purchase and reuses its server request ID', async()=>{
+ vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);const sent:string[]=[];let pending=true;
+ vi.stubGlobal('fetch',async(_url:any,init:any)=>{
+  if(init.method==='POST'){sent.push(init.headers['x-request-id']);pending=false;return json({});}
+  return json(snapshot(20,pending?{requestId:'same-core-unlock',operation:'unlockCoinLand',landId:2}:null));
+ });
+ await act(async()=>{renderer=create(<Harness token="A"/>);});
+ expect(value.pendingRetry?.operation).toBe('unlockCoinLand');
+ await act(async()=>{await value.mutate('unlockCoinLand',2);});
+ expect(sent).toEqual(['same-core-unlock']);expect(value.pendingRetry).toBe(null);
 });
