@@ -42,16 +42,26 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
     return () => clearInterval(interval);
   }, []);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
+  const [flight, setFlight] = useState<{ operation: 'sow' | 'harvest'; landId: number; icon: string; sequence: number } | null>(null);
+  useEffect(() => {
+    if (!flight) return;
+    const timeout = setTimeout(() => setFlight(current => current?.sequence === flight.sequence ? null : current), 900);
+    return () => clearTimeout(timeout);
+  }, [flight]);
 
   async function execute(operation: 'sow' | 'harvest' | 'purchaseSeeds' | 'exchangeCrops', landId: number, quantity?: number) {
     setNotice(null);
     const ok = await mutate(operation, landId, quantity);
+    if (ok && (operation === 'sow' || operation === 'harvest')) {
+      const plot = data?.plots.find(item => item.id + 1 === landId);
+      setFlight({ operation, landId, icon: operation === 'sow' ? '🌱' : (plot?.cropEmoji ?? '🌾'), sequence: Date.now() });
+    }
     setNotice(ok ? '操作已由伺服器確認。' : '操作未確認，請檢查錯誤並重新讀取。');
   }
 
   async function handlePlotClick(plot: NonNullable<typeof data>['plots'][number]) {
     setSelectedLand(plot.id + 1);
-    if (busy || loading || !plot.unlocked) return;
+    if (busy || loading || pendingRetry || !plot.unlocked) return;
     if (plot.state === 'ready') {
       await execute('harvest', plot.id + 1);
       return;
@@ -83,6 +93,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
 
   return (
     <section aria-label="乾坤福田正式農田" style={{ maxWidth: 720, margin: "0 auto" }}>
+      <style>{`@keyframes farmV2Flight { from { left: var(--from-x); top: var(--from-y); opacity: 1; transform: translate(-50%, -50%) scale(.8); } to { left: var(--to-x); top: var(--to-y); opacity: 0; transform: translate(-50%, -50%) scale(1.2); } } @media (prefers-reduced-motion: reduce) { .farm-v2-flight { animation: none !important; } }`}</style>
       <div style={{ position: "relative", width: "min(100%, 390px)", aspectRatio: "390 / 843", margin: "0 auto", overflow: "hidden" }}>
         <img src={farmBackground} alt="乾坤福田六田場景" style={{ display: "block", width: "100%", height: "100%", objectFit: "fill" }} />
         {data.plots.map((plot, index) => (
@@ -121,6 +132,29 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
             </span>
           );
         })}
+        {flight && (() => {
+          const plot = PLOT_HOTSPOTS[flight.landId - 1];
+          if (!plot) return null;
+          const targetX = `calc(${plot.left} + ${plot.width} / 2)`;
+          const targetY = `calc(${plot.top} + ${plot.height} / 2)`;
+          const warehouseX = '16%';
+          const warehouseY = '35%';
+          return (
+            <span key={flight.sequence} className="farm-v2-flight" aria-hidden="true"
+              style={{
+                position: 'absolute', pointerEvents: 'none', zIndex: 30, fontSize: 28,
+                left: flight.operation === 'sow' ? targetX : warehouseX,
+                top: flight.operation === 'sow' ? targetY : warehouseY,
+                ['--from-x' as string]: flight.operation === 'sow' ? warehouseX : targetX,
+                ['--from-y' as string]: flight.operation === 'sow' ? warehouseY : targetY,
+                ['--to-x' as string]: flight.operation === 'sow' ? targetX : warehouseX,
+                ['--to-y' as string]: flight.operation === 'sow' ? targetY : warehouseY,
+                animation: 'farmV2Flight 850ms ease-in-out both',
+              }}>
+              {flight.icon}
+            </span>
+          );
+        })()}
         <div aria-label="正式農田狀態" style={{ position: "absolute", top: "75%", left: 12, right: 12, pointerEvents: "none", background: "rgba(16, 27, 20, .85)", color: "white", padding: 12, borderRadius: 12, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
           {data.plots.map(plot => <span key={plot.id}>{plot.name}：{!plot.unlocked ? "🔒" : plot.state === "ready" ? "🌾" : plot.state === "growing" ? "🌱" : "▫️"}</span>)}
         </div>
@@ -158,13 +192,13 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
               {plot.unlocked && plot.state === 'growing' && plot.growthEndTime && (
                 <p>預計成熟：{new Date(plot.growthEndTime).toLocaleString('zh-TW')}</p>
               )}
-              <button type="button" disabled={busy || loading || !canSow}
+              <button type="button" disabled={busy || loading || !!pendingRetry || !canSow}
                 onClick={() => { void execute('sow', plot.id + 1); }}>整批播種</button>
-              <button type="button" disabled={busy || loading || !canHarvest}
+              <button type="button" disabled={busy || loading || !!pendingRetry || !canHarvest}
                 onClick={() => { void execute('harvest', plot.id + 1); }}>收成入庫</button>
-              {canPurchase && <button type="button" disabled={busy || loading}
+              {canPurchase && <button type="button" disabled={busy || loading || !!pendingRetry}
                 onClick={() => { void execute('purchaseSeeds', plot.id + 1, 1); }}>購買一包種子（1 金幣）</button>}
-              <button type="button" disabled={busy || loading || !canExchange}
+              <button type="button" disabled={busy || loading || !!pendingRetry || !canExchange}
                 onClick={() => { void execute('exchangeCrops', plot.id + 1, exchangeUnit); }}>
                 兌換 {exchangeUnit} 株作物
               </button>
