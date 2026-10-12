@@ -21,7 +21,7 @@ const PLOT_HOTSPOTS = [
 ] as const;
 
 export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken: string }) {
-  const { data, error, loading, busy, refresh, mutate } =
+  const { data, error, loading, busy, refresh, mutate, pendingRetry } =
     useFarmV2Scene(props.apiBaseUrl, props.launchToken);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
@@ -54,7 +54,13 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
     <section role="alert">
       <p>無法取得正式農田資料，已停止所有操作。</p>
       {error && <p>{error}</p>}
-      <button type="button" onClick={() => { void refresh(); }}>重新讀取</button>
+      {pendingRetry ? (
+        <button type="button" disabled={busy || loading} onClick={() => { void mutate(pendingRetry.operation, pendingRetry.landId, pendingRetry.quantity); }}>
+          重試尚未確認的操作（沿用原交易編號）
+        </button>
+      ) : (
+        <button type="button" onClick={() => { void refresh(); }}>重新讀取</button>
+      )}
     </section>
   );
 
