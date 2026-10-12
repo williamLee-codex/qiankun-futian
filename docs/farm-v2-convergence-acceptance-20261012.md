@@ -28,7 +28,7 @@
 | 收成入庫，不自動換幣 | 已符合並驗證 | SQL收成與HTTP兌換分開；無 Wallet 收成呼叫 |
 | 新手7×24h、六田×6 | 已符合並驗證 | timeRuntime邊界；六田SQL收成含田6×6 |
 | 部分兌換只消耗完整單位 | 已符合並驗證 | HTTP：12曜金粟消耗10、得2金幣、留2；重送不重複 |
-| 田2/3永久主動支付解鎖 | 尚未符合 | 規則與runtime存在；正式 V2 API／UI未接通。Core草稿只提供種子／兌換／補償，不能臆造解鎖契約 |
+| 田2/3永久主動支付解鎖 | 已實作，待正式驗證 | Farm V2持久化API／UI已接 staged Core coin-land contract；88/888固定扣款、永久權利、重送與歷史資格已有隔離SQL／HTTP測試。Core與Farm仍在未合併分支，正式遷移、全鏈部署與真實服務驗證未完成 |
 | 付費里程碑、退款、恢復 | 已修正但待驗證 | runtime測試存在；真實 Core／Farm 兩庫退款並發未驗證；不保證嚴格跨庫原子切斷 |
 | 田6首次種子不重複發 | 已符合並驗證 | runtime及SQL qualification初始化；首次 grant 狀態保存 |
 | 混沌72h、pending≤3、anchor | 已符合並驗證 | 原runtime + 新狀態reconciliation結算；active5ticks→cap3、暫停／恢復不補發、下一個future tick生成1顆 |
@@ -93,9 +93,9 @@
 
 ## 上線阻擋與下一個具體動作
 
-1. **Core整合**：對照兩個草稿分支完成Core正式Catalog／Wallet／paid-value契約；需要使用者授權才能合併與部署。現在不能使用V1端點替代。
+1. **Core整合**：Core coin-land contract 與 Farm V2持久化API／UI已分別推到隔離分支；仍須整合進核准主線，並在正式Core Catalog／Wallet／paid-value及資料庫環境完成驗證。現在不能使用V1端點替代。
 2. **完整場景**：原圖與共用六田實體／世界面／美術投影已接線；原規格的角色、靈獸、完整CropEntity美術及倉庫飛行動畫尚未驗收。不得恢復錯位倉庫錨點。
-3. **缺接線**：以既有FINAL規格完成田2/3支付解鎖、原規格的角色／農夫／倉庫等持久流程；未定Core契約不臆造。
+3. **缺接線**：田2/3解鎖已有 staged contract/API/UI；原規格的角色素材、完整倉庫與好友／任務／盆栽／洞府等持久流程仍缺，未定Core契約不臆造。
 4. **真正交易Gate**：在可啟動独立PostgreSQL的隔離環境執行至少11個並發請求、同ID／不同ID、Core成功後丟回應、journal寫入失敗、Farm提交失敗、補償丟回應、進程重啟後重試、退款與資格讀取競態；本環境不能啟動OS PostgreSQL服務，PGlite不冒充這一Gate。
 5. **正式資料庫**：migration SQL與基本約束／ACL／RLS已在PGlite驗證；仍需確認核准目標、真實PostgreSQL及backend角色，正式套用須另外授權。
 
@@ -112,7 +112,7 @@
 
 新增檔案：`artifacts/api-server/src/lib/farm-v2-chaos-claim.ts`。主要修改：`routes/farm-v2.ts`、`paidAccessTransactions.ts`、`useFarmV2Scene.ts`、`farmV2ApiClient.ts`、`FarmV2AuthenticatedView.tsx`及相應實際SQL／HTTP／transport／瀏覽器測試。
 
-這一項已從阻擋清單移除。**整体仍NO-GO**：原場景、田2/3解鎖契約、其他原有完整流程、Core正式接線、V2 migration／ACL與真實多連線／中斷復原尚未通過。
+這一項已從阻擋清單移除。**整体仍NO-GO**：原場景、其他原有完整流程、Core正式整合、V2 migration／ACL與真實多連線／中斷復原尚未通過。
 
 
 ## 後續收斂：V2 migration 與直接存取隔離
@@ -204,7 +204,7 @@ Added `contracts/core/farm-v2-coin-land-unlock.sql` for FINAL LAND-UNLOCK-001/00
 
 Eleven SQL contract tests execute actual pinned Core wallet/entitlement migrations on PGlite. They verify prerequisites, fixed debits, both replay forms, conflict, insufficient funds, isolation, event-failure full rollback, role denial/trusted execution, invalid inputs and suspended wallets. The suspended-wallet regression initially debited; adding a post-lock status check fixed it. Complete Farm suite: 172 cases + 4 guards; workspace Typecheck/Build and diff check pass.
 
-This is **staged executable Core contract evidence only**. Reference migrations are test inputs, not deployment instructions. The full current platform migration chain, live launch authentication, true multi-connection locking, trusted Core endpoints, Farm entitlement reconciliation, persistent request recovery and unlock UI are not validated or implemented by this contract. Land 2/3 remain NO-GO. No V1 unlock fallback, remote migration, merge or deployment occurred.
+This is **staged executable Core contract evidence only**. Reference migrations are test inputs, not deployment instructions. The Farm branch separately wires the persistent entitlement reconciliation, request recovery and unlock UI to this contract. The full current platform migration chain, live launch authentication, true multi-connection locking, trusted Core endpoints and end-to-end service flow remain unvalidated. Land 2/3 remain NO-GO for release until integration and live verification pass. No V1 unlock fallback, remote migration, merge or deployment occurred.
 
 
 Independent review reproduced two related historical-state defects: inactive lifetime rights were omitted from duplicate detection and Land 3 prerequisites. Both were fixed without reactivating inactive rights. A follow-up review caught the valid old-inactive/new-active regrant case; current access is now resolved independently from earliest historical grant metadata. Suspended/revoked/expired and regrant regressions verify no repeat charge and preserved first unlock time.
