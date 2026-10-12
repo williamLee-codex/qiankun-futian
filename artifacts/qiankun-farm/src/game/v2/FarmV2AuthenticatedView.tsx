@@ -44,6 +44,10 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
   const { data, error, loading, busy, refresh, mutate, pendingRetry } =
     useFarmV2Scene(props.apiBaseUrl, props.launchToken);
   const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    document.body.classList.add('farm-v2-authenticated');
+    return () => document.body.classList.remove('farm-v2-authenticated');
+  }, []);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 30_000);
@@ -102,7 +106,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
   );
 
   return (
-    <section aria-label="乾坤福田正式農田" style={{ maxWidth: 720, margin: "0 auto" }}>
+    <section className="farm-v2-surface" aria-label="乾坤福田正式農田" style={{ maxWidth: 720, margin: "0 auto" }}>
       <style>{`@keyframes farmV2Flight { from { left: var(--from-x); top: var(--from-y); opacity: 1; transform: translate(-50%, -50%) scale(.8); } to { left: var(--to-x); top: var(--to-y); opacity: 0; transform: translate(-50%, -50%) scale(1.2); } } @media (prefers-reduced-motion: reduce) { .farm-v2-flight { animation: none !important; } }`}</style>
       <div style={{ position: "relative", width: "min(100%, 390px)", aspectRatio: "390 / 843", margin: "0 auto", overflow: "hidden" }}>
         <img src={farmBackground} alt="乾坤福田六田場景" style={{ display: "block", width: "100%", height: "100%", objectFit: "fill" }} />
@@ -123,7 +127,8 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
           />
         ))}
         {data.plots.map((plot, index) => {
-          const visual = plot.unlocked ? cropVisual(plot, now) : { icon: '🔒', label: '尚未解鎖' };
+          const serverNow = data.serverTime + Math.max(0, now - data.receivedAt);
+          const visual = plot.unlocked ? cropVisual(plot, serverNow) : { icon: '🔒', label: '尚未解鎖' };
           if (!visual) return null;
           const center = hotspotCenter(PLOT_HOTSPOTS[index]);
           return (
@@ -164,9 +169,6 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
             </span>
           );
         })()}
-        <div aria-label="正式農田狀態" style={{ position: "absolute", top: "75%", left: 12, right: 12, pointerEvents: "none", background: "rgba(16, 27, 20, .85)", color: "white", padding: 12, borderRadius: 12, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-          {data.plots.map(plot => <span key={plot.id}>{plot.name}：{!plot.unlocked ? "🔒" : plot.state === "ready" ? "🌾" : plot.state === "growing" ? "🌱" : "▫️"}</span>)}
-        </div>
       </div>
       <h2>乾坤福田</h2>
       {error && <p role="alert">{error}</p>}
@@ -191,12 +193,15 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
           const canSow = plot.unlocked && plot.state === 'empty' && seeds >= plot.maxSeeds;
           const canHarvest = plot.unlocked && plot.state === 'ready';
           const exchangeUnit = CROP_DATA[plot.cropId].sellQty;
-          const canExchange = plot.unlocked && crops >= exchangeUnit;
-          const canPurchase = plot.unlocked && plot.id < 5;
+          const canExchange = crops >= exchangeUnit;
+          const canPurchase = plot.id < 5;
           return (
             <article key={plot.id}>
               <h3>{plot.name}</h3>
               <p>{!plot.unlocked ? '🔒 尚未解鎖' : plot.state === 'ready' ? '已成熟' : plot.state === 'growing' ? '生長中' : '待播種'}</p>
+              {!plot.unlocked && <p>{plot.unlockCoins !== null
+                ? `${plot.id === 2 ? '需先解鎖幽熒沃土，再' : ''}支付 ${plot.unlockCoins} 金幣解鎖。`
+                : `累積有效儲值達 ${plot.unlockCrystals} 水晶後取得使用資格。`}</p>}
               <p>種子：{seeds}／整批 {plot.maxSeeds}；倉庫作物：{crops}</p>
               {plot.unlocked && plot.state === 'growing' && plot.growthEndTime && (
                 <p>預計成熟：{new Date(plot.growthEndTime).toLocaleString('zh-TW')}</p>

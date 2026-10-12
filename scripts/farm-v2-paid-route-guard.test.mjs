@@ -36,8 +36,10 @@ test("Core refresh reexecutes on repeated refresh request ID", () => {
 });
 
 test("Core authority is fetched after the Farm player row lock", () => {
-  const lock = paidAccess.lastIndexOf('.for("update")', paidAccess.indexOf("await fetchFarmV2CorePaidQualification(input.launchToken)"));
-  const fetch = paidAccess.indexOf("await fetchFarmV2CorePaidQualification(input.launchToken)");
+  const fetch = paidAccess.search(/await fetchFarmV2CorePaidQualification\(\s*input\.launchToken\s*,?\s*\)/);
+  const prefix = paidAccess.slice(0, fetch);
+  const locks = [...prefix.matchAll(/\.for\(\s*"update"\s*\)/g)];
+  const lock = locks.at(-1)?.index ?? -1;
   assert.ok(lock >= 0 && fetch > lock);
 });
 

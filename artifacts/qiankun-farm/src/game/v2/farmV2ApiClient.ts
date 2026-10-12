@@ -5,7 +5,7 @@
  */
 export type FarmV2Land = {
   landId: number;
-  lifecycle: 'LOCKED' | 'EMPTY' | 'GROWING' | 'MATURE';
+  lifecycle: "LOCKED" | "EMPTY" | "GROWING" | "MATURE";
   accessActive: boolean;
   plantedQuantity: number;
   plantedAt: string | null;
@@ -18,6 +18,7 @@ export type FarmV2Warehouse = {
 };
 
 export type FarmV2State = {
+  serverTime: number;
   player: {
     warehouseState: FarmV2Warehouse;
     firstFarmEnteredAt: string | null;
@@ -32,52 +33,103 @@ export type FarmV2MutationResult = {
 };
 
 export class FarmV2ApiError extends Error {
-  constructor(readonly status: number, readonly code: string) {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    readonly definitive = false,
+  ) {
     super(code);
-    this.name = 'FarmV2ApiError';
+    this.name = "FarmV2ApiError";
   }
 }
 
-export function createFarmV2Api(input: { baseUrl: string; launchToken: string }) {
+export function createFarmV2Api(input: {
+  baseUrl: string;
+  launchToken: string;
+}) {
   const { baseUrl, launchToken } = input;
-  if (!launchToken.trim()) throw new Error('FARM_V2_LAUNCH_TOKEN_REQUIRED');
+  if (!launchToken.trim()) throw new Error("FARM_V2_LAUNCH_TOKEN_REQUIRED");
   const normalizedApiBase = new URL(baseUrl);
-  const localDev = normalizedApiBase.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(normalizedApiBase.hostname);
-  if (normalizedApiBase.protocol !== 'https:' && !localDev) throw new Error('FARM_V2_SECURE_API_REQUIRED');
-  if (normalizedApiBase.username || normalizedApiBase.password || normalizedApiBase.search || normalizedApiBase.hash) throw new Error('FARM_V2_INVALID_API_BASE');
+  const localDev =
+    normalizedApiBase.protocol === "http:" &&
+    ["localhost", "127.0.0.1", "[::1]"].includes(normalizedApiBase.hostname);
+  if (normalizedApiBase.protocol !== "https:" && !localDev)
+    throw new Error("FARM_V2_SECURE_API_REQUIRED");
+  if (
+    normalizedApiBase.username ||
+    normalizedApiBase.password ||
+    normalizedApiBase.search ||
+    normalizedApiBase.hash
+  )
+    throw new Error("FARM_V2_INVALID_API_BASE");
   const endpoint = (path: string) => {
-    const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-    const normalizedBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+    const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+    const normalizedBase = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
     return new URL(normalizedPath, normalizedBase).toString();
   };
 
-  async function request<T>(path: string, method: 'GET' | 'POST', body?: unknown, retryRequestId?: string): Promise<T> {
-    const requestId = method === 'POST' ? (retryRequestId ?? crypto.randomUUID()) : undefined;
+  async function request<T>(
+    path: string,
+    method: "GET" | "POST",
+    body?: unknown,
+    retryRequestId?: string,
+  ): Promise<T> {
+    const requestId =
+      method === "POST" ? (retryRequestId ?? crypto.randomUUID()) : undefined;
     const response = await fetch(endpoint(path), {
       method,
       headers: {
         Authorization: `Bearer ${launchToken}`,
-        ...(requestId ? { 'x-request-id': requestId } : {}),
-        ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+        ...(requestId ? { "x-request-id": requestId } : {}),
+        ...(body !== undefined ? { "content-type": "application/json" } : {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-      cache: 'no-store',
-      redirect: 'error',
+      cache: "no-store",
+      redirect: "error",
     });
     if (!response.ok) {
-      const payload = await response.json().catch(() => null) as { error?: string } | null;
-      throw new FarmV2ApiError(response.status, payload?.error ?? 'FARM_V2_REQUEST_FAILED');
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+        definitive?: boolean;
+      } | null;
+      throw new FarmV2ApiError(
+        response.status,
+        payload?.error ?? "FARM_V2_REQUEST_FAILED",
+        payload?.definitive === true,
+      );
     }
     return response.json() as Promise<T>;
   }
 
   return {
-    readState: () => request<FarmV2State>('farm/v2/state', 'GET'),
-    sow: (landId: number, requestId?: string) => request<FarmV2MutationResult>(`farm/v2/lands/${landId}/sow`, 'POST', undefined, requestId),
-    harvest: (landId: number, requestId?: string) => request<FarmV2MutationResult>(`farm/v2/lands/${landId}/harvest`, 'POST', undefined, requestId),
+    readState: () => request<FarmV2State>("farm/v2/state", "GET"),
+    sow: (landId: number, requestId?: string) =>
+      request<FarmV2MutationResult>(
+        `farm/v2/lands/${landId}/sow`,
+        "POST",
+        undefined,
+        requestId,
+      ),
+    harvest: (landId: number, requestId?: string) =>
+      request<FarmV2MutationResult>(
+        `farm/v2/lands/${landId}/harvest`,
+        "POST",
+        undefined,
+        requestId,
+      ),
     purchaseSeeds: (landId: number, packs: number, requestId?: string) =>
-      request<unknown>(`farm/v2/seeds/${landId}/purchase`, 'POST', { packs }, requestId),
+      request<unknown>(
+        `farm/v2/seeds/${landId}/purchase`,
+        "POST",
+        { packs },
+        requestId,
+      ),
     exchangeCrops: (landId: number, cropQuantity: number, requestId?: string) =>
-      request<unknown>(`farm/v2/crops/${landId}/exchange`, 'POST', { cropQuantity }, requestId),
+      request<unknown>(
+        `farm/v2/crops/${landId}/exchange`,
+        "POST",
+        { cropQuantity },
+        requestId,
+      ),
   };
 }

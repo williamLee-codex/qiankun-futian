@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler } from "express";
+import { FarmWalletRejectedError } from "../lib/farm-v2-wallet-client";
 
 const FARM_V2_STATUS_BY_ERROR: Readonly<Record<string, number>> = {
   ACTOR_UID_REQUIRED: 401,
@@ -22,6 +23,8 @@ const FARM_V2_STATUS_BY_ERROR: Readonly<Record<string, number>> = {
   FIRST_FARM_ENTERED_AT_REQUIRED: 409,
   REQUEST_ID_ACTION_MISMATCH: 409,
   MUTATION_IN_PROGRESS: 409,
+  FARM_V2_PREVIOUS_MUTATION_UNCONFIRMED: 409,
+  FARM_WALLET_INTENT_MISMATCH: 409,
   MUTATION_RECOVERY_REQUIRED: 503,
   FARM_MUTATION_COMPENSATED: 409,
   FARM_LAND_CONCURRENT_MODIFICATION: 409,
@@ -31,7 +34,16 @@ const FARM_V2_STATUS_BY_ERROR: Readonly<Record<string, number>> = {
   LAND_NOT_HARVESTABLE: 409,
 };
 
-export const farmV2ErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
+export const farmV2ErrorHandler: ErrorRequestHandler = (
+  error,
+  _req,
+  res,
+  next,
+) => {
+  if (error instanceof FarmWalletRejectedError) {
+    res.status(400).json({ error: error.message, definitive: true });
+    return;
+  }
   const code = error instanceof Error ? error.message : "";
   const status = FARM_V2_STATUS_BY_ERROR[code];
 
@@ -40,5 +52,10 @@ export const farmV2ErrorHandler: ErrorRequestHandler = (error, _req, res, next) 
     return;
   }
 
-  res.status(status).json({ error: code });
+  res
+    .status(status)
+    .json({
+      error: code,
+      ...(code === "FARM_MUTATION_COMPENSATED" ? { definitive: true } : {}),
+    });
 };
