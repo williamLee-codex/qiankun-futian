@@ -51,8 +51,8 @@ export function createFarmV2Api(input: { baseUrl: string; launchToken: string })
     return new URL(normalizedPath, normalizedBase).toString();
   };
 
-  async function request<T>(path: string, method: 'GET' | 'POST', body?: unknown): Promise<T> {
-    const requestId = method === 'POST' ? crypto.randomUUID() : undefined;
+  async function request<T>(path: string, method: 'GET' | 'POST', body?: unknown, retryRequestId?: string): Promise<T> {
+    const requestId = method === 'POST' ? (retryRequestId ?? crypto.randomUUID()) : undefined;
     const response = await fetch(endpoint(path), {
       method,
       headers: {
@@ -73,11 +73,11 @@ export function createFarmV2Api(input: { baseUrl: string; launchToken: string })
 
   return {
     readState: () => request<FarmV2State>('farm/v2/state', 'GET'),
-    sow: (landId: number) => request<FarmV2MutationResult>(`farm/v2/lands/${landId}/sow`, 'POST'),
-    harvest: (landId: number) => request<FarmV2MutationResult>(`farm/v2/lands/${landId}/harvest`, 'POST'),
-    purchaseSeeds: (landId: number, packs: number) =>
-      request<unknown>(`farm/v2/seeds/${landId}/purchase`, 'POST', { packs }),
-    exchangeCrops: (landId: number, cropQuantity: number) =>
-      request<unknown>(`farm/v2/crops/${landId}/exchange`, 'POST', { cropQuantity }),
+    sow: (landId: number, requestId?: string) => request<FarmV2MutationResult>(`farm/v2/lands/${landId}/sow`, 'POST', undefined, requestId),
+    harvest: (landId: number, requestId?: string) => request<FarmV2MutationResult>(`farm/v2/lands/${landId}/harvest`, 'POST', undefined, requestId),
+    purchaseSeeds: (landId: number, packs: number, requestId?: string) =>
+      request<unknown>(`farm/v2/seeds/${landId}/purchase`, 'POST', { packs }, requestId),
+    exchangeCrops: (landId: number, cropQuantity: number, requestId?: string) =>
+      request<unknown>(`farm/v2/crops/${landId}/exchange`, 'POST', { cropQuantity }, requestId),
   };
 }
