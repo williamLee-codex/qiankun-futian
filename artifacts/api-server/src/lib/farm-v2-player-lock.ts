@@ -9,8 +9,12 @@ export async function withLockedFarmV2PlayerState<T>(input: {
   ) => Promise<T>;
 }): Promise<T> {
   return db.transaction(async (tx) => {
-    const rows = await tx.execute(sql`select * from farm_v2_player_state where user_id = ${input.userId} for update`);
-    const state = rows.rows[0] as typeof farmV2PlayerStateTable.$inferSelect | undefined;
+    const [state] = await tx
+      .select()
+      .from(farmV2PlayerStateTable)
+      .where(eq(farmV2PlayerStateTable.userId, input.userId))
+      .for("update")
+      .limit(1);
     if (!state) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
     return input.execute(tx, state);
   });

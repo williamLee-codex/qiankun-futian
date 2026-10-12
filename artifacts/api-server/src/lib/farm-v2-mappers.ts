@@ -25,3 +25,17 @@ export function farmV2LandEntityToPersistence(entity: FarmLandEntity) {
     maturesAt: entity.maturesAt === null ? null : new Date(entity.maturesAt),
   };
 }
+
+export function farmV2VersionedLandPersistence(
+  entity: FarmLandEntity,
+  row: FarmV2LandRow,
+) {
+  const next = farmV2LandEntityToPersistence(entity);
+  const changed =
+    next.lifecycle !== row.lifecycle ||
+    next.accessActive !== row.accessActive ||
+    next.plantedQuantity !== row.plantedQuantity ||
+    next.plantedAt?.getTime() !== row.plantedAt?.getTime() ||
+    next.maturesAt?.getTime() !== row.maturesAt?.getTime();
+  return { ...next, version: row.version + (changed ? 1 : 0) };
+}

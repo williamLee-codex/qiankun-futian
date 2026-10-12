@@ -1,5 +1,8 @@
 type FarmWalletCurrency = "coin" | "crystal";
 type FarmWalletDirection = "credit" | "debit";
+export class FarmWalletRejectedError extends Error {
+  readonly definitive = true;
+}
 
 export type FarmWalletMutationInput = {
   amount: number;
@@ -46,7 +49,11 @@ export async function mutateFarmV2Wallet(
   }
   const base = new URL(platformBaseUrl);
   if (
-    (base.protocol !== "https:" && !(base.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(base.hostname))) ||
+    (base.protocol !== "https:" &&
+      !(
+        base.protocol === "http:" &&
+        ["localhost", "127.0.0.1", "[::1]"].includes(base.hostname)
+      )) ||
     base.username ||
     base.password ||
     base.search ||
@@ -55,33 +62,41 @@ export async function mutateFarmV2Wallet(
     throw new Error("INVALID_FARM_PLATFORM_BASE_URL");
   }
 
-  const response = await fetch(new URL("/api/replit/farm-v2/wallet", platformBaseUrl), {
-    method: "POST",
-    redirect: "error",
-    headers: {
-      "content-type": "application/json",
-      "x-replit-shared-secret": sharedSecret,
-      "x-request-id": input.requestId,
+  const response = await fetch(
+    new URL("/api/replit/farm-v2/wallet", platformBaseUrl),
+    {
+      method: "POST",
+      redirect: "error",
+      headers: {
+        "content-type": "application/json",
+        "x-replit-shared-secret": sharedSecret,
+        "x-request-id": input.requestId,
+      },
+      body: JSON.stringify({
+        amount: input.amount,
+        currency: input.currency,
+        direction: input.direction,
+        idempotencyKey: `farm-v2:${input.requestId}:${input.idempotencySuffix ?? "primary"}:${input.direction}:${input.currency}`,
+        launchToken: input.launchToken,
+        reason: input.reason,
+        referenceId: input.referenceId,
+        referenceType: input.referenceType,
+      }),
+      signal: AbortSignal.timeout(5_000),
     },
-    body: JSON.stringify({
-      amount: input.amount,
-      currency: input.currency,
-      direction: input.direction,
-      idempotencyKey: `farm-v2:${input.requestId}:${input.idempotencySuffix ?? "primary"}:${input.direction}:${input.currency}`,
-      launchToken: input.launchToken,
-      reason: input.reason,
-      referenceId: input.referenceId,
-      referenceType: input.referenceType,
-    }),
-    signal: AbortSignal.timeout(5_000),
-  });
+  );
 
-  const body = await response.json().catch(() => null) as
+  const body = (await response.json().catch(() => null)) as
     | FarmWalletMutationResult
     | { error?: string }
     | null;
   if (!response.ok) {
-    const code = body && "error" in body && body.error ? body.error : "FARM_WALLET_BRIDGE_FAILED";
+    const code =
+      body && "error" in body && body.error
+        ? body.error
+        : "FARM_WALLET_BRIDGE_FAILED";
+    // An expired token on retry does not prove a previous attempt was unpaid.
+    // Preserve the intent until Core returns its authoritative receipt.
     throw new Error(code);
   }
   if (

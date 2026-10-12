@@ -1,6 +1,11 @@
-import { and, eq } from "drizzle-orm";
-import { db, farmV2MutationTable } from "@workspace/db";
-import { mutateFarmV2Wallet, type FarmWalletMutationInput, type FarmWalletMutationResult } from "./farm-v2-wallet-client";
+import { and, eq, sql } from "drizzle-orm";
+import { db as domainDb, walletJournalDb as db, farmV2MutationTable } from "@workspace/db";
+import {
+  mutateFarmV2Wallet,
+  FarmWalletRejectedError,
+  type FarmWalletMutationInput,
+  type FarmWalletMutationResult,
+} from "./farm-v2-wallet-client";
 
 export async function applyFarmV2WalletStep(
   input: FarmWalletMutationInput & { userId: string },
@@ -13,29 +18,80 @@ export async function applyFarmV2WalletStep(
   });
   if (!existing) throw new Error("FARM_MUTATION_NOT_FOUND");
 
-  if (existing.transactionState === "WALLET_APPLIED" && existing.walletTransaction) {
+  if (
+    existing.walletAmount !== null &&
+    (existing.walletAmount !== input.amount ||
+      existing.walletDirection !== input.direction ||
+      existing.walletCurrency !== input.currency)
+  )
+    throw new Error("FARM_WALLET_INTENT_MISMATCH");
+
+  if (
+    existing.transactionState === "WALLET_APPLIED" &&
+    existing.walletTransaction
+  ) {
     return existing.walletTransaction as FarmWalletMutationResult;
   }
   if (existing.transactionState === "COMPLETED" && existing.walletTransaction) {
     return existing.walletTransaction as FarmWalletMutationResult;
   }
 
-  const result = await mutateFarmV2Wallet(input);
-  await db.update(farmV2MutationTable).set({
-    transactionState: "WALLET_APPLIED",
-    walletDirection: input.direction,
-    walletCurrency: input.currency,
-    walletAmount: input.amount,
-    walletTransaction: result as object,
-    failureCode: null,
-    updatedAt: new Date(),
-  }).where(and(
-    eq(farmV2MutationTable.userId, input.userId),
-    eq(farmV2MutationTable.requestId, input.requestId),
-  ));
+  // Persist the exact intent before contacting Core. If Core commits and the
+  // response is lost, the same request must replay this amount, never reprice.
+  await db
+    .update(farmV2MutationTable)
+    .set({
+      walletDirection: input.direction,
+      walletCurrency: input.currency,
+      walletAmount: input.amount,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(farmV2MutationTable.userId, input.userId),
+        eq(farmV2MutationTable.requestId, input.requestId),
+      ),
+    );
+  let result: FarmWalletMutationResult;
+  try {
+    result = await mutateFarmV2Wallet(input);
+  } catch (error) {
+    if (error instanceof FarmWalletRejectedError) {
+      await db
+        .update(farmV2MutationTable)
+        .set({
+          transactionState: "REJECTED",
+          failureCode: error.message,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(farmV2MutationTable.userId, input.userId),
+            eq(farmV2MutationTable.requestId, input.requestId),
+          ),
+        );
+    }
+    throw error;
+  }
+  await db
+    .update(farmV2MutationTable)
+    .set({
+      transactionState: "WALLET_APPLIED",
+      walletDirection: input.direction,
+      walletCurrency: input.currency,
+      walletAmount: input.amount,
+      walletTransaction: result as object,
+      failureCode: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(farmV2MutationTable.userId, input.userId),
+        eq(farmV2MutationTable.requestId, input.requestId),
+      ),
+    );
   return result;
 }
-
 
 export async function compensateFarmV2WalletStep(input: {
   userId: string;
@@ -49,15 +105,32 @@ export async function compensateFarmV2WalletStep(input: {
     ),
   });
   if (!existing) throw new Error("FARM_MUTATION_NOT_FOUND");
-  if (existing.transactionState === "COMPENSATED" && existing.walletTransaction) {
+  if (
+    existing.transactionState === "COMPENSATED" &&
+    existing.walletTransaction
+  ) {
     return existing.walletTransaction as FarmWalletMutationResult;
   }
-  if (existing.transactionState === "COMPLETED") throw new Error("COMPLETED_MUTATION_CANNOT_BE_COMPENSATED");
-  if (!existing.walletDirection || !existing.walletCurrency || !existing.walletAmount) {
+  if (existing.transactionState === "COMPLETED")
+    throw new Error("COMPLETED_MUTATION_CANNOT_BE_COMPENSATED");
+  if (
+    !existing.walletDirection ||
+    !existing.walletCurrency ||
+    !existing.walletAmount
+  ) {
     throw new Error("WALLET_EFFECT_NOT_APPLIED");
   }
 
   const direction = existing.walletDirection === "debit" ? "credit" : "debit";
+  await db
+    .update(farmV2MutationTable)
+    .set({ transactionState: "COMPENSATING", updatedAt: new Date() })
+    .where(
+      and(
+        eq(farmV2MutationTable.userId, input.userId),
+        eq(farmV2MutationTable.requestId, input.requestId),
+      ),
+    );
   const result = await mutateFarmV2Wallet({
     requestId: input.requestId,
     idempotencySuffix: "compensation",
@@ -70,17 +143,21 @@ export async function compensateFarmV2WalletStep(input: {
     referenceType: "farm_wallet_compensation",
   });
 
-  await db.update(farmV2MutationTable).set({
-    transactionState: "COMPENSATED",
-    failureCode: "FARM_EFFECT_NOT_APPLIED",
-    updatedAt: new Date(),
-  }).where(and(
-    eq(farmV2MutationTable.userId, input.userId),
-    eq(farmV2MutationTable.requestId, input.requestId),
-  ));
+  await db
+    .update(farmV2MutationTable)
+    .set({
+      transactionState: "COMPENSATED",
+      failureCode: "FARM_EFFECT_NOT_APPLIED",
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(farmV2MutationTable.userId, input.userId),
+        eq(farmV2MutationTable.requestId, input.requestId),
+      ),
+    );
   return result;
 }
-
 
 const PERMANENT_FARM_RECOVERY_CODES = new Set([
   "FARM_PLAYER_STATE_NOT_FOUND",
@@ -91,9 +168,10 @@ const PERMANENT_FARM_RECOVERY_CODES = new Set([
 ]);
 
 export function isPermanentFarmV2RecoveryError(error: unknown): boolean {
-  return error instanceof Error && PERMANENT_FARM_RECOVERY_CODES.has(error.message);
+  return (
+    error instanceof Error && PERMANENT_FARM_RECOVERY_CODES.has(error.message)
+  );
 }
-
 
 export async function runFarmV2RecoveryWithPostRollbackCompensation<T>(input: {
   userId: string;
@@ -104,14 +182,22 @@ export async function runFarmV2RecoveryWithPostRollbackCompensation<T>(input: {
   try {
     return await input.recover();
   } catch (error) {
-    if (!(error instanceof Error) || error.message !== "PERMANENT_MUTATION_RECOVERY_FAILURE") {
+    if (
+      !(error instanceof Error) ||
+      error.message !== "PERMANENT_MUTATION_RECOVERY_FAILURE"
+    ) {
       throw error;
     }
     // Recovery transaction has already rolled back before compensation starts.
-    await compensateFarmV2WalletStep({
-      userId: input.userId,
-      requestId: input.requestId,
-      launchToken: input.launchToken,
+    await domainDb.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${input.userId + ":farm-v2-write"}, 0))`,
+      );
+      await compensateFarmV2WalletStep({
+        userId: input.userId,
+        requestId: input.requestId,
+        launchToken: input.launchToken,
+      });
     });
     throw new Error("FARM_MUTATION_COMPENSATED");
   }

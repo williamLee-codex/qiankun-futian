@@ -1,5 +1,6 @@
-import farmBackground from '@assets/file_00000000095072069ef62748d273ae91_1783571778589.png';
-import { useState } from 'react';
+import { FarmV2LandEntity } from './FarmV2LandEntity';
+import { useEffect, useState } from 'react';
+import type { FarmV2Operation } from './farmV2ApiClient';
 import { useFarmV2Scene } from './useFarmV2Scene';
 import { CROP_DATA } from '../types';
 
@@ -11,67 +12,119 @@ import { CROP_DATA } from '../types';
  * Intentionally separate from the legacy scene until platform routing is
  * approved. No simulated wallet, entitlement or success messages.
  */
-const PLOT_HOTSPOTS = [
-  { left: '4%', top: '43%', width: '30%', height: '15%' },
-  { left: '35%', top: '42%', width: '30%', height: '15%' },
-  { left: '63%', top: '42%', width: '29%', height: '15%' },
-  { left: '2%', top: '59%', width: '33%', height: '12%' },
-  { left: '34%', top: '58%', width: '32%', height: '12%' },
-  { left: '65%', top: '58%', width: '31%', height: '12%' },
-] as const;
-
 export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken: string }) {
-  const { data, error, loading, busy, refresh, mutate } =
+  const { data, error, loading, busy, refresh, mutate, pendingRetry } =
     useFarmV2Scene(props.apiBaseUrl, props.launchToken);
+  const [desktopView, setDesktopView] = useState(() => window.matchMedia('(min-width: 640px)').matches);
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 640px)');
+    const update = () => setDesktopView(media.matches);
+    media.addEventListener('change', update);
+    update();
+    return () => media.removeEventListener('change', update);
+  }, []);
+  const sceneAssetBase = `${import.meta.env.BASE_URL}images/farm/`;
   const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    document.body.classList.add('farm-v2-authenticated');
+    return () => document.body.classList.remove('farm-v2-authenticated');
+  }, []);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
-
-  async function execute(operation: 'sow' | 'harvest' | 'purchaseSeeds' | 'exchangeCrops', landId: number, quantity?: number) {
+  async function execute(operation: FarmV2Operation, landId: number, quantity?: number) {
     setNotice(null);
     const ok = await mutate(operation, landId, quantity);
-    setNotice(ok ? '操作已由伺服器確認。' : '操作未確認，請檢查錯誤並重新讀取。');
+    setNotice(ok ? (operation === 'claimChaosSeeds' ? '混沌種子已收入倉庫。' : '操作已完成。') : '操作未確認，請檢查錯誤並重新讀取。');
   }
 
-  if (loading && !data) return <section role="status">正在讀取正式農田資料…</section>;
+  async function handlePlotClick(plot: NonNullable<typeof data>['plots'][number]) {
+    setSelectedLand(plot.id + 1);
+    if (busy || loading || pendingRetry || !plot.unlocked) return;
+    if (plot.state === 'ready') {
+      await execute('harvest', plot.id + 1);
+      return;
+    }
+    if (plot.state === 'empty') {
+      const seeds = data?.seedInventory[plot.cropId] ?? 0;
+      if (seeds < plot.maxSeeds) {
+        setNotice('種子不足，請先在下方購買種子；未執行播種。');
+        return;
+      }
+      await execute('sow', plot.id + 1);
+    }
+  }
+
+  if (loading && !data && !pendingRetry) return <section role="status">正在讀取正式農田資料…</section>;
   if (!data) return (
     <section role="alert">
-      <p>無法取得正式農田資料，已停止所有操作。</p>
+      <p>{error === 'FARM_V2_MUTATION_CONFIRMED_STATE_REFRESH_FAILED'
+        ? '操作已完成，但最新農田資料讀取失敗。請重新讀取，無須重做交易。'
+        : '無法取得正式農田資料，已停止所有操作。'}</p>
       {error && <p>{error}</p>}
-      <button type="button" onClick={() => { void refresh(); }}>重新讀取</button>
+      {pendingRetry ? (
+        <button type="button" disabled={busy || loading} onClick={() => { void execute(pendingRetry.operation, pendingRetry.landId, pendingRetry.quantity); }}>
+          重試尚未確認的操作（沿用原交易編號）
+        </button>
+      ) : (
+        <button type="button" onClick={() => { void refresh(); }}>重新讀取</button>
+      )}
     </section>
   );
 
   return (
-    <section aria-label="乾坤福田正式農田" style={{ maxWidth: 720, margin: "0 auto" }}>
-      <div style={{ position: "relative", width: "min(100%, 390px)", aspectRatio: "390 / 843", margin: "0 auto", overflow: "hidden" }}>
-        <img src={farmBackground} alt="乾坤福田六田場景" style={{ display: "block", width: "100%", height: "100%", objectFit: "fill" }} />
-        {data.plots.map((plot, index) => (
-          <button
-            key={plot.id}
-            type="button"
-            aria-label={`${plot.name}，${!plot.unlocked ? '尚未解鎖' : plot.state === 'ready' ? '已成熟' : plot.state === 'growing' ? '生長中' : '待播種'}`}
-            aria-pressed={selectedLand === plot.id + 1}
-            disabled={busy || loading}
-            onClick={() => setSelectedLand(plot.id + 1)}
-            style={{
-              position: 'absolute', ...PLOT_HOTSPOTS[index],
-              border: selectedLand === plot.id + 1 ? '2px solid #f8d58a' : '1px solid transparent',
-              background: selectedLand === plot.id + 1 ? 'rgba(255,215,130,.2)' : 'transparent',
-              cursor: 'pointer',
-            }}
-          />
-        ))}
-        <div aria-label="正式農田狀態" style={{ position: "absolute", top: "75%", left: 12, right: 12, pointerEvents: "none", background: "rgba(16, 27, 20, .85)", color: "white", padding: 12, borderRadius: 12, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-          {data.plots.map(plot => <span key={plot.id}>{plot.name}：{!plot.unlocked ? "🔒" : plot.state === "ready" ? "🌾" : plot.state === "growing" ? "🌱" : "▫️"}</span>)}
-        </div>
+    <section className="farm-v2-surface" aria-label="乾坤福田正式農田" style={{ maxWidth: 1100, margin: "0 auto" }}>
+
+      <div style={{ position: "relative", width: "100%", margin: "0 auto", overflow: "hidden" }} data-testid="farm-v2-scene">
+        <picture>
+          <source media="(min-width: 640px)" srcSet={`${sceneAssetBase}farm-scene-desktop.png`} />
+          <img src={`${sceneAssetBase}farm-scene-mobile.png`} alt="乾坤福田六田場景" style={{ display: "block", width: "100%", height: "auto" }} />
+        </picture>
+        {data.entities.map(entity => <FarmV2LandEntity key={entity.landId} entity={entity} desktopView={desktopView}
+          selected={selectedLand === entity.landId} disabled={busy || loading || !!pendingRetry}
+          serverNow={data.serverTime + Math.max(0, now - data.receivedAt)}
+          onActivate={landId => { const land=data.entities.find(item=>item.landId===landId); if(land) void handlePlotClick(land.plot); }} />)}
+        {/* Warehouse flights require verified original-scene anchors. */}
       </div>
       <h2>乾坤福田</h2>
+      <details className="farm-v2-warehouse">
+        <summary>福田倉庫</summary>
+        {(busy || loading) && <p role="status">正在同步庫存…</p>}
+        <table aria-label="福田倉庫種子與靈植">
+          <caption>種子與靈植</caption>
+          <thead><tr><th scope="col">種類</th><th scope="col">種子（顆）</th><th scope="col">靈植（株）</th></tr></thead>
+          <tbody>{data.plots.map(plot => <tr key={plot.id} data-land-id={plot.id + 1}>
+            <th scope="row">{plot.cropName}</th>
+            <td>{data.seedInventory[plot.cropId]}</td>
+            <td>{data.cropInventory[plot.cropId]}</td>
+          </tr>)}</tbody>
+        </table>
+      </details>
+      {data.farmer?.entitled && <fieldset className="farm-v2-farmer-controls" disabled={busy || loading || !!pendingRetry}>
+        <legend>專屬農夫・各田自動耕作</legend>
+        {data.plots.map(plot => {
+          const enabled = data.farmer?.enabledByLand[plot.id + 1] === true;
+          return <button key={plot.id} type="button" aria-pressed={enabled} onClick={() => { void execute('setFarmerEnabled', plot.id + 1, enabled ? 0 : 1); }}>{plot.name}農夫：{enabled ? 'ON' : 'OFF'}</button>;
+        })}
+      </fieldset>}
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
+      {pendingRetry && (
+        <div role="alert">
+          <p>上一筆操作的結果尚未確認，請重試原操作；在確認前無法執行其他交易。</p>
+          <button type="button" disabled={busy || loading}
+            onClick={() => { void execute(pendingRetry.operation, pendingRetry.landId, pendingRetry.quantity); }}>
+            重試尚未確認的操作（沿用原交易編號）
+          </button>
+        </div>
+      )}
       <button type="button" disabled={busy || loading} onClick={() => { void refresh(); }}>
         更新農田
       </button>
-      {selectedLand === null && <p>請點選 2D 場景中的農田查看操作。</p>}
+      {selectedLand === null && <p>點擊空田直接播種，點擊成熟田直接收成；其他田地可查看狀態。</p>}
       <div>
         {data.plots.filter(plot => selectedLand === plot.id + 1).map(plot => {
           const seeds = data.seedInventory[plot.cropId] ?? 0;
@@ -79,23 +132,31 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
           const canSow = plot.unlocked && plot.state === 'empty' && seeds >= plot.maxSeeds;
           const canHarvest = plot.unlocked && plot.state === 'ready';
           const exchangeUnit = CROP_DATA[plot.cropId].sellQty;
-          const canExchange = plot.unlocked && crops >= exchangeUnit;
-          const canPurchase = plot.unlocked && plot.id < 5;
+          const canExchange = crops >= exchangeUnit;
+          const canPurchase = plot.id < 5;
           return (
             <article key={plot.id}>
               <h3>{plot.name}</h3>
               <p>{!plot.unlocked ? '🔒 尚未解鎖' : plot.state === 'ready' ? '已成熟' : plot.state === 'growing' ? '生長中' : '待播種'}</p>
+              {!plot.unlocked && <p>{plot.unlockCoins !== null
+                ? `${plot.id === 2 ? '需先解鎖幽熒沃土，再' : ''}支付 ${plot.unlockCoins} 金幣解鎖。`
+                : `累積有效儲值達 ${plot.unlockCrystals} 水晶後取得使用資格。`}</p>}
               <p>種子：{seeds}／整批 {plot.maxSeeds}；倉庫作物：{crops}</p>
               {plot.unlocked && plot.state === 'growing' && plot.growthEndTime && (
                 <p>預計成熟：{new Date(plot.growthEndTime).toLocaleString('zh-TW')}</p>
               )}
-              <button type="button" disabled={busy || loading || !canSow}
+              <button type="button" disabled={busy || loading || !!pendingRetry || !canSow}
                 onClick={() => { void execute('sow', plot.id + 1); }}>整批播種</button>
-              <button type="button" disabled={busy || loading || !canHarvest}
+              <button type="button" disabled={busy || loading || !!pendingRetry || !canHarvest}
                 onClick={() => { void execute('harvest', plot.id + 1); }}>收成入庫</button>
-              {canPurchase && <button type="button" disabled={busy || loading}
+              {canPurchase && <button type="button" disabled={busy || loading || !!pendingRetry}
                 onClick={() => { void execute('purchaseSeeds', plot.id + 1, 1); }}>購買一包種子（1 金幣）</button>}
-              <button type="button" disabled={busy || loading || !canExchange}
+              {plot.id === 5 && <>
+                <p>待領混沌種子：{data.chaosPending} 顆（每 72 小時產生 1 顆，待領最多 3 顆）</p>
+                <button type="button" disabled={busy || loading || !!pendingRetry || data.chaosPending === 0}
+                  onClick={() => { void execute('claimChaosSeeds', 6); }}>領取混沌種子</button>
+              </>}
+              <button type="button" disabled={busy || loading || !!pendingRetry || !canExchange}
                 onClick={() => { void execute('exchangeCrops', plot.id + 1, exchangeUnit); }}>
                 兌換 {exchangeUnit} 株作物
               </button>
