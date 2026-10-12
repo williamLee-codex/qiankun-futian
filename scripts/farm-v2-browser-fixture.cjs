@@ -98,6 +98,7 @@ const fs = require("node:fs");
       serverTime: Date.now(),
       pendingMutation: null,
       player: {
+        chaosSeedState: { pending: 3 },
         warehouseState: {
           seeds: Object.fromEntries(sizes.map((n, i) => [i + 1, n])),
           crops: Object.fromEntries(sizes.map((n, i) => [i + 1, 0])),
@@ -127,6 +128,11 @@ const fs = require("node:fs");
       if (req.method() === "POST") {
         ids.push(req.headers()["x-request-id"]);
         const match = path.match(/lands\/(\d+)\/(sow|harvest)/);
+        if (path.endsWith("/chaos-seeds/claim")) {
+          snapshot.player.warehouseState.seeds[6] +=
+            snapshot.player.chaosSeedState.pending;
+          snapshot.player.chaosSeedState.pending = 0;
+        }
         if (match) {
           const id = +match[1];
           const land = snapshot.lands[id - 1];
@@ -186,8 +192,19 @@ const fs = require("node:fs");
         .getByRole("button", { name: `${names[id - 1]}，待播種` })
         .waitFor();
     }
-    assert.equal(ids.length, 12);
-    assert.equal(new Set(ids).size, 12);
+    await page
+      .getByRole("button", { name: "領取混沌種子", exact: true })
+      .click();
+    await page.getByText("混沌種子已收入倉庫。", { exact: true }).waitFor();
+    assert.equal(
+      await page
+        .getByRole("button", { name: "領取混沌種子", exact: true })
+        .isDisabled(),
+      true,
+    );
+    assert.equal(snapshot.player.warehouseState.seeds[6], 3);
+    assert.equal(ids.length, 13);
+    assert.equal(new Set(ids).size, 13);
     assert.equal(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -203,7 +220,7 @@ const fs = require("node:fs");
     assert.deepEqual(errors, []);
     outcomes.push({
       width,
-      operations: 12,
+      operations: 13,
       consoleErrors: errors.length,
       reducedMotion: width === 320,
       source: "browser with intercepted fixture API; not live Core",

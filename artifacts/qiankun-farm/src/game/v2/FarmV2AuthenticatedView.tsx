@@ -1,5 +1,6 @@
 import farmBackground from '@assets/file_00000000095072069ef62748d273ae91_1783571778589.png';
 import { useEffect, useRef, useState } from 'react';
+import type { FarmV2Operation } from './farmV2ApiClient';
 import { useFarmV2Scene } from './useFarmV2Scene';
 import { CROP_DATA } from '../types';
 
@@ -62,7 +63,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
     return () => clearTimeout(timeout);
   }, [flight]);
 
-  async function execute(operation: 'sow' | 'harvest' | 'purchaseSeeds' | 'exchangeCrops', landId: number, quantity?: number) {
+  async function execute(operation: FarmV2Operation, landId: number, quantity?: number) {
     setNotice(null);
     const ok = await mutate(operation, landId, quantity);
     if (ok && (operation === 'sow' || operation === 'harvest')) {
@@ -70,7 +71,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
       const sequence = ++flightSequence.current;
       setFlight({ operation, landId, icon: operation === 'sow' ? '🌱' : (plot?.cropEmoji ?? '🌾'), sequence });
     }
-    setNotice(ok ? '操作已由伺服器確認。' : '操作未確認，請檢查錯誤並重新讀取。');
+    setNotice(ok ? (operation === 'claimChaosSeeds' ? '混沌種子已收入倉庫。' : '操作已完成。') : '操作未確認，請檢查錯誤並重新讀取。');
   }
 
   async function handlePlotClick(plot: NonNullable<typeof data>['plots'][number]) {
@@ -212,6 +213,11 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
                 onClick={() => { void execute('harvest', plot.id + 1); }}>收成入庫</button>
               {canPurchase && <button type="button" disabled={busy || loading || !!pendingRetry}
                 onClick={() => { void execute('purchaseSeeds', plot.id + 1, 1); }}>購買一包種子（1 金幣）</button>}
+              {plot.id === 5 && <>
+                <p>待領混沌種子：{data.chaosPending} 顆（每 72 小時產生 1 顆，待領最多 3 顆）</p>
+                <button type="button" disabled={busy || loading || !!pendingRetry || data.chaosPending === 0}
+                  onClick={() => { void execute('claimChaosSeeds', 6); }}>領取混沌種子</button>
+              </>}
               <button type="button" disabled={busy || loading || !!pendingRetry || !canExchange}
                 onClick={() => { void execute('exchangeCrops', plot.id + 1, exchangeUnit); }}>
                 兌換 {exchangeUnit} 株作物

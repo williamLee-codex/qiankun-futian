@@ -31,8 +31,8 @@
 | 田2/3永久主動支付解鎖 | 尚未符合 | 規則與runtime存在；正式 V2 API／UI未接通。Core草稿只提供種子／兌換／補償，不能臆造解鎖契約 |
 | 付費里程碑、退款、恢復 | 已修正但待驗證 | runtime測試存在；真實 Core／Farm 兩庫退款並發未驗證；不保證嚴格跨庫原子切斷 |
 | 田6首次種子不重複發 | 已符合並驗證 | runtime及SQL qualification初始化；首次 grant 狀態保存 |
-| 混沌72h、pending≤3、anchor | 已符合並驗證 | chaosSeedRuntime / accessBridge 原有單元測試 |
-| 混沌種子主動領取正式流程 | 尚未符合 | claim runtime存在，沒有正式claim API／UI；因此第六田長期補種流程不完整 |
+| 混沌72h、pending≤3、anchor | 已符合並驗證 | 原runtime + 新狀態reconciliation結算；active5ticks→cap3、暫停／恢復不補發、下一個future tick生成1顆 |
+| 混沌種子主動領取正式流程 | 已符合並驗證 | 已接claim API與UI；SQL／HTTP：3顆入庫、相同ID重送無額外種子、anchor／cursor不重置；四尺寸受控UI領取通過。尚未部署正式Core環境 |
 | 正式玩家初始化與玩家隔離 | 已符合並驗證 | 實際HTTP驗證身份；SQL alice/bob隔離、firstFarmEnteredAt只初始化一次 |
 | 播種／收成 snake_case映射 | 已符合並驗證 | 原SQL直接cast camelCase實測失敗，改 Drizzle select().for("update") 後通過 |
 | 相同ID重送不重複播種／收成 | 已符合並驗證 | 六田SQL；不同ID再次收成拒絕 |
@@ -50,7 +50,7 @@
 | 倉庫、角色、靈獸 | 尚未符合 | 正式UI只有種子／作物數量；角色及靈獸未按伺服器狀態與核准立繪完整展示 |
 | 響應式與操作文字可見 | 已符合並驗證 | 修復黑底黑字、禁止捲动與遮圖重複面板；320/390/768/1440無橫向溢出 |
 | 瀏覽器Console | 已符合並驗證 | 四尺寸受控API／字型fixture Console error 0；不能推論正式Core／外部CDN無錯誤 |
-| 農夫、好友、任務、盆栽、洞府 | 尚未符合 | 多個純runtime存在，但正式V2僅state/sow/harvest/purchase/exchange/reconcile六類API；完整持久流程及UI未接通 |
+| 農夫、好友、任務、盆栽、洞府 | 尚未符合 | 多個純runtime存在，但正式V2目前state/sow/harvest/purchase/exchange/chaos-claim/reconcile七類API；完整持久流程及UI未接通 |
 | RLS／正式migration／資料隔離ACL | 尚未符合 | 未找到V2 migration／RLS；SQL schema測試無法替代Supabase ACL驗收；正式資料庫未讀寫 |
 | Wallet Catalog驗價／帳本一致性 | 尚未符合 | Core草稿接收Farm傳入amount；本輪不修改Core權威。需獨立Core契約與正式Ledger驗證 |
 
@@ -74,9 +74,9 @@
 | `git ls-remote origin refs/heads/...` | 兩個指定HEAD吻合原指令；push前再核對修正分支 |
 | `pnpm install --frozen-lockfile` | 首次invalid allowBuilds阻擋；修正esbuild設定後完成 |
 | `pnpm run typecheck` | 通過 |
-| `pnpm run test` | 40個Vitest檔、149案例通過；另4個Node guard案例通過 |
+| `pnpm run test` | 40個Vitest檔、151案例通過；另4個Node guard案例通過 |
 | `PORT=4173 BASE_PATH=/ pnpm run build` | API、Farm、mockup全workspace build通過；PORT/BASE_PATH是原sandbox config所需環境值 |
-| `pnpm run test:browser:fixture` | 配合測試瀏覽器／本地字型環境，320/390/768/1440各12次操作、無溢出、Console error 0；320另驗證reduced-motion |
+| `pnpm run test:browser:fixture` | 配合測試瀏覽器／本地字型環境，320/390/768/1440各13次操作（六田播種／收成＋混沌領取）、無溢出、Console error 0；320另驗證reduced-motion |
 | `git diff --check` | 通過 |
 
 負對照：保留原版本測試曾重現warehouse.seeds undefined；修正映射後六田SQL通過。將四個Wallet檔暫時回復0a0e6cd，reservation測試立即失敗（交易開始前找不到紀錄），還原修正後通過。
@@ -93,8 +93,21 @@
 
 1. **Core整合**：對照兩個草稿分支完成Core正式Catalog／Wallet／paid-value契約；需要使用者授權才能合併與部署。現在不能使用V1端點替代。
 2. **原場景**：定位／提供已核准V2世界場景資產與六田錨點。禁止以舊手機hotspot繼續假定原場景已完成。
-3. **缺接線**：以既有FINAL規格完成田2/3支付解鎖、混沌種子claim、原規格的角色／農夫／倉庫等持久流程；未定Core契約不臆造。
+3. **缺接線**：以既有FINAL規格完成田2/3支付解鎖、原規格的角色／農夫／倉庫等持久流程；未定Core契約不臆造。
 4. **真正交易Gate**：在可啟動独立PostgreSQL的隔離環境執行至少11個並發請求、同ID／不同ID、Core成功後丟回應、journal寫入失敗、Farm提交失敗、補償丟回應、進程重啟後重試、退款與資格讀取競態；本環境不能啟動OS PostgreSQL服務，PGlite不冒充這一Gate。
 5. **正式資料庫**：V2 migration、索引／約束／ACL／RLS逐項驗證，須隔離DB完成後才可提出正式DB修改授權。
 
-本輪沒有修改正式資料庫，沒有合併main，沒有部署，沒有手動觸發GitHub Actions或Vercel Build。修正分支的workflow只監聽canonical分支；本輪集中一次提交。
+本輪沒有修改正式資料庫，沒有合併main，沒有部署，沒有手動觸發GitHub Actions或Vercel Build。修正分支的workflow只監聽canonical分支；首次集中修正一次提交；使用者要求繼續後，混沌領取另集中一筆提交。
+
+
+## 後續收斂：混沌種子領取
+
+使用者要求繼續後，已將原有 `settleAndClaimChaosSeeds` 接上 `POST /farm/v2/chaos-seeds/claim`，由伺服器固定領取整個待領池，不接受客戶端指定顆數。使用目前玩家身份、行鎖與既有request-ID交易機制；不呼叫Wallet扣款／入帳，不修改經濟規則。UI顯示伺服器pending，0顆時禁止領取，成功後重新讀取庫存。
+
+同時修復真正缺口：paidAccessTransactions原先沒有結算72h pending，因此正式state讀取的池不會更新。現在在既有qualification交易內結算，只有前後皆具有有效田6資格才生成；暫停與恢复都推進cursor但不補發，已存pending保留。最初回歸測試期望pending3/processedCycle5，舊碼實際pending0/cursor0，已重現失敗後修正。
+
+已執行：`pnpm run test`（151 Vitest案例＋4 guard）、`PORT=4173 BASE_PATH=/ pnpm run build`、`git diff --check`；四尺寸`test:browser:fixture`各13次操作、Console0，320 reduced-motion通過。SQL仍為前述PGlite隔離環境，Core與瀏覽器API仍使用受控fixture，沒有扩大驗證主張。
+
+新增檔案：`artifacts/api-server/src/lib/farm-v2-chaos-claim.ts`。主要修改：`routes/farm-v2.ts`、`paidAccessTransactions.ts`、`useFarmV2Scene.ts`、`farmV2ApiClient.ts`、`FarmV2AuthenticatedView.tsx`及相應實際SQL／HTTP／transport／瀏覽器測試。
+
+這一項已從阻擋清單移除。**整体仍NO-GO**：原場景、田2/3解鎖契約、其他原有完整流程、Core正式接線、V2 migration／ACL與真實多連線／中斷復原尚未通過。

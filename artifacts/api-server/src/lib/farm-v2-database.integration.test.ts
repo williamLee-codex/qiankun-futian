@@ -23,7 +23,10 @@ vi.mock("@workspace/db", async () => ({
 import { ensureFarmV2PlayerInitialized } from "./farm-v2-init";
 import { sowFarmV2Land } from "./farm-v2-sow";
 import { harvestFarmV2Land } from "./farm-v2-harvest";
-import { reconcileFarmV2PaidAccess, reconcileFarmV2PaidAccessFromCore } from "./farm-v2-paid-access";
+import {
+  reconcileFarmV2PaidAccess,
+  reconcileFarmV2PaidAccessFromCore,
+} from "./farm-v2-paid-access";
 import { purchaseFarmV2SeedPacks } from "./farm-v2-seed-purchase";
 import { exchangeFarmV2Crops } from "./farm-v2-crop-exchange";
 import express from "express";
@@ -175,6 +178,47 @@ describe("Farm V2 isolated PostgreSQL engine", () => {
         await nativeFetch(`${endpoint}/state`, { headers })
       ).json();
       expect(recoveredSnapshot.pendingMutation).toBe(null);
+      const anchor = Date.now() - 5 * 72 * 3600000 - 1000;
+      await pg.query(
+        "UPDATE farm_v2_player_state SET chaos_seed_state=$1::jsonb, access_state=jsonb_set(access_state,'{firstUnlockedAt,6}',$2::jsonb) WHERE user_id='http-alice'",
+        [
+          JSON.stringify({ anchorAt: anchor, processedCycle: 0, pending: 0 }),
+          JSON.stringify(anchor),
+        ],
+      );
+      const chaosSnapshot: any = await (
+        await nativeFetch(`${endpoint}/state`, { headers })
+      ).json();
+      expect(chaosSnapshot.player.chaosSeedState).toMatchObject({
+        pending: 3,
+        processedCycle: 5,
+        anchorAt: anchor,
+      });
+      const claimHeaders = { ...headers, "x-request-id": "chaos-once" };
+      const claim = await nativeFetch(`${endpoint}/chaos-seeds/claim`, {
+        method: "POST",
+        headers: claimHeaders,
+      });
+      expect(claim.status).toBe(200);
+      const claimed: any = await claim.json();
+      expect(claimed.claimed).toBe(3);
+      expect(claimed.warehouse.seeds["6"]).toBe(4);
+      expect(claimed.chaosSeedState).toMatchObject({
+        pending: 0,
+        processedCycle: 5,
+        anchorAt: anchor,
+      });
+      const repeatedClaim = await nativeFetch(`${endpoint}/chaos-seeds/claim`, {
+        method: "POST",
+        headers: claimHeaders,
+      });
+      expect(repeatedClaim.status).toBe(200);
+      expect(await repeatedClaim.json()).toEqual(claimed);
+      const afterClaim: any = await (
+        await nativeFetch(`${endpoint}/state`, { headers })
+      ).json();
+      expect(afterClaim.player.warehouseState.seeds["6"]).toBe(4);
+      expect(afterClaim.player.chaosSeedState.pending).toBe(0);
       const missing = await nativeFetch(`${endpoint}/lands/1/sow`, {
         method: "POST",
         headers,
@@ -213,10 +257,14 @@ describe("Farm V2 isolated PostgreSQL engine", () => {
     await pg.query(
       "INSERT INTO farm_v2_mutation(user_id,request_id,action,wallet_direction,wallet_currency,wallet_amount) VALUES('uncertain','lost-receipt','seed-purchase:1:1','debit','coin',1)",
     );
-    vi.stubEnv('PLATFORM_BASE_URL','https://core.test');vi.stubEnv('REPLIT_APP_SHARED_SECRET','test-only');
-    vi.stubGlobal('fetch', async()=>new Response(JSON.stringify({effectivePaidCrystals:600})));
+    vi.stubEnv("PLATFORM_BASE_URL", "https://core.test");
+    vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test-only");
+    vi.stubGlobal(
+      "fetch",
+      async () => new Response(JSON.stringify({ effectivePaidCrystals: 600 })),
+    );
     const result = await reconcileFarmV2PaidAccessFromCore({
-      launchToken: 'uncertain-test',
+      launchToken: "uncertain-test",
       userId: "uncertain",
       requestId: "paid-check",
     });

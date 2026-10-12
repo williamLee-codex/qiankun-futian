@@ -1,3 +1,4 @@
+import { claimFarmV2ChaosSeeds } from "../lib/farm-v2-chaos-claim";
 import { Router, type IRouter } from "express";
 import { and, eq, notInArray, isNotNull } from "drizzle-orm";
 import { db, farmV2MutationTable } from "@workspace/db";
@@ -207,6 +208,31 @@ router.post("/farm/v2/crops/:landId/exchange", async (req, res, next) => {
       landId: Number(req.params.landId),
       cropQuantity: Number(req.body?.cropQuantity),
     });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/farm/v2/chaos-seeds/claim", async (req, res, next) => {
+  try {
+    const userId = String(res.locals.authenticatedUserId ?? "").trim();
+    const launchToken = String(res.locals.launchToken ?? "").trim();
+    const requestId = String(req.header("x-request-id") ?? "").trim();
+    if (!userId || !launchToken) {
+      res.status(401).json({ error: "AUTH_REQUIRED" });
+      return;
+    }
+    if (!requestId) {
+      res.status(400).json({ error: "REQUEST_ID_REQUIRED" });
+      return;
+    }
+    await reconcileFarmV2PaidAccessFromCore({
+      userId,
+      launchToken,
+      requestId: "farm-v2:core-paid-refresh:v1",
+    });
+    const result = await claimFarmV2ChaosSeeds({ userId, requestId });
     res.json(result);
   } catch (error) {
     next(error);

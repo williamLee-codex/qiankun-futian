@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createFarmV2Api, FarmV2ApiError } from "./farmV2ApiClient";
+import {
+  createFarmV2Api,
+  FarmV2ApiError,
+  type FarmV2Operation,
+} from "./farmV2ApiClient";
 import { mapServerLands, mapServerWarehouse } from "./farmV2SceneAdapter";
 import type { Plot, CropInventory } from "../types";
 
@@ -12,6 +16,7 @@ type Snapshot = {
     quantity: number;
   } | null;
   player: {
+    chaosSeedState?: { pending: number } | null;
     warehouseState: {
       seeds: Record<string, number>;
       crops: Record<string, number>;
@@ -24,6 +29,7 @@ type SceneData = {
   sessionEpoch: number;
   serverTime: number;
   receivedAt: number;
+  chaosPending: number;
   plots: Plot[];
   seedInventory: CropInventory;
   cropInventory: CropInventory;
@@ -39,7 +45,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pendingRetry, setPendingRetry] = useState<{
-    operation: "sow" | "harvest" | "purchaseSeeds" | "exchangeCrops";
+    operation: FarmV2Operation;
     landId: number;
     quantity?: number;
   } | null>(null);
@@ -81,7 +87,15 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       }).readState()) as unknown as Snapshot;
       if (!Number.isFinite(snapshot.serverTime))
         throw new Error("INVALID_FARM_SERVER_TIME");
+      const chaosPending = snapshot.player.chaosSeedState?.pending ?? 0;
+      if (
+        !Number.isInteger(chaosPending) ||
+        chaosPending < 0 ||
+        chaosPending > 3
+      )
+        throw new Error("INVALID_CHAOS_PENDING");
       const nextData = {
+        chaosPending,
         sessionEpoch: epoch,
         serverTime: snapshot.serverTime,
         receivedAt: Date.now(),
@@ -160,13 +174,10 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   }, [data, busy, loading, pendingRetry, refresh]);
 
   const mutate = useCallback(
-    async (
-      operation: "sow" | "harvest" | "purchaseSeeds" | "exchangeCrops",
-      landId: number,
-      quantity?: number,
-    ) => {
+    async (operation: FarmV2Operation, landId: number, quantity?: number) => {
       const epoch = session.current.epoch;
       if (!launchToken || mutationInFlight.current) return false;
+      if (operation === "claimChaosSeeds" && landId !== 6) return false;
       if (!Number.isInteger(landId) || landId < 1 || landId > 6) return false;
       if (
         (operation === "purchaseSeeds" || operation === "exchangeCrops") &&
@@ -190,6 +201,8 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         const api = createFarmV2Api({ baseUrl, launchToken });
         if (operation === "sow") await api.sow(landId, requestId);
         else if (operation === "harvest") await api.harvest(landId, requestId);
+        else if (operation === "claimChaosSeeds")
+          await api.claimChaosSeeds(requestId);
         else {
           if (operation === "purchaseSeeds")
             await api.purchaseSeeds(landId, quantity!, requestId);

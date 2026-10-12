@@ -3,6 +3,13 @@
  * The launch token must be provided by the platform launch integration.
  * Do not persist it in browser storage or fall back to prototype GameContext.
  */
+export type FarmV2Operation =
+  | "sow"
+  | "harvest"
+  | "purchaseSeeds"
+  | "exchangeCrops"
+  | "claimChaosSeeds";
+
 export type FarmV2Land = {
   landId: number;
   lifecycle: "LOCKED" | "EMPTY" | "GROWING" | "MATURE";
@@ -102,6 +109,13 @@ export function createFarmV2Api(input: {
   }
 
   return {
+    claimChaosSeeds: (requestId?: string) =>
+      request<unknown>(
+        "farm/v2/chaos-seeds/claim",
+        "POST",
+        undefined,
+        requestId,
+      ),
     readState: () => request<FarmV2State>("farm/v2/state", "GET"),
     sow: (landId: number, requestId?: string) =>
       request<FarmV2MutationResult>(

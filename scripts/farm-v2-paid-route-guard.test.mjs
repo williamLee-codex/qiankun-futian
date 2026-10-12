@@ -19,6 +19,7 @@ test("paid gameplay routes refresh Core qualification before mutation", () => {
     ["post", "/farm/v2/lands/:landId/harvest", "harvestFarmV2Land("],
     ["post", "/farm/v2/seeds/:landId/purchase", "purchaseFarmV2SeedPacks("],
     ["post", "/farm/v2/crops/:landId/exchange", "exchangeFarmV2Crops("],
+    ["post", "/farm/v2/chaos-seeds/claim", "claimFarmV2ChaosSeeds("],
   ];
   for (const [method, path, mutation] of cases) {
     const body = routeBody(method, path);
