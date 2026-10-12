@@ -100,9 +100,12 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       if (!stateLoaded) setError('FARM_V2_MUTATION_CONFIRMED_STATE_REFRESH_FAILED');
       return stateLoaded;
     } catch (cause) {
-      // A 5xx response may arrive after the server committed the mutation.
-      // Only definitive 4xx rejections can safely release the retry key.
-      if (cause instanceof FarmV2ApiError && cause.status >= 400 && cause.status < 500) {
+      // Timeout (408), conflict (409), rate limit (429), and 5xx responses
+      // do not prove that the transaction was rolled back. Keep the same ID.
+      const definitiveRejection = cause instanceof FarmV2ApiError &&
+        cause.status >= 400 && cause.status < 500 &&
+        ![408, 409, 425, 429].includes(cause.status);
+      if (definitiveRejection) {
         uncertainMutation.current = null;
         setPendingRetry(null);
       } else {
