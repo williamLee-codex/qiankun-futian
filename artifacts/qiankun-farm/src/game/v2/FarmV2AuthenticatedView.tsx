@@ -1,5 +1,5 @@
 import farmBackground from '@assets/file_00000000095072069ef62748d273ae91_1783571778589.png';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFarmV2Scene } from './useFarmV2Scene';
 import { CROP_DATA } from '../types';
 
@@ -20,10 +20,27 @@ const PLOT_HOTSPOTS = [
   { left: '65%', top: '58%', width: '31%', height: '12%' },
 ] as const;
 
+function cropVisual(plot: { state: string; growthEndTime: number | null; growthHours: number; cropEmoji: string }, now: number) {
+  if (plot.state === 'ready') return { icon: plot.cropEmoji, label: '成熟可收成' };
+  if (plot.state !== 'growing' || !plot.growthEndTime) return null;
+  const duration = plot.growthHours * 3_600_000;
+  const progress = Math.max(0, Math.min(1, (now - (plot.growthEndTime - duration)) / duration));
+  if (progress >= 1) return { icon: plot.cropEmoji, label: '等待成熟確認' };
+  if (progress < 0.25) return { icon: '🌱', label: '萌芽' };
+  if (progress < 0.5) return { icon: '🌿', label: '幼苗' };
+  if (progress < 0.75) return { icon: '🌳', label: '生長' };
+  return { icon: plot.cropEmoji, label: '將熟' };
+}
+
 export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken: string }) {
   const { data, error, loading, busy, refresh, mutate, pendingRetry } =
     useFarmV2Scene(props.apiBaseUrl, props.launchToken);
   const [notice, setNotice] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
 
   async function execute(operation: 'sow' | 'harvest' | 'purchaseSeeds' | 'exchangeCrops', landId: number, quantity?: number) {
@@ -84,6 +101,26 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
             }}
           />
         ))}
+        {data.plots.map((plot, index) => {
+          const visual = plot.unlocked ? cropVisual(plot, now) : { icon: '🔒', label: '尚未解鎖' };
+          if (!visual) return null;
+          const hotspot = PLOT_HOTSPOTS[index];
+          return (
+            <span key={`visual-${plot.id}`} aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: `calc(${hotspot.left} + ${hotspot.width} / 2)`,
+                top: `calc(${hotspot.top} + ${hotspot.height} / 2)`,
+                transform: 'translate(-50%, -50%)',
+                display: 'grid', justifyItems: 'center', gap: 2,
+                pointerEvents: 'none', color: 'white',
+                textShadow: '0 1px 4px black',
+              }}>
+              <span style={{ fontSize: 26 }}>{visual.icon}</span>
+              <span style={{ fontSize: 10, background: 'rgba(0,0,0,.6)', borderRadius: 4, padding: '1px 4px' }}>{visual.label}</span>
+            </span>
+          );
+        })}
         <div aria-label="正式農田狀態" style={{ position: "absolute", top: "75%", left: 12, right: 12, pointerEvents: "none", background: "rgba(16, 27, 20, .85)", color: "white", padding: 12, borderRadius: 12, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
           {data.plots.map(plot => <span key={plot.id}>{plot.name}：{!plot.unlocked ? "🔒" : plot.state === "ready" ? "🌾" : plot.state === "growing" ? "🌱" : "▫️"}</span>)}
         </div>
