@@ -20,6 +20,14 @@ const PLOT_HOTSPOTS = [
   { left: '65%', top: '58%', width: '31%', height: '12%' },
 ] as const;
 
+// All plot overlays and flight targets derive from the same hotspot geometry.
+function hotspotCenter(hotspot: (typeof PLOT_HOTSPOTS)[number]) {
+  return {
+    x: `${Number.parseFloat(hotspot.left) + Number.parseFloat(hotspot.width) / 2}%`,
+    y: `${Number.parseFloat(hotspot.top) + Number.parseFloat(hotspot.height) / 2}%`,
+  };
+}
+
 function cropVisual(plot: { state: string; growthEndTime: number | null; growthHours: number; cropEmoji: string }, now: number) {
   if (plot.state === 'ready') return { icon: plot.cropEmoji, label: '成熟可收成' };
   if (plot.state !== 'growing' || !plot.growthEndTime) return null;
@@ -117,13 +125,13 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
         {data.plots.map((plot, index) => {
           const visual = plot.unlocked ? cropVisual(plot, now) : { icon: '🔒', label: '尚未解鎖' };
           if (!visual) return null;
-          const hotspot = PLOT_HOTSPOTS[index];
+          const center = hotspotCenter(PLOT_HOTSPOTS[index]);
           return (
             <span key={`visual-${plot.id}`} aria-hidden="true"
               style={{
                 position: 'absolute',
-                left: `calc(${hotspot.left} + ${hotspot.width} / 2)`,
-                top: `calc(${hotspot.top} + ${hotspot.height} / 2)`,
+                left: center.x,
+                top: center.y,
                 transform: 'translate(-50%, -50%)',
                 display: 'grid', justifyItems: 'center', gap: 2,
                 pointerEvents: 'none', color: 'white',
@@ -137,8 +145,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
         {flight && (() => {
           const plot = PLOT_HOTSPOTS[flight.landId - 1];
           if (!plot) return null;
-          const targetX = `calc(${plot.left} + ${plot.width} / 2)`;
-          const targetY = `calc(${plot.top} + ${plot.height} / 2)`;
+          const { x: targetX, y: targetY } = hotspotCenter(plot);
           const warehouseX = '16%';
           const warehouseY = '35%';
           return (
