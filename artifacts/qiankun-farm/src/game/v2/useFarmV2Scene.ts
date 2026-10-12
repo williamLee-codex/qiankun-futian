@@ -92,15 +92,17 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         if (operation === 'purchaseSeeds') await api.purchaseSeeds(landId, quantity!, requestId);
         else await api.exchangeCrops(landId, quantity!, requestId);
       }
-      // A successful mutation response confirms the operation; a failed state
-      // refresh must not cause the completed operation to be submitted again.
+      // The POST is confirmed. A subsequent GET failure must never cause a
+      // replay of the already committed mutation.
       uncertainMutation.current = null;
       setPendingRetry(null);
-      return await refresh();
+      const stateLoaded = await refresh();
+      if (!stateLoaded) setError('FARM_V2_MUTATION_CONFIRMED_STATE_REFRESH_FAILED');
+      return stateLoaded;
     } catch (cause) {
-      // Explicit HTTP rejection is definitive; transport failure is ambiguous.
-      // Preserve the ID only for ambiguous failures, never for a new action.
-      if (cause instanceof FarmV2ApiError) {
+      // A 5xx response may arrive after the server committed the mutation.
+      // Only definitive 4xx rejections can safely release the retry key.
+      if (cause instanceof FarmV2ApiError && cause.status >= 400 && cause.status < 500) {
         uncertainMutation.current = null;
         setPendingRetry(null);
       } else {
