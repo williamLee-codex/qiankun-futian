@@ -7,6 +7,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import * as schema from "../../../../lib/db/src/schema";
@@ -56,11 +57,15 @@ beforeAll(async () => {
         }
       }),
   };
-  await pg.exec(`
-    CREATE TABLE farm_v2_player_state (user_id text primary key, first_farm_entered_at timestamptz, effective_paid_crystals integer not null default 0, access_state jsonb not null, warehouse_state jsonb not null, mission_state jsonb not null, pet_state jsonb not null, farmer_state jsonb not null, chaos_seed_state jsonb, updated_at timestamptz not null default now());
-    CREATE TABLE farm_v2_land (user_id text not null, land_id integer not null, lifecycle text not null, access_active boolean not null, planted_quantity integer not null default 0, planted_at timestamptz, matures_at timestamptz, version bigint not null default 0, primary key(user_id,land_id));
-    CREATE TABLE farm_v2_mutation (request_id text not null, user_id text not null, action text not null, response jsonb, transaction_state text not null default 'PENDING', wallet_direction text, wallet_currency text, wallet_amount integer, wallet_transaction jsonb, failure_code text, updated_at timestamptz not null default now(), created_at timestamptz not null default now(), primary key(user_id,request_id));
-  `);
+  await pg.exec(
+    "CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;",
+  );
+  await pg.exec(
+    readFileSync(
+      "supabase/migrations/20261012034556_farm_v2_runtime.sql",
+      "utf8",
+    ),
+  );
 });
 afterAll(async () => {
   await pg.close();
@@ -71,6 +76,65 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 describe("Farm V2 isolated PostgreSQL engine", () => {
+  it("migration protects backend-only state from direct client reads and writes", async () => {
+    const tables = ["farm_v2_player_state", "farm_v2_land", "farm_v2_mutation"];
+    for (const role of ["anon", "authenticated"]) {
+      for (const table of tables) {
+        for (const privilege of [
+          "SELECT",
+          "INSERT",
+          "UPDATE",
+          "DELETE",
+          "TRUNCATE",
+          "REFERENCES",
+          "TRIGGER",
+        ]) {
+          const result = await pg.query<{ allowed: boolean }>(
+            "SELECT has_table_privilege($1, $2, $3) AS allowed",
+            [role, table, privilege],
+          );
+          expect(result.rows[0].allowed).toBe(false);
+        }
+      }
+      await pg.exec(`SET ROLE ${role}`);
+      try {
+        for (const table of tables) {
+          await expect(pg.query(`SELECT * FROM ${table}`)).rejects.toThrow(
+            /permission denied/,
+          );
+          await expect(pg.query(`DELETE FROM ${table}`)).rejects.toThrow(
+            /permission denied/,
+          );
+        }
+      } finally {
+        await pg.exec("RESET ROLE");
+      }
+    }
+    await pg.exec("SET ROLE service_role");
+    try {
+      for (const table of tables) await pg.query(`SELECT * FROM ${table}`);
+    } finally {
+      await pg.exec("RESET ROLE");
+    }
+    const rows = await pg.query<{ relrowsecurity: boolean }>(
+      "SELECT relrowsecurity FROM pg_class WHERE relname IN ('farm_v2_player_state','farm_v2_land','farm_v2_mutation')",
+    );
+    expect(rows.rows).toHaveLength(3);
+    expect(rows.rows.every((row) => row.relrowsecurity)).toBe(true);
+  });
+  it("migration rejects invalid land identities and negative quantities", async () => {
+    for (const [land, quantity] of [
+      [7, 0],
+      [1, -1],
+    ]) {
+      await expect(
+        pg.query(
+          "INSERT INTO farm_v2_land(user_id,land_id,lifecycle,access_active,planted_quantity) VALUES ('invalid',$1,'EMPTY',true,$2)",
+          [land, quantity],
+        ),
+      ).rejects.toThrow(/check constraint/);
+    }
+  });
   it("SEED-MARKET-002 commits wallet reservation before starting a domain transaction", async () => {
     await ensureFarmV2PlayerInitialized({ userId: "buyer" });
     const originalTransaction = state.db.transaction.bind(state.db);

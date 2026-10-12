@@ -11,7 +11,7 @@
 - 後續驗收：docs/farm-v2-interactive-scene-acceptance-v1.md；若與 Canonical Master 衝突，以 FINAL 規則為準。
 - 平台 main 查證 SHA：63a6b38331e7061fce3436ae5efe60c19c9dc9d1。其 tree 無 /api/replit/farm-v2/wallet 或 paid-value。
 - 在平台 codex/farm-v2-wallet-bridge 分支找到上述草稿路由，wallet route blob c6ee046349b5fc4ecd4a94a0b010f8e26b9873a1；未合併、未部署、未改其程式。
-- 本 Repository 沒有 Farm V2 SQL migration。lib/db/src/schema/farm-v2.ts 是 Drizzle schema；平台 main 的 farm migrations 屬 V1，沒有套用到 V2。
+- 基準 Repository 沒有 Farm V2 SQL migration；本輪新增獨立 V2 migration，未套用遠端。平台 main 的 farm migrations 屬 V1。唯讀查證 imperial-compass-dev public schema 未見 V2 三表，不假定這個專案就是核准部署目標。
 
 ## 原始規格逐項狀態
 
@@ -51,7 +51,7 @@
 | 響應式與操作文字可見 | 已符合並驗證 | 修復黑底黑字、禁止捲动與遮圖重複面板；320/390/768/1440無橫向溢出 |
 | 瀏覽器Console | 已符合並驗證 | 四尺寸受控API／字型fixture Console error 0；不能推論正式Core／外部CDN無錯誤 |
 | 農夫、好友、任務、盆栽、洞府 | 尚未符合 | 多個純runtime存在，但正式V2目前state/sow/harvest/purchase/exchange/chaos-claim/reconcile七類API；完整持久流程及UI未接通 |
-| RLS／正式migration／資料隔離ACL | 尚未符合 | 未找到V2 migration／RLS；SQL schema測試無法替代Supabase ACL驗收；正式資料庫未讀寫 |
+| RLS／migration／資料隔離ACL | 已修正但待驗證 | 實際migration在PGlite執行；三表RLS、anon/authenticated全表權限撤銷、service_role讀取通過。遠端套用、真實backend連線角色及Supabase API隔離未驗證 |
 | Wallet Catalog驗價／帳本一致性 | 尚未符合 | Core草稿接收Farm傳入amount；本輪不修改Core權威。需獨立Core契約與正式Ledger驗證 |
 
 ## 真正修改
@@ -74,7 +74,7 @@
 | `git ls-remote origin refs/heads/...` | 兩個指定HEAD吻合原指令；push前再核對修正分支 |
 | `pnpm install --frozen-lockfile` | 首次invalid allowBuilds阻擋；修正esbuild設定後完成 |
 | `pnpm run typecheck` | 通過 |
-| `pnpm run test` | 40個Vitest檔、151案例通過；另4個Node guard案例通過 |
+| `pnpm run test` | 40個Vitest檔、153案例通過；另4個Node guard案例通過 |
 | `PORT=4173 BASE_PATH=/ pnpm run build` | API、Farm、mockup全workspace build通過；PORT/BASE_PATH是原sandbox config所需環境值 |
 | `pnpm run test:browser:fixture` | 配合測試瀏覽器／本地字型環境，320/390/768/1440各13次操作（六田播種／收成＋混沌領取）、無溢出、Console error 0；320另驗證reduced-motion |
 | `git diff --check` | 通過 |
@@ -85,7 +85,7 @@
 
 瀏覽器：預設下載被環境截斷，改以npm portable Chromium本地執行。外部字型CDN在受限網路失敗，因此字型由受控fixture供應。截圖是實際React畫面，資料來源為fixture，並非正式玩家資料。截圖呈現的桌機窄版場景不符合原世界場景驗收，沒有標為通過。
 
-隔離SQL：PGlite真實PostgreSQL引擎＋實際Drizzle schema相同欄位；單連線測試adapter將outer query轉入active transaction。可驗證SQL/HTTP/映射/順序/重送，**不能**驗證journal獨立提交、PostgreSQL pool、並發行鎖、進程中斷或Core兩庫原子性。Saga的故障測試為mock persistence boundary，沒有把它冒充真實扣款。
+隔離SQL：PGlite真實PostgreSQL引擎＋實際V2 migration SQL；單連線測試adapter將outer query轉入active transaction。可驗證SQL/HTTP/映射/順序/重送，**不能**驗證journal獨立提交、PostgreSQL pool、並發行鎖、進程中斷或Core兩庫原子性。Saga的故障測試為mock persistence boundary，沒有把它冒充真實扣款。
 
 獨立review指出的pool耗盡、歧義401誤拒、preflight retry trap、grant繞過pending、換帳號狀態污染、拒絕競態與補償retry trap已集中修正；最後一次靜態review無新增Critical/Important。這不替代缺少的多連線驗證。
 
@@ -95,7 +95,7 @@
 2. **原場景**：定位／提供已核准V2世界場景資產與六田錨點。禁止以舊手機hotspot繼續假定原場景已完成。
 3. **缺接線**：以既有FINAL規格完成田2/3支付解鎖、原規格的角色／農夫／倉庫等持久流程；未定Core契約不臆造。
 4. **真正交易Gate**：在可啟動独立PostgreSQL的隔離環境執行至少11個並發請求、同ID／不同ID、Core成功後丟回應、journal寫入失敗、Farm提交失敗、補償丟回應、進程重啟後重試、退款與資格讀取競態；本環境不能啟動OS PostgreSQL服務，PGlite不冒充這一Gate。
-5. **正式資料庫**：V2 migration、索引／約束／ACL／RLS逐項驗證，須隔離DB完成後才可提出正式DB修改授權。
+5. **正式資料庫**：migration SQL與基本約束／ACL／RLS已在PGlite驗證；仍需確認核准目標、真實PostgreSQL及backend角色，正式套用須另外授權。
 
 本輪沒有修改正式資料庫，沒有合併main，沒有部署，沒有手動觸發GitHub Actions或Vercel Build。修正分支的workflow只監聽canonical分支；首次集中修正一次提交；使用者要求繼續後，混沌領取另集中一筆提交。
 
@@ -111,3 +111,12 @@
 新增檔案：`artifacts/api-server/src/lib/farm-v2-chaos-claim.ts`。主要修改：`routes/farm-v2.ts`、`paidAccessTransactions.ts`、`useFarmV2Scene.ts`、`farmV2ApiClient.ts`、`FarmV2AuthenticatedView.tsx`及相應實際SQL／HTTP／transport／瀏覽器測試。
 
 這一項已從阻擋清單移除。**整体仍NO-GO**：原場景、田2/3解鎖契約、其他原有完整流程、Core正式接線、V2 migration／ACL與真實多連線／中斷復原尚未通過。
+
+
+## 後續收斂：V2 migration 與直接存取隔離
+
+使用 Supabase CLI `pnpm dlx supabase migration new farm_v2_runtime` 產生 `supabase/migrations/20261012034556_farm_v2_runtime.sql`。只建立既有三張V2表，與Drizzle欄位及CHECK約束一致；不修改Core Wallet、V1、角色權威或經濟數值。三表啟用RLS、無客戶端policy，撤銷PUBLIC/anon/authenticated權限，授予既有service_role CRUD。部署時API須使用核准的可信backend連線；migration不建立或更改BYPASSRLS角色。
+
+現有SQL／HTTP流程改為執行這份migration，移除重複手寫測試DDL。初始空migration測試6項失敗；補齊後6項通過，包括非法田號／負數拒絕、客戶端七類表權限全部撤銷、實際SELECT/DELETE拒絕、service_role讀取與三表RLS確認。測試角色僅建立在PGlite記憶體DB。`pnpm run test`（153案例＋4 guards）、`PORT=4173 BASE_PATH=/ pnpm run build`通過；UI未更動，沿用先前四尺寸實際截圖。
+
+沒有執行db push、遠端migration或正式資料庫變更。這項補齊可重現SQL來源，但不宣稱真實Supabase／多連線交易驗收通過。整體仍NO-GO。
