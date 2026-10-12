@@ -135,6 +135,19 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
         {/* Warehouse flights require verified original-scene anchors. */}
       </div>
       <h2>乾坤福田</h2>
+      <details className="farm-v2-warehouse">
+        <summary>福田倉庫</summary>
+        {(busy || loading) && <p role="status">正在同步庫存…</p>}
+        <table aria-label="福田倉庫種子與靈植">
+          <caption>種子與靈植</caption>
+          <thead><tr><th scope="col">種類</th><th scope="col">種子（顆）</th><th scope="col">靈植（株）</th></tr></thead>
+          <tbody>{data.plots.map(plot => <tr key={plot.id} data-land-id={plot.id + 1}>
+            <th scope="row">{plot.cropName}</th>
+            <td>{data.seedInventory[plot.cropId]}</td>
+            <td>{data.cropInventory[plot.cropId]}</td>
+          </tr>)}</tbody>
+        </table>
+      </details>
       {data.farmer?.entitled && <fieldset className="farm-v2-farmer-controls" disabled={busy || loading || !!pendingRetry}>
         <legend>專屬農夫・各田自動耕作</legend>
         {data.plots.map(plot => {

@@ -1927,3 +1927,10 @@ body.farm-v2-authenticated { overflow: auto; color: #f5ecd7; font-family: "Micro
 .farm-v2-farmer-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px; padding: 12px; min-width: 0; }
 .farm-v2-surface .farm-v2-farmer-controls button { min-height: 44px; padding: 8px; border: 1px solid #ad8741; border-radius: 6px; background: #202a23; color: #f5ecd7; font-size: 14px; }
 .farm-v2-surface .farm-v2-farmer-controls button[aria-pressed="true"] { border-color: #f8d58a; background: #314c34; }
+
+.farm-v2-warehouse { margin: 12px; border: 1px solid #ad8741; border-radius: 6px; }
+.farm-v2-warehouse summary { padding: 12px; min-height: 44px; cursor: pointer; }
+.farm-v2-warehouse table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.farm-v2-warehouse caption { padding: 8px; }
+.farm-v2-warehouse th, .farm-v2-warehouse td { padding: 8px 4px; border-top: 1px solid #536449; }
+.farm-v2-warehouse td { text-align: right; font-variant-numeric: tabular-nums; }

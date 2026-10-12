@@ -198,7 +198,18 @@ const fs = require("node:fs");
           imageState.width / imageState.height,
       ) < 0.002,
     );
+    await page.locator("summary").filter({ hasText: "福田倉庫" }).click();
+    const warehouseTable = page.getByRole("table", {
+      name: "福田倉庫種子與靈植",
+    });
+    assert.equal(await warehouseTable.locator("tbody tr").count(), 6);
     for (let id = 1; id <= 6; id++) {
+      const row = warehouseTable.locator(`tr[data-land-id="${id}"]`);
+      assert.equal(
+        await row.locator("td").nth(0).textContent(),
+        String(sizes[id - 1]),
+      );
+      assert.equal(await row.locator("td").nth(1).textContent(), "0");
       await page
         .getByRole("button", { name: `${names[id - 1]}，待播種` })
         .click();
@@ -217,6 +228,11 @@ const fs = require("node:fs");
       await page
         .getByRole("button", { name: `${names[id - 1]}，待播種` })
         .waitFor();
+      assert.equal(await row.locator("td").nth(0).textContent(), "0");
+      assert.equal(
+        await row.locator("td").nth(1).textContent(),
+        String(sizes[id - 1] * 6),
+      );
     }
     await page
       .getByRole("button", { name: "領取混沌種子", exact: true })
@@ -229,6 +245,13 @@ const fs = require("node:fs");
       true,
     );
     assert.equal(snapshot.player.warehouseState.seeds[6], 3);
+    assert.equal(
+      await warehouseTable
+        .locator('tr[data-land-id="6"] td')
+        .nth(0)
+        .textContent(),
+      "3",
+    );
     assert.equal(ids.length, 13);
     assert.equal(new Set(ids).size, 13);
     assert.equal(
