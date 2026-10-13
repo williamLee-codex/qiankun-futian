@@ -35,4 +35,26 @@ describe('Farm V2 chaos seed transactions', () => {
     expect(result.warehouse.seeds[6]).toBe(3);
     expect(result.state).toEqual({ anchorAt: 100, processedCycle: 9, pending: 0 });
   });
+
+  it('rejects a chaos seed credit that exceeds safe inventory precision', () => {
+    const warehouse = {
+      ...createEmptyFarmWarehouse(),
+      seeds: { ...createEmptyFarmWarehouse().seeds, 6: Number.MAX_SAFE_INTEGER },
+    };
+    expect(() => claimChaosSeedsToWarehouse({
+      warehouse,
+      state: { anchorAt: 100, processedCycle: 9, pending: 1 },
+    })).toThrow('INVALID_FARM_INVENTORY');
+  });
+
+  it('rejects a negative or unsafe existing chaos seed inventory', () => {
+    const warehouse = {
+      ...createEmptyFarmWarehouse(),
+      seeds: { ...createEmptyFarmWarehouse().seeds, 6: -1 },
+    };
+    expect(() => claimChaosSeedsToWarehouse({
+      warehouse,
+      state: { anchorAt: 100, processedCycle: 9, pending: 1 },
+    })).toThrow('INVALID_FARM_INVENTORY');
+  });
 });

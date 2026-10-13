@@ -5,10 +5,21 @@ import { claimChaosSeeds, createChaosSeedState } from './chaosSeedRuntime';
 import type { FarmWarehouse } from './warehouseRuntime';
 
 function addChaosSeeds(warehouse: FarmWarehouse, quantity: number): FarmWarehouse {
-  if (quantity <= 0) return warehouse;
+  const currentQuantity = warehouse.seeds[6];
+  if (!Number.isSafeInteger(quantity) || quantity < 0) {
+    throw new Error('INVALID_CHAOS_SEED_QUANTITY');
+  }
+  if (!Number.isSafeInteger(currentQuantity) || currentQuantity < 0) {
+    throw new Error('INVALID_FARM_INVENTORY');
+  }
+  const nextQuantity = currentQuantity + quantity;
+  if (!Number.isSafeInteger(nextQuantity)) {
+    throw new Error('INVALID_FARM_INVENTORY');
+  }
+  if (quantity === 0) return warehouse;
   return {
     ...warehouse,
-    seeds: { ...warehouse.seeds, 6: warehouse.seeds[6] + quantity },
+    seeds: { ...warehouse.seeds, 6: nextQuantity },
   };
 }
 
