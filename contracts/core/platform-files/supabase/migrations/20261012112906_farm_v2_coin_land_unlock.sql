@@ -1,5 +1,6 @@
 -- Core-owned Farm V2 contract. Staged SQL, not an applied migration.
 -- FINAL LAND-UNLOCK-001/003 and UNLOCK-ATOMIC-001.
+-- The trusted server price mapping below implements Canonical Master RULES.LAND-UNLOCK-001.
 BEGIN;
 INSERT INTO platform.products(product_key,product_type,display_name,status) VALUES
  ('qiankun-futian:land:2','feature_unlock','幽熒沃土','active'),

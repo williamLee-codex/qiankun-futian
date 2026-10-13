@@ -1,7 +1,15 @@
 import { PGlite } from "@electric-sql/pglite";
+import { FARM_V2_LANDS } from "../../../qiankun-farm/src/game/v2/canonicalLandData";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, expect, it } from "vitest";
 let db: PGlite;
+function coinCost(landId: 2 | 3): number {
+  const unlock = FARM_V2_LANDS.find((land) => land.id === landId)?.unlock;
+  if (!unlock || unlock.kind !== "coins") {
+    throw new Error(`Missing coin catalog price for land ${landId}`);
+  }
+  return unlock.amount;
+}
 const owner = "11111111-1111-4111-8111-111111111111";
 const other = "22222222-2222-4222-8222-222222222222";
 async function unlock(land: number, key: string, user = owner) {
@@ -46,9 +54,9 @@ it("enforces land 2 prerequisite then charges 88 and 888 with Core lifetime righ
   expect((await unlock(3, "before")).result_status).toBe("land_2_required");
   expect(await balance()).toBe(1000);
   expect((await unlock(2, "land2")).result_status).toBe("created");
-  expect(await balance()).toBe(912);
+  expect(await balance()).toBe(1000 - coinCost(2));
   expect((await unlock(3, "land3")).result_status).toBe("created");
-  expect(await balance()).toBe(24);
+  expect(await balance()).toBe(1000 - coinCost(2) - coinCost(3));
   const r = await db.query<{ n: number }>(
     "select count(*)::integer as n from platform.entitlements where entitlement_type='lifetime' and status='active'",
   );

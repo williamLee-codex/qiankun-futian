@@ -1,4 +1,4 @@
-import type { FarmLandId } from './canonicalLandData';
+import { getFarmV2Land, type FarmLandId } from './canonicalLandData';
 
 export interface FarmAccessState {
   historicallyUnlocked: ReadonlySet<FarmLandId>;
@@ -53,7 +53,9 @@ export function unlockCoinLand(input: {
     return { access: input.access, coinsSpent: 0, chaosSeedsGranted: 0 };
   }
 
-  const cost = input.landId === 2 ? 88 : 888;
+  const definition = getFarmV2Land(input.landId);
+  if (definition.unlock.kind !== 'coins') throw new Error('LAND_NOT_COIN_UNLOCKABLE');
+  const cost = definition.unlock.amount;
   if (input.landId === 3 && !input.access.historicallyUnlocked.has(2)) {
     throw new Error('LAND_2_REQUIRED');
   }

@@ -2,7 +2,8 @@
  * 乾坤福田 V2 — Canonical land master data.
  *
  * IMPORTANT:
- * - Product values here mirror the approved Canonical Master.
+ * - Product values mirror the Google Sheet "御策羅盤｜乾坤福田 V2 Canonical Master".
+ * - Land 2/3 coin prices are governed by RULES.LAND-UNLOCK-001.
  * - Do not infer or restore values from the legacy V1/prototype runtime.
  * - Time values are authoritative durations for the V2 server runtime.
  */
