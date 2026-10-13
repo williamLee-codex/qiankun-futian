@@ -87,20 +87,20 @@ const fs = require("node:fs");
         r.fulfill({ status: 200, contentType: "text/css", body: "" }),
       );
       await page.route("https://test-font.local/**", (r) =>
-        r.fulfill({
-          status: 200,
-          headers: { "access-control-allow-origin": "*" },
-          body: fs.readFileSync(
-            new URL(r.request().url()).pathname.startsWith("/emoji/") &&
-              emojiFontDir
-              ? emojiFontDir +
-                  "/files/" +
-                  new URL(r.request().url()).pathname.slice(7)
-              : fontDir +
-                  "/files/" +
-                  new URL(r.request().url()).pathname.slice(1),
-          ),
-        }),
+        {
+          const fontPath = new URL(r.request().url()).pathname;
+          const isEmoji = fontPath.startsWith("/emoji/");
+          const relativePath = fontPath.slice(isEmoji ? 7 : 1);
+          const fontFile = isEmoji
+            ? emojiFontDir + "/files/" + relativePath
+            : fontDir + "/files/" + relativePath;
+          return r.fulfill({
+            status: 200,
+            contentType: fontPath.endsWith(".woff2") ? "font/woff2" : "font/woff",
+            headers: { "access-control-allow-origin": "*" },
+            body: fs.readFileSync(fontFile),
+          });
+        },
       );
     }
     const sizes = [20, 10, 6, 4, 3, 1];
@@ -116,6 +116,13 @@ const fs = require("node:fs");
       serverTime: Date.now(),
       pendingMutation: null,
       player: {
+        missionState: {
+          dailyPeriodStart: Date.now(),
+          weeklyPeriodStart: Date.now(),
+          progress: Object.fromEntries(
+            ["MISSION_D01", "MISSION_D02", "MISSION_D03", "MISSION_D04", "MISSION_W01", "MISSION_W02", "MISSION_W03", "MISSION_W04"].map((id) => [id, id === "MISSION_D01" ? { progress: 1, completed: true, claimed: false } : { progress: 0, completed: false, claimed: false }]),
+          ),
+        },
         accessState: { historicallyUnlocked: [] },
         farmerState: {
           entitled: true,
@@ -125,6 +132,7 @@ const fs = require("node:fs");
         },
         chaosSeedState: { pending: 3 },
         warehouseState: {
+          materials: { "蘊靈砂": 0, "九霄玉髓": 0 },
           seeds: Object.fromEntries(sizes.map((n, i) => [i + 1, n])),
           crops: Object.fromEntries(sizes.map((n, i) => [i + 1, 0])),
         },
@@ -141,6 +149,9 @@ const fs = require("node:fs");
     const ids = [];
     const purchases = [];
     const coinUnlockIds = [];
+    const missionClaimIds = [];
+    let missionClaimCommitted = false;
+    let loseFirstMissionResponse = true;
     const committedCoinUnlocks = new Set();
     let loseFirstUnlockResponse = true;
     await page.route("http://localhost:5000/api/**", async (route) => {
@@ -156,6 +167,25 @@ const fs = require("node:fs");
         });
       if (req.method() === "POST") {
         ids.push(req.headers()["x-request-id"]);
+        const missionMatch = path.match(/missions\/(MISSION_[DW]\d+)\/claim$/);
+        if (missionMatch) {
+          const requestId = req.headers()["x-request-id"];
+          assert.equal(missionMatch[1], "MISSION_D01");
+          assert.equal(req.postData(), null);
+          missionClaimIds.push(requestId);
+          if (!missionClaimCommitted) {
+            missionClaimCommitted = true;
+            snapshot.player.warehouseState.materials["蘊靈砂"] += 1;
+            snapshot.player.missionState.progress.MISSION_D01.claimed = true;
+          }
+          if (loseFirstMissionResponse) {
+            loseFirstMissionResponse = false;
+            snapshot.pendingMutation = { requestId, operation: "claimMission", missionId: "MISSION_D01" };
+            return route.fulfill({ status: 200, contentType: "application/json", body: "{" });
+          }
+          assert.equal(requestId, missionClaimIds[0]);
+          snapshot.pendingMutation = null;
+        }
         const unlockMatch = path.match(/lands\/(2|3)\/unlock/);
         if (unlockMatch) {
           const landId = +unlockMatch[1];
@@ -230,6 +260,14 @@ const fs = require("node:fs");
     });
     await page.goto("http://127.0.0.1:4174/?launchToken=fixture-only");
     await page.getByRole("button", { name: "微芒凡土，待播種" }).waitFor();
+    await page.locator('[data-mission-id="MISSION_D01"]').getByRole("button", { name: "領取任務獎勵" }).click();
+    await page.getByRole("button", { name: "重試尚未確認的操作（沿用原交易編號）" }).waitFor();
+    const missionRequestId = missionClaimIds[0];
+    await page.getByRole("button", { name: "重試尚未確認的操作（沿用原交易編號）" }).click();
+    await page.locator('[data-mission-id="MISSION_D01"]').getByText("播種：已領取", { exact: true }).waitFor();
+    assert.equal(missionClaimIds.length, 2);
+    assert.equal(missionClaimIds[1], missionRequestId);
+    assert.equal(snapshot.player.warehouseState.materials["蘊靈砂"], 1);
     const sceneImage = page.locator('[data-testid="farm-v2-scene"] img');
     await sceneImage.evaluate(async (image) => {
       await image.decode();
@@ -378,8 +416,8 @@ const fs = require("node:fs");
         .textContent(),
       "3",
     );
-    assert.equal(ids.length, 13);
-    assert.equal(new Set(ids).size, 13);
+    assert.equal(ids.length, 15);
+    assert.equal(new Set(ids).size, 14);
     assert.equal(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -454,8 +492,8 @@ const fs = require("node:fs");
       await page.getByRole("spinbutton", { name: "購買種子包數" }).count(),
       0,
     );
-    assert.equal(ids.length, 20);
-    assert.equal(new Set(ids).size, 20);
+    assert.equal(ids.length, 22);
+    assert.equal(new Set(ids).size, 21);
     snapshot.lands[1].accessActive = false;
     snapshot.lands[1].lifecycle = "LOCKED";
     snapshot.lands[2].accessActive = false;
@@ -480,10 +518,32 @@ const fs = require("node:fs");
     assert.deepEqual(snapshot.player.accessState.historicallyUnlocked.sort(), [2, 3]);
     assert.equal(coinUnlockIds.length, 3);
     assert.equal(new Set(coinUnlockIds.map((item) => item.requestId)).size, 2);
-    assert.equal(ids.length, 23);
-    assert.equal(new Set(ids).size, 22);
+    assert.equal(ids.length, 25);
+    assert.equal(new Set(ids).size, 23);
     await page.locator(".farm-v2-flight").waitFor({ state: "detached" });
-    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(async () => {
+      await document.fonts.load('16px "Noto Sans TC"', "乾坤福田微芒凡土");
+      await document.fonts.load('16px "Noto Emoji"', "🌱🔒");
+      await document.fonts.ready;
+    });
+    if (fontDir) {
+      const fontHealth = await page.evaluate(() => {
+        const heading = document.querySelector(".farm-v2-surface h2");
+        if (!heading) throw new Error("MISSING_SCENE_HEADING");
+        const style = getComputedStyle(heading);
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("CANVAS_UNAVAILABLE");
+        context.font = style.font;
+        return {
+          failedFaces: [...document.fonts].filter((face) => face.status === "error").length,
+          headingWidth: context.measureText(heading.textContent ?? "").width,
+          headingText: heading.textContent,
+        };
+      });
+      assert.equal(fontHealth.failedFaces, 0, "browser fixture fonts must load before screenshots");
+      assert.ok(fontHealth.headingWidth > 0, "Chinese heading must render in browser screenshots");
+    }
     await page.screenshot({
       path: `${evidence}/farm-${width}.png`,
       fullPage: true,
@@ -491,7 +551,7 @@ const fs = require("node:fs");
     assert.deepEqual(errors, []);
     outcomes.push({
       width,
-      operations: 23,
+      operations: 25,
       multiPackPurchases: purchases,
       consoleErrors: errors.length,
       reducedMotionRequested: width === 320,

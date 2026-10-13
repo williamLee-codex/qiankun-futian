@@ -9,6 +9,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const farmV2PlayerStateTable = pgTable(
@@ -78,6 +79,10 @@ export const farmV2MutationTable = pgTable(
     walletCurrency: text("wallet_currency"),
     walletAmount: integer("wallet_amount"),
     walletTransaction: jsonb("wallet_transaction"),
+    missionId: text("mission_id"),
+    missionPeriodStart: timestamp("mission_period_start", { withTimezone: true }),
+    missionMaterialId: text("mission_material_id"),
+    missionMaterialQuantity: integer("mission_material_quantity"),
     failureCode: text("failure_code"),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -104,5 +109,34 @@ export const farmV2MutationTable = pgTable(
       "farm_v2_mutation_wallet_amount_check",
       sql`${table.walletAmount} > 0`,
     ),
+    check(
+      "farm_v2_mutation_mission_claim_check",
+      sql`(
+        (${table.missionId} IS NULL AND ${table.missionPeriodStart} IS NULL AND ${table.missionMaterialId} IS NULL AND ${table.missionMaterialQuantity} IS NULL)
+        OR
+        (
+          ${table.missionId} IS NOT NULL
+          AND ${table.missionMaterialId} IS NOT NULL
+          AND ${table.missionMaterialQuantity} IS NOT NULL
+          AND ${table.walletDirection} IS NOT NULL
+          AND ${table.walletCurrency} IS NOT NULL
+          AND ${table.walletAmount} IS NOT NULL
+          AND ${table.missionId} IN ('MISSION_D01','MISSION_D02','MISSION_D03','MISSION_D04','MISSION_W01','MISSION_W02','MISSION_W03','MISSION_W04')
+          AND ${table.missionPeriodStart} IS NOT NULL
+          AND ${table.missionMaterialId} = CASE WHEN ${table.missionId} LIKE 'MISSION_D%' THEN '蘊靈砂' ELSE '九霄玉髓' END
+          AND ${table.missionMaterialQuantity} = CASE WHEN ${table.missionId} = 'MISSION_D04' THEN 3 ELSE 1 END
+          AND ${table.walletDirection} = 'credit'
+          AND ${table.walletCurrency} = 'coin'
+          AND ${table.walletAmount} = CASE ${table.missionId}
+            WHEN 'MISSION_D01' THEN 2 WHEN 'MISSION_D02' THEN 3 WHEN 'MISSION_D03' THEN 3 WHEN 'MISSION_D04' THEN 5
+            WHEN 'MISSION_W01' THEN 10 WHEN 'MISSION_W02' THEN 15 WHEN 'MISSION_W03' THEN 15 WHEN 'MISSION_W04' THEN 20
+          END
+          AND ${table.action} = 'mission-claim:' || ${table.missionId}
+        )
+      )`,
+    ),
+    uniqueIndex("farm_v2_mutation_mission_period_unique")
+      .on(table.userId, table.missionId, table.missionPeriodStart)
+      .where(sql`${table.missionId} IS NOT NULL`),
   ],
 );

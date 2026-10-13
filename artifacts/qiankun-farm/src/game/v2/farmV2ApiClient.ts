@@ -10,7 +10,20 @@ export type FarmV2Operation =
   | "exchangeCrops"
   | "setFarmerEnabled"
   | "claimChaosSeeds"
-  | "unlockCoinLand";
+  | "unlockCoinLand"
+  | "claimMission";
+
+export type FarmV2MissionId =
+  | "MISSION_D01" | "MISSION_D02" | "MISSION_D03" | "MISSION_D04"
+  | "MISSION_W01" | "MISSION_W02" | "MISSION_W03" | "MISSION_W04";
+export type FarmV2MissionProgress = { progress: number; completed: boolean; claimed: boolean };
+export type FarmV2MissionState = {
+  dailyPeriodStart: number;
+  weeklyPeriodStart: number;
+  progress: Record<FarmV2MissionId, FarmV2MissionProgress>;
+  expiredMissionIds?: FarmV2MissionId[];
+};
+export type FarmV2MaterialId = "蘊靈砂" | "九霄玉髓";
 
 export type FarmV2Land = {
   landId: number;
@@ -24,12 +37,14 @@ export type FarmV2Land = {
 export type FarmV2Warehouse = {
   seeds: Record<string, number>;
   crops: Record<string, number>;
+  materials?: Partial<Record<FarmV2MaterialId, number>>;
 };
 
 export type FarmV2State = {
   serverTime: number;
   player: {
     warehouseState: FarmV2Warehouse;
+    missionState: FarmV2MissionState;
     firstFarmEnteredAt: string | null;
   };
   lands: FarmV2Land[];
@@ -152,6 +167,13 @@ export function createFarmV2Api(input: {
         `farm/v2/crops/${landId}/exchange`,
         "POST",
         { cropQuantity },
+        requestId,
+      ),
+    claimMission: (missionId: FarmV2MissionId, requestId?: string) =>
+      request<unknown>(
+        `farm/v2/missions/${missionId}/claim`,
+        "POST",
+        undefined,
         requestId,
       ),
     unlockCoinLand: (landId: number, requestId?: string) => {

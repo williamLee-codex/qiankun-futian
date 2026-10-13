@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { FarmV2AuthenticatedView } from "./FarmV2AuthenticatedView";
 import { mapServerLands } from "./farmV2SceneAdapter";
 import { createFarmV2SceneEntities } from "./farmV2SceneWorld";
+import { createMissionState, recordMissionEvent } from "./missionRuntime";
 const state = vi.hoisted(() => ({ value: null as any }));
 vi.mock("./useFarmV2Scene", () => ({ useFarmV2Scene: () => state.value }));
 let renderer: ReactTestRenderer;
@@ -40,6 +41,8 @@ beforeEach(() => {
       cropInventory: {},
       serverTime: 0,
       receivedAt: Date.now(),
+      missions: createMissionState(0),
+      materialInventory: { "蘊靈砂": 0, "九霄玉髓": 0 },
       farmer: null,
       chaosPending: 0,
     },
@@ -172,4 +175,36 @@ it("renders five growth stages from the server maturity time", async () => {
     }
     await act(async () => renderer.unmount());
   }
+});
+
+
+it("shows server-owned mission progress, fixed reward labels and claim controls", async () => {
+  const now = Date.parse("2026-10-13T10:00:00+08:00");
+  let missions = createMissionState(now);
+  missions = recordMissionEvent(missions, "SOW", now);
+  state.value.data.missions = missions;
+  await mount();
+  const mission = renderer.root.findByProps({ "data-mission-id": "MISSION_D01" });
+  expect(mission.findByType("strong").children.join("")).toBe("今日播種");
+  expect(mission.findAllByType("p").map(node => node.children.join(""))).toContain("播種：可領取");
+  expect(mission.findAllByType("p").map(node => node.children.join(""))).toContain("獎勵：2 金幣、蘊靈砂 × 1");
+  const claim = mission.findAllByType("button").find(button => button.children.join("") === "領取任務獎勵")!;
+  await act(async () => claim.props.onClick());
+  expect(state.value.mutate).toHaveBeenCalledWith("claimMission", "MISSION_D01", undefined);
+});
+
+it("keeps all task controls disabled while a mission claim is pending", async () => {
+  state.value.pendingRetry = { operation: "claimMission", missionId: "MISSION_D01" };
+  await mount();
+  const buttons = renderer.root.findAllByType("button");
+  expect(buttons.some(button => button.children.join("") === "領取任務獎勵" && button.props.disabled)).toBe(true);
+});
+
+
+it("distinguishes a just-expired unclaimed mission from current progress", async () => {
+  state.value.data.missions = { ...createMissionState(0), expiredMissionIds: ["MISSION_D01"] };
+  await mount();
+  const mission = renderer.root.findByProps({ "data-mission-id": "MISSION_D01" });
+  expect(mission.findAllByType("p").map(node => node.children.join(""))).toContain("播種：逾期失效；本期 0／1");
+  expect(mission.findAllByType("button").find(button => button.children.join("") === "領取任務獎勵")?.props.disabled).toBe(true);
 });

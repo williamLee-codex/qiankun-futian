@@ -7,18 +7,22 @@ import {
   createFarmV2Api,
   FarmV2ApiError,
   type FarmV2Operation,
+  type FarmV2MissionId,
+  type FarmV2MissionState,
 } from "./farmV2ApiClient";
 import { mapServerLands, mapServerWarehouse } from "./farmV2SceneAdapter";
 import type { Plot, CropInventory } from "../types";
+import { FARM_V2_MISSIONS } from "./missionRuntime";
 
+type FarmV2PendingMutation =
+  | { requestId: string; operation: "claimMission"; missionId: FarmV2MissionId }
+  | { requestId: string; operation: "purchaseSeeds" | "exchangeCrops" | "unlockCoinLand"; landId: number; quantity?: number };
+type FarmV2Retry =
+  | { operation: "claimMission"; missionId: FarmV2MissionId }
+  | { operation: Exclude<FarmV2Operation, "claimMission">; landId: number; quantity?: number };
 type Snapshot = {
   serverTime: number;
-  pendingMutation?: {
-    requestId: string;
-    operation: "purchaseSeeds" | "exchangeCrops" | "unlockCoinLand";
-    landId: number;
-    quantity?: number;
-  } | null;
+  pendingMutation?: FarmV2PendingMutation | null;
   player: {
     farmerState?: { entitled: boolean; enabledByLand: Record<number, boolean> };
     chaosSeedState?: { pending: number } | null;
@@ -26,7 +30,9 @@ type Snapshot = {
     warehouseState: {
       seeds: Record<string, number>;
       crops: Record<string, number>;
+      materials?: Partial<Record<"蘊靈砂" | "九霄玉髓", number>>;
     };
+    missionState: FarmV2MissionState;
   };
   lands: Parameters<typeof mapServerLands>[0];
 };
@@ -36,11 +42,13 @@ type SceneData = {
   serverTime: number;
   receivedAt: number;
   chaosPending: number;
+  missions: FarmV2MissionState;
   farmer: { entitled: boolean; enabledByLand: Record<number, boolean> } | null;
   plots: Plot[];
   entities: FarmV2SceneLandEntity[];
   seedInventory: CropInventory;
   cropInventory: CropInventory;
+  materialInventory: { "蘊靈砂": number; "九霄玉髓": number };
   coinLandHistory: Record<number, boolean>;
 };
 
@@ -53,11 +61,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [pendingRetry, setPendingRetry] = useState<{
-    operation: FarmV2Operation;
-    landId: number;
-    quantity?: number;
-  } | null>(null);
+  const [pendingRetry, setPendingRetry] = useState<FarmV2Retry | null>(null);
   const mutationInFlight = useRef(false);
   const readSequence = useRef(0);
   const uncertainMutation = useRef<{ key: string; requestId: string } | null>(
@@ -97,6 +101,18 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       if (!Number.isFinite(snapshot.serverTime))
         throw new Error("INVALID_FARM_SERVER_TIME");
       const chaosPending = snapshot.player.chaosSeedState?.pending ?? 0;
+      const missions = snapshot.player.missionState;
+      if (!missions || !Number.isFinite(missions.dailyPeriodStart) || !Number.isFinite(missions.weeklyPeriodStart))
+        throw new Error("INVALID_FARM_MISSION_STATE");
+      if (missions.expiredMissionIds !== undefined && (!Array.isArray(missions.expiredMissionIds) || missions.expiredMissionIds.some((id) => !FARM_V2_MISSIONS.some((mission) => mission.id === id))))
+        throw new Error("INVALID_FARM_MISSION_STATE");
+      for (const mission of FARM_V2_MISSIONS) {
+        const progress = missions.progress?.[mission.id as FarmV2MissionId];
+        if (!progress || !Number.isSafeInteger(progress.progress) || progress.progress < 0 || progress.progress > mission.target ||
+          typeof progress.completed !== "boolean" || typeof progress.claimed !== "boolean" ||
+          progress.completed !== (progress.progress >= mission.target))
+          throw new Error("INVALID_FARM_MISSION_STATE");
+      }
       if (
         !Number.isInteger(chaosPending) ||
         chaosPending < 0 ||
@@ -128,32 +144,35 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         plots,
         entities: createFarmV2SceneEntities(plots),
         ...mapServerWarehouse(snapshot.player.warehouseState),
+        missions,
         coinLandHistory,
       };
       if (sequence !== readSequence.current || epoch !== session.current.epoch)
         return false;
       if (snapshot.pendingMutation) {
         const pending = snapshot.pendingMutation;
-        if (
-          !pending.requestId ||
-          !["purchaseSeeds", "exchangeCrops", "unlockCoinLand"].includes(pending.operation) ||
-          !Number.isInteger(pending.landId) ||
-          pending.landId < 1 ||
-          pending.landId > 6 ||
-          (pending.operation === "unlockCoinLand"
-            ? ![2, 3].includes(pending.landId) || pending.quantity !== undefined
-            : !Number.isSafeInteger(pending.quantity) || pending.quantity! <= 0)
-        )
-          throw new Error("INVALID_PENDING_MUTATION");
-        uncertainMutation.current = {
-          key: `${pending.operation}:${pending.landId}:${pending.quantity ?? ""}`,
-          requestId: pending.requestId,
-        };
-        setPendingRetry({
-          operation: pending.operation,
-          landId: pending.landId,
-          ...(pending.quantity === undefined ? {} : { quantity: pending.quantity }),
-        });
+        if (!pending.requestId) throw new Error("INVALID_PENDING_MUTATION");
+        if (pending.operation === "claimMission") {
+          if (!FARM_V2_MISSIONS.some((mission) => mission.id === pending.missionId))
+            throw new Error("INVALID_PENDING_MUTATION");
+          uncertainMutation.current = { key: `claimMission:${pending.missionId}`, requestId: pending.requestId };
+          setPendingRetry({ operation: "claimMission", missionId: pending.missionId });
+        } else {
+          if (!Number.isInteger(pending.landId) || pending.landId < 1 || pending.landId > 6 ||
+            (pending.operation === "unlockCoinLand"
+              ? ![2, 3].includes(pending.landId) || pending.quantity !== undefined
+              : !Number.isSafeInteger(pending.quantity) || pending.quantity! <= 0))
+            throw new Error("INVALID_PENDING_MUTATION");
+          uncertainMutation.current = {
+            key: `${pending.operation}:${pending.landId}:${pending.quantity ?? ""}`,
+            requestId: pending.requestId,
+          };
+          setPendingRetry({
+            operation: pending.operation,
+            landId: pending.landId,
+            ...(pending.quantity === undefined ? {} : { quantity: pending.quantity }),
+          });
+        }
         retryEpoch.current = epoch;
       } else {
         uncertainMutation.current = null;
@@ -207,11 +226,14 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   }, [data, busy, loading, pendingRetry, refresh]);
 
   const mutate = useCallback(
-    async (operation: FarmV2Operation, landId: number, quantity?: number) => {
+    async (operation: FarmV2Operation, target: number | FarmV2MissionId, quantity?: number) => {
       const epoch = session.current.epoch;
       if (!launchToken || mutationInFlight.current) return false;
+      const isMissionClaim = operation === "claimMission";
+      const missionId = isMissionClaim && typeof target === "string" ? target : undefined;
+      const landId = !isMissionClaim && typeof target === "number" ? target : undefined;
+      if (isMissionClaim ? !missionId || !FARM_V2_MISSIONS.some((mission) => mission.id === missionId) : landId === undefined || !Number.isInteger(landId) || landId < 1 || landId > 6) return false;
       if (operation === "claimChaosSeeds" && landId !== 6) return false;
-      if (!Number.isInteger(landId) || landId < 1 || landId > 6) return false;
       if (operation === "unlockCoinLand" && landId !== 2 && landId !== 3) return false;
       if (
         (operation === "purchaseSeeds" || operation === "exchangeCrops") &&
@@ -222,7 +244,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       }
       if (operation === "setFarmerEnabled" && quantity !== 0 && quantity !== 1)
         return false;
-      const key = `${operation}:${landId}:${quantity ?? ""}`;
+      const key = isMissionClaim ? `claimMission:${missionId}` : `${operation}:${landId}:${quantity ?? ""}`;
       // An ambiguous network failure must not be retried with a fresh ID.
       if (uncertainMutation.current && uncertainMutation.current.key !== key) {
         setError("FARM_V2_PREVIOUS_MUTATION_UNCONFIRMED");
@@ -239,17 +261,19 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       try {
         const api = createFarmV2Api({ baseUrl, launchToken });
         if (operation === "setFarmerEnabled")
-          await api.setFarmerEnabled(landId, quantity === 1, requestId);
-        else if (operation === "sow") await api.sow(landId, requestId);
-        else if (operation === "harvest") await api.harvest(landId, requestId);
+          await api.setFarmerEnabled(landId!, quantity === 1, requestId);
+        else if (operation === "sow") await api.sow(landId!, requestId);
+        else if (operation === "harvest") await api.harvest(landId!, requestId);
         else if (operation === "claimChaosSeeds")
           await api.claimChaosSeeds(requestId);
         else if (operation === "unlockCoinLand")
-          await api.unlockCoinLand(landId, requestId);
+          await api.unlockCoinLand(landId!, requestId);
+        else if (operation === "claimMission")
+          await api.claimMission(missionId!, requestId);
         else {
           if (operation === "purchaseSeeds")
-            await api.purchaseSeeds(landId, quantity!, requestId);
-          else await api.exchangeCrops(landId, quantity!, requestId);
+            await api.purchaseSeeds(landId!, quantity!, requestId);
+          else await api.exchangeCrops(landId!, quantity!, requestId);
         }
         // The POST is confirmed. A subsequent GET failure must never cause a
         // replay of the already committed mutation.
@@ -271,7 +295,9 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
           uncertainMutation.current = null;
           setPendingRetry(null);
         } else {
-          setPendingRetry({ operation, landId, quantity });
+          setPendingRetry(isMissionClaim
+            ? { operation: "claimMission", missionId: missionId! }
+            : { operation: operation as Exclude<FarmV2Operation, "claimMission">, landId: landId!, quantity });
           retryEpoch.current = epoch;
         }
         // Also discard reads started while the operation was in flight.

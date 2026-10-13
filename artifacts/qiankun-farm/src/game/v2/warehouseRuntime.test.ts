@@ -82,3 +82,33 @@ describe('Farm V2 canonical economy runtime', () => {
     expect(result.warehouse.crops[6]).toBe(0);
   });
 });
+
+describe('Farm V2 mission material inventory', () => {
+  it('initializes canonical materials and safely credits integer quantities', async () => {
+    const { creditFarmMaterial } = await import('./warehouseRuntime');
+    const empty = createEmptyFarmWarehouse();
+    expect(empty.materials).toEqual({ '蘊靈砂': 0, '九霄玉髓': 0 });
+    expect(creditFarmMaterial(empty, '蘊靈砂', 3).materials).toEqual({
+      '蘊靈砂': 3,
+      '九霄玉髓': 0,
+    });
+    expect(creditFarmMaterial({ ...empty, materials: { '蘊靈砂': 5 } }, '蘊靈砂', 2).materials?.['蘊靈砂']).toBe(7);
+  });
+
+  it.each([
+    [-1, 'INVALID_MATERIAL_QUANTITY'],
+    [0, 'INVALID_MATERIAL_QUANTITY'],
+    [1.5, 'INVALID_MATERIAL_QUANTITY'],
+    [Number.MAX_SAFE_INTEGER + 1, 'INVALID_MATERIAL_QUANTITY'],
+  ])('rejects invalid credit quantity %s', async (quantity, error) => {
+    const { creditFarmMaterial } = await import('./warehouseRuntime');
+    expect(() => creditFarmMaterial(createEmptyFarmWarehouse(), '蘊靈砂', quantity)).toThrow(error);
+  });
+
+  it('rejects unknown or corrupted material inventory values', async () => {
+    const { creditFarmMaterial } = await import('./warehouseRuntime');
+    expect(() => creditFarmMaterial(createEmptyFarmWarehouse(), 'unknown' as never, 1)).toThrow('UNKNOWN_FARM_MATERIAL');
+    expect(() => creditFarmMaterial({ ...createEmptyFarmWarehouse(), materials: { '蘊靈砂': -1 } }, '蘊靈砂', 1)).toThrow('INVALID_MATERIAL_INVENTORY');
+    expect(() => creditFarmMaterial({ ...createEmptyFarmWarehouse(), materials: { '蘊靈砂': Number.MAX_SAFE_INTEGER } }, '蘊靈砂', 1)).toThrow('INVALID_MATERIAL_INVENTORY');
+  });
+});

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 import { create, act, type ReactTestRenderer } from "react-test-renderer";
 import { useFarmV2Scene } from "./useFarmV2Scene";
+import { createMissionState } from "./missionRuntime";
 let value: ReturnType<typeof useFarmV2Scene>;
 let renderer: ReactTestRenderer;
 function Harness({ token }: { token: string }) {
@@ -20,7 +21,9 @@ const snapshot = (stock: number, pendingMutation: any = null) => ({
   })),
   player: {
     accessState: { historicallyUnlocked: [1, 2, 3, 4, 5, 6] },
+    missionState: createMissionState(Date.now()),
     warehouseState: {
+      materials: { "蘊靈砂": 0, "九霄玉髓": 0 },
       seeds: Object.fromEntries(
         Array.from({ length: 6 }, (_, i) => [i + 1, stock]),
       ),
@@ -177,4 +180,26 @@ it('restores an unfinished coin-land purchase and reuses its server request ID',
  expect(value.pendingRetry?.operation).toBe('unlockCoinLand');
  await act(async()=>{await value.mutate('unlockCoinLand',2);});
  expect(sent).toEqual(['same-core-unlock']);expect(value.pendingRetry).toBe(null);
+});
+
+
+it("restores an uncertain mission claim and retries it with the original request ID", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const ids: string[] = [];
+  let writes = 0;
+  vi.stubGlobal("fetch", async (_url: any, options: any) => {
+    if (options.method === "POST") {
+      ids.push(options.headers["x-request-id"]);
+      if (writes++ === 0) throw new Error("NETWORK_INTERRUPTED");
+      return json({});
+    }
+    return json(snapshot(20, writes === 0 ? { requestId: "mission-original", operation: "claimMission", missionId: "MISSION_D01" } : null));
+  });
+  await act(async () => { renderer = create(<Harness token="A" />); });
+  expect(value.pendingRetry).toEqual({ operation: "claimMission", missionId: "MISSION_D01" });
+  await act(async () => { expect(await value.mutate("claimMission", "MISSION_D01")).toBe(false); });
+  expect(value.pendingRetry?.operation).toBe("claimMission");
+  await act(async () => { expect(await value.mutate("claimMission", "MISSION_D01")).toBe(true); });
+  expect(ids).toEqual(["mission-original", "mission-original"]);
+  expect(value.pendingRetry).toBe(null);
 });

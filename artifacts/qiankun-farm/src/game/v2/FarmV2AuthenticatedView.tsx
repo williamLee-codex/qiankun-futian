@@ -1,6 +1,7 @@
 import { FarmV2LandEntity } from './FarmV2LandEntity';
 import { useEffect, useState } from 'react';
-import type { FarmV2Operation } from './farmV2ApiClient';
+import type { FarmV2MissionId, FarmV2Operation } from './farmV2ApiClient';
+import { FARM_V2_MISSIONS } from './missionRuntime';
 import { useFarmV2Scene } from './useFarmV2Scene';
 import { CROP_DATA } from '../types';
 
@@ -48,10 +49,15 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
     () => setSeedPackInput("1"),
     [selectedLand, props.apiBaseUrl, props.launchToken],
   );
-  async function execute(operation: FarmV2Operation, landId: number, quantity?: number) {
+  async function execute(operation: FarmV2Operation, target: number | FarmV2MissionId, quantity?: number) {
     setNotice(null);
-    const ok = await mutate(operation, landId, quantity);
-    setNotice(ok ? (operation === 'claimChaosSeeds' ? '混沌種子已收入倉庫。' : operation === 'unlockCoinLand' ? '解鎖狀態已更新。' : '操作已完成。') : '操作未確認，請檢查錯誤並重新讀取。');
+    const ok = await mutate(operation, target, quantity);
+    setNotice(ok ? (operation === 'claimMission' ? '任務獎勵已領取。' : operation === 'claimChaosSeeds' ? '混沌種子已收入倉庫。' : operation === 'unlockCoinLand' ? '解鎖狀態已更新。' : '操作已完成。') : '操作未確認，請檢查錯誤並重新讀取。');
+  }
+  function retryPending() {
+    if (!pendingRetry) return;
+    if (pendingRetry.operation === 'claimMission') void execute('claimMission', pendingRetry.missionId);
+    else void execute(pendingRetry.operation, pendingRetry.landId, pendingRetry.quantity);
   }
 
   async function handlePlotClick(plot: NonNullable<typeof data>['plots'][number]) {
@@ -79,7 +85,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
         : '無法取得正式農田資料，已停止所有操作。'}</p>
       {error && <p>{error}</p>}
       {pendingRetry ? (
-        <button type="button" disabled={busy || loading} onClick={() => { void execute(pendingRetry.operation, pendingRetry.landId, pendingRetry.quantity); }}>
+        <button type="button" disabled={busy || loading} onClick={retryPending}>
           重試尚未確認的操作（沿用原交易編號）
         </button>
       ) : (
@@ -103,9 +109,32 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
         {/* Warehouse flights require verified original-scene anchors. */}
       </div>
       <h2>乾坤福田</h2>
+      <section className="farm-v2-missions" aria-label="每日與每週任務">
+        <h3>每日與每週任務</h3>
+        <p>每日與每週於台灣時間 05:00 重置；週期結束未領取的獎勵會失效。</p>
+        {(['DAILY', 'WEEKLY'] as const).map(period => (
+          <section key={period} aria-label={period === 'DAILY' ? '每日任務' : '每週任務'}>
+            <h4>{period === 'DAILY' ? '每日任務' : '每週任務'}</h4>
+            {FARM_V2_MISSIONS.filter(mission => mission.period === period).map(mission => {
+              const progress = data.missions.progress[mission.id as FarmV2MissionId];
+              const claimable = progress.completed && !progress.claimed;
+              const expired = data.missions.expiredMissionIds?.includes(mission.id as FarmV2MissionId) ?? false;
+              const status = progress.claimed ? '已領取' : claimable ? '可領取' : expired ? `逾期失效；本期 ${progress.progress}／${mission.target}` : `${progress.progress}／${mission.target}`;
+              return <article key={mission.id} data-mission-id={mission.id}>
+                <strong>{mission.title}</strong>
+                <p>{mission.event === 'SOW' ? '播種' : mission.event === 'HARVEST' ? '收成' : mission.event === 'EXCHANGE' ? '兌換' : '完成前置任務'}：{status}</p>
+                <p>獎勵：{mission.reward.coins} 金幣、{mission.reward.materialId} × {mission.reward.materialQuantity}</p>
+                <button type="button" disabled={busy || loading || !!pendingRetry || !claimable}
+                  onClick={() => { void execute('claimMission', mission.id as FarmV2MissionId); }}>領取任務獎勵</button>
+              </article>;
+            })}
+          </section>
+        ))}
+      </section>
       <details className="farm-v2-warehouse">
         <summary>福田倉庫</summary>
         {(busy || loading) && <p role="status">正在同步庫存…</p>}
+        <p aria-label="任務材料庫存">蘊靈砂：{data.materialInventory["蘊靈砂"]}；九霄玉髓：{data.materialInventory["九霄玉髓"]}</p>
         <table aria-label="福田倉庫種子與靈植">
           <caption>種子與靈植</caption>
           <thead><tr><th scope="col">種類</th><th scope="col">種子（顆）</th><th scope="col">靈植（株）</th></tr></thead>
@@ -129,7 +158,7 @@ export function FarmV2AuthenticatedView(props: { apiBaseUrl: string; launchToken
         <div role="alert">
           <p>上一筆操作的結果尚未確認，請重試原操作；在確認前無法執行其他交易。</p>
           <button type="button" disabled={busy || loading}
-            onClick={() => { void execute(pendingRetry.operation, pendingRetry.landId, pendingRetry.quantity); }}>
+            onClick={retryPending}>
             重試尚未確認的操作（沿用原交易編號）
           </button>
         </div>

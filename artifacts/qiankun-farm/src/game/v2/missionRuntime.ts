@@ -11,6 +11,7 @@ export interface FarmMissionReward {
 
 export interface FarmMissionDefinition {
   id: string;
+  title: string;
   period: FarmMissionPeriod;
   event?: FarmMissionEvent;
   target: number;
@@ -19,14 +20,14 @@ export interface FarmMissionDefinition {
 }
 
 export const FARM_V2_MISSIONS: readonly FarmMissionDefinition[] = [
-  { id: 'MISSION_D01', period: 'DAILY', event: 'SOW', target: 1, reward: { coins: 2, materialId: '蘊靈砂', materialQuantity: 1 } },
-  { id: 'MISSION_D02', period: 'DAILY', event: 'HARVEST', target: 1, reward: { coins: 3, materialId: '蘊靈砂', materialQuantity: 1 } },
-  { id: 'MISSION_D03', period: 'DAILY', event: 'EXCHANGE', target: 1, reward: { coins: 3, materialId: '蘊靈砂', materialQuantity: 1 } },
-  { id: 'MISSION_D04', period: 'DAILY', target: 1, prerequisiteIds: ['MISSION_D01', 'MISSION_D02', 'MISSION_D03'], reward: { coins: 5, materialId: '蘊靈砂', materialQuantity: 3 } },
-  { id: 'MISSION_W01', period: 'WEEKLY', event: 'SOW', target: 10, reward: { coins: 10, materialId: '九霄玉髓', materialQuantity: 1 } },
-  { id: 'MISSION_W02', period: 'WEEKLY', event: 'HARVEST', target: 10, reward: { coins: 15, materialId: '九霄玉髓', materialQuantity: 1 } },
-  { id: 'MISSION_W03', period: 'WEEKLY', event: 'EXCHANGE', target: 5, reward: { coins: 15, materialId: '九霄玉髓', materialQuantity: 1 } },
-  { id: 'MISSION_W04', period: 'WEEKLY', target: 1, prerequisiteIds: ['MISSION_W01', 'MISSION_W02', 'MISSION_W03'], reward: { coins: 20, materialId: '九霄玉髓', materialQuantity: 1 } },
+  { id: 'MISSION_D01', title: '今日播種', period: 'DAILY', event: 'SOW', target: 1, reward: { coins: 2, materialId: '蘊靈砂', materialQuantity: 1 } },
+  { id: 'MISSION_D02', title: '今日收成', period: 'DAILY', event: 'HARVEST', target: 1, reward: { coins: 3, materialId: '蘊靈砂', materialQuantity: 1 } },
+  { id: 'MISSION_D03', title: '福田交易', period: 'DAILY', event: 'EXCHANGE', target: 1, reward: { coins: 3, materialId: '蘊靈砂', materialQuantity: 1 } },
+  { id: 'MISSION_D04', title: '今日福田全勤', period: 'DAILY', target: 1, prerequisiteIds: ['MISSION_D01', 'MISSION_D02', 'MISSION_D03'], reward: { coins: 5, materialId: '蘊靈砂', materialQuantity: 3 } },
+  { id: 'MISSION_W01', title: '耕耘不輟', period: 'WEEKLY', event: 'SOW', target: 10, reward: { coins: 10, materialId: '九霄玉髓', materialQuantity: 1 } },
+  { id: 'MISSION_W02', title: '靈植豐收', period: 'WEEKLY', event: 'HARVEST', target: 10, reward: { coins: 15, materialId: '九霄玉髓', materialQuantity: 1 } },
+  { id: 'MISSION_W03', title: '福田通商', period: 'WEEKLY', event: 'EXCHANGE', target: 5, reward: { coins: 15, materialId: '九霄玉髓', materialQuantity: 1 } },
+  { id: 'MISSION_W04', title: '七日福田', period: 'WEEKLY', target: 1, prerequisiteIds: ['MISSION_W01', 'MISSION_W02', 'MISSION_W03'], reward: { coins: 20, materialId: '九霄玉髓', materialQuantity: 1 } },
 ] as const;
 
 export interface MissionProgress {

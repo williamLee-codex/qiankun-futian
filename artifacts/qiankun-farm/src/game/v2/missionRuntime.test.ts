@@ -9,6 +9,20 @@ import {
 const ts = (iso: string) => Date.parse(iso);
 
 describe('Farm V2 mission runtime', () => {
+  it('matches all eight FINAL mission titles and fixed reward values', async () => {
+    const { FARM_V2_MISSIONS } = await import('./missionRuntime');
+    expect(FARM_V2_MISSIONS.map(mission => [mission.id, mission.title, mission.reward.coins, mission.reward.materialId, mission.reward.materialQuantity])).toEqual([
+      ['MISSION_D01', '今日播種', 2, '蘊靈砂', 1],
+      ['MISSION_D02', '今日收成', 3, '蘊靈砂', 1],
+      ['MISSION_D03', '福田交易', 3, '蘊靈砂', 1],
+      ['MISSION_D04', '今日福田全勤', 5, '蘊靈砂', 3],
+      ['MISSION_W01', '耕耘不輟', 10, '九霄玉髓', 1],
+      ['MISSION_W02', '靈植豐收', 15, '九霄玉髓', 1],
+      ['MISSION_W03', '福田通商', 15, '九霄玉髓', 1],
+      ['MISSION_W04', '七日福田', 20, '九霄玉髓', 1],
+    ]);
+  });
+
   it('completes daily sow/harvest/exchange and then daily full attendance', () => {
     const now = ts('2026-09-28T10:00:00+08:00');
     let state = createMissionState(now);

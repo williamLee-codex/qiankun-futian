@@ -12,6 +12,9 @@ import { ensureFarmV2PlayerInitialized } from "../lib/farm-v2-init";
 import { purchaseFarmV2SeedPacks } from "../lib/farm-v2-seed-purchase";
 import { exchangeFarmV2Crops } from "../lib/farm-v2-crop-exchange";
 import { reconcileFarmV2PaidAccessFromCore } from "../lib/farm-v2-paid-access";
+import { claimFarmV2Mission } from "../lib/farm-v2-mission-claim";
+import type { FarmMissionId } from "../lib/farm-v2-core-mission-reward";
+import { FARM_V2_MISSIONS, rollMissionPeriods, type MissionState } from "../../../qiankun-farm/src/game/v2/missionRuntime";
 
 const router: IRouter = Router();
 
@@ -60,21 +63,34 @@ router.get("/farm/v2/state", async (req, res, next) => {
       )
       .orderBy(farmV2MutationTable.createdAt);
     const walletPending = pending.find((item) =>
-      /^(seed-purchase|crop-exchange|coin-land-unlock):/.test(item.action),
+      /^(seed-purchase|crop-exchange|coin-land-unlock|mission-claim):/.test(item.action),
     );
     const parts = walletPending?.action.split(":");
+    const serverTime = Date.now();
+    const savedMissionState = state.player.missionState as MissionState;
+    const rolledMissionState = rollMissionPeriods(savedMissionState, serverTime);
+    const expiredMissionIds = FARM_V2_MISSIONS.filter((mission) => {
+      const oldPeriod = mission.period === "DAILY" ? savedMissionState.dailyPeriodStart : savedMissionState.weeklyPeriodStart;
+      const currentPeriod = mission.period === "DAILY" ? rolledMissionState.dailyPeriodStart : rolledMissionState.weeklyPeriodStart;
+      const oldProgress = savedMissionState.progress[mission.id];
+      return oldPeriod !== currentPeriod && oldProgress?.completed === true && oldProgress.claimed === false;
+    }).map((mission) => mission.id);
+    const missionState = { ...rolledMissionState, expiredMissionIds };
     res.json({
       ...state,
-      serverTime: Date.now(),
+      player: { ...state.player, missionState },
+      serverTime,
       pendingMutation:
         walletPending && parts
-          ? {
-              requestId: walletPending.requestId,
-              operation:
-                parts[0] === "coin-land-unlock" ? "unlockCoinLand" : parts[0] === "seed-purchase" ? "purchaseSeeds" : "exchangeCrops",
-              landId: Number(parts[1]),
-              ...(parts[0] === "coin-land-unlock" ? {} : { quantity: Number(parts[2]) }),
-            }
+          ? parts[0] === "mission-claim"
+            ? { requestId: walletPending.requestId, operation: "claimMission", missionId: parts[1] }
+            : {
+                requestId: walletPending.requestId,
+                operation:
+                  parts[0] === "coin-land-unlock" ? "unlockCoinLand" : parts[0] === "seed-purchase" ? "purchaseSeeds" : "exchangeCrops",
+                landId: Number(parts[1]),
+                ...(parts[0] === "coin-land-unlock" ? {} : { quantity: Number(parts[2]) }),
+              }
           : null,
     });
   } catch (error) {
@@ -258,6 +274,36 @@ router.post("/farm/v2/crops/:landId/exchange", async (req, res, next) => {
       requestId,
       landId: Number(req.params.landId),
       cropQuantity: Number(req.body?.cropQuantity),
+    });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/farm/v2/missions/:missionId/claim", async (req, res, next) => {
+  try {
+    const userId = String(res.locals.authenticatedUserId ?? "").trim();
+    const launchToken = String(res.locals.launchToken ?? "").trim();
+    const requestId = String(req.header("x-request-id") ?? "").trim();
+    if (!userId || !launchToken) {
+      res.status(401).json({ error: "AUTH_REQUIRED" });
+      return;
+    }
+    if (!requestId) {
+      res.status(400).json({ error: "REQUEST_ID_REQUIRED", definitive: true });
+      return;
+    }
+    if (req.body && Object.keys(req.body).length > 0) {
+      res.status(400).json({ error: "INVALID_MISSION_CLAIM_REQUEST", definitive: true });
+      return;
+    }
+    await ensureFarmV2PlayerInitialized({ userId });
+    const result = await claimFarmV2Mission({
+      userId,
+      launchToken,
+      requestId,
+      missionId: String(req.params.missionId) as FarmMissionId,
     });
     res.json(result);
   } catch (error) {

@@ -173,6 +173,10 @@ export async function runFarmV2IdempotentMutation<T>(input: {
           "FARM_PLAYER_STATE_NOT_FOUND",
           "INSUFFICIENT_CROPS_FOR_EXCHANGE",
           "FARM_V2_PREVIOUS_MUTATION_UNCONFIRMED",
+          "MISSION_NOT_COMPLETE",
+          "MISSION_ALREADY_CLAIMED",
+          "MISSION_PREREQUISITE_INCOMPLETE",
+          "UNKNOWN_MISSION",
         ].includes(error.message)
       ) {
         const rejected = await db.transaction(async (tx) => {

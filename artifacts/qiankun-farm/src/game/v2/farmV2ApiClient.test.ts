@@ -170,3 +170,19 @@ it('sends coin-land unlock with original request ID and no price body', async()=
  vi.stubGlobal('fetch',async(_url:any,init:any)=>{expect(init.method).toBe('POST');expect(init.headers['x-request-id']).toBe('original-unlock');expect(init.body).toBeUndefined();return Response.json({ok:true});});
  await createFarmV2Api({baseUrl:'https://farm.test/api',launchToken:'launch'}).unlockCoinLand(2,'original-unlock');
 });
+
+
+it("claims a mission with only its ID and reuses the original request ID", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+  vi.stubGlobal("fetch", fetchMock);
+  vi.stubGlobal("crypto", { randomUUID: () => "new-claim-id" });
+  const api = createFarmV2Api({ baseUrl: "https://example.test/api", launchToken: "token" });
+  await api.claimMission("MISSION_D01", "original-claim-id");
+  await api.claimMission("MISSION_D01", "original-claim-id");
+  expect(fetchMock.mock.calls[0][0]).toBe("https://example.test/api/farm/v2/missions/MISSION_D01/claim");
+  for (const [, options] of fetchMock.mock.calls) {
+    expect(options.method).toBe("POST");
+    expect(options.body).toBeUndefined();
+    expect(options.headers["x-request-id"]).toBe("original-claim-id");
+  }
+});

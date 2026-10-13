@@ -3,9 +3,13 @@ import { getExchangeRate, getSeedPack } from './canonicalEconomyData';
 
 export type FarmQuantityByLand = Record<FarmLandId, number>;
 
+export type FarmMaterialId = '蘊靈砂' | '九霄玉髓';
+export type FarmWarehouseMaterials = Partial<Record<FarmMaterialId, number>>;
+
 export interface FarmWarehouse {
   seeds: FarmQuantityByLand;
   crops: FarmQuantityByLand;
+  materials?: FarmWarehouseMaterials;
 }
 
 export function emptyFarmQuantities(): FarmQuantityByLand {
@@ -13,7 +17,39 @@ export function emptyFarmQuantities(): FarmQuantityByLand {
 }
 
 export function createEmptyFarmWarehouse(): FarmWarehouse {
-  return { seeds: emptyFarmQuantities(), crops: emptyFarmQuantities() };
+  return {
+    seeds: emptyFarmQuantities(),
+    crops: emptyFarmQuantities(),
+    materials: { '蘊靈砂': 0, '九霄玉髓': 0 },
+  };
+}
+
+export function creditFarmMaterial(
+  warehouse: FarmWarehouse,
+  materialId: FarmMaterialId,
+  quantity: number,
+): FarmWarehouse {
+  if (materialId !== '蘊靈砂' && materialId !== '九霄玉髓') {
+    throw new Error('UNKNOWN_FARM_MATERIAL');
+  }
+  if (!Number.isSafeInteger(quantity) || quantity <= 0) {
+    throw new Error('INVALID_MATERIAL_QUANTITY');
+  }
+
+  const materials = warehouse.materials ?? {};
+  for (const [id, amount] of Object.entries(materials)) {
+    if (id !== '蘊靈砂' && id !== '九霄玉髓') {
+      throw new Error('UNKNOWN_FARM_MATERIAL');
+    }
+    if (!Number.isSafeInteger(amount) || amount < 0) {
+      throw new Error('INVALID_MATERIAL_INVENTORY');
+    }
+  }
+
+  const current = materials[materialId] ?? 0;
+  const next = current + quantity;
+  if (!Number.isSafeInteger(next)) throw new Error('INVALID_MATERIAL_INVENTORY');
+  return { ...warehouse, materials: { '蘊靈砂': 0, '九霄玉髓': 0, ...materials, [materialId]: next } };
 }
 
 export interface Wallet {

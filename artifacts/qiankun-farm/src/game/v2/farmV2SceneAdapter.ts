@@ -14,6 +14,7 @@ export interface ServerLand {
 export interface ServerWarehouse {
   seeds: Record<string, number>;
   crops: Record<string, number>;
+  materials?: Partial<Record<"蘊靈砂" | "九霄玉髓", number>>;
 }
 
 const cropIds: CropId[] = [
@@ -109,6 +110,7 @@ export function mapServerLands(
 export function mapServerWarehouse(warehouse: ServerWarehouse): {
   seedInventory: CropInventory;
   cropInventory: CropInventory;
+  materialInventory: { "蘊靈砂": number; "九霄玉髓": number };
 } {
   const seedInventory = {} as CropInventory;
   const cropInventory = {} as CropInventory;
@@ -126,5 +128,11 @@ export function mapServerWarehouse(warehouse: ServerWarehouse): {
     seedInventory[id] = seeds;
     cropInventory[id] = crops;
   });
-  return { seedInventory, cropInventory };
+  const materialInventory = {
+    "蘊靈砂": warehouse.materials?.["蘊靈砂"] ?? 0,
+    "九霄玉髓": warehouse.materials?.["九霄玉髓"] ?? 0,
+  };
+  if (Object.values(materialInventory).some((quantity) => !Number.isSafeInteger(quantity) || quantity < 0))
+    throw new Error("INVALID_FARM_INVENTORY");
+  return { seedInventory, cropInventory, materialInventory };
 }

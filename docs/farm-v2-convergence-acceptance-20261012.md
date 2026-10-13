@@ -52,7 +52,8 @@
 | 響應式與操作文字可見 | 已符合並驗證 | 修復黑底黑字、禁止捲动與遮圖重複面板；320/390/768/1440無橫向溢出 |
 | 瀏覽器Console | 已符合並驗證 | 四尺寸受控API／字型fixture Console error 0；不能推論正式Core／外部CDN無錯誤 |
 | 農夫登入結算與逐田ON/OFF | 已符合並驗證 | 正式API／UI已接原runtime；隔離SQL3批60株新手入庫360、庫存種子扣除、重讀不重複、退款停止；HTTP逐田開關及四尺寸操作通過。真實Core仍待驗證 |
-| 好友、任務、盆栽、洞府 | 尚未符合 | 純runtime存在；完整持久API及UI尚未接通。任務進度已隨播種／收成／兌換寫入mission_state，但沒有正式讀取／領獎流程；領獎同時包含Core金幣及材料，現有Core Wallet bridge拒絕mission reward reason，Farm玩家表也沒有材料庫存欄位，因此必須先定義Core入帳與材料持久化契約 |
+| 任務進度與領獎 | Farm 已接線，Core 已上隔離分支 | 八項定稿任務進度由 Farm server state 投影；claim API 使用固定獎勵、耐久 journal、Core receipt 復原與 Farm 材料 transaction。Core trusted HTTP handler／migration 已推至隔離分支 `a4a7228`；Farm 的 28 項定向測試通過。Core 自身 CI 啟動失敗且零 job，完整 Core tests、migration chain、遠端 ACL 與真實多連線仍未驗證，migration 未套用 |
+| 好友、盆栽、洞府 | 尚未符合 | 純runtime存在；完整持久 API 及 UI 尚未接通；不納入本次任務領獎範圍 |
 | RLS／migration／資料隔離ACL | 已修正但待驗證 | 實際migration在PGlite執行；三表RLS、anon/authenticated全表權限撤銷、service_role讀取通過。遠端套用、真實backend連線角色及Supabase API隔離未驗證 |
 | Wallet Catalog驗價／帳本一致性 | 尚未符合 | Core草稿接收Farm傳入amount；本輪不修改Core權威。需獨立Core契約與正式Ledger驗證 |
 
@@ -95,7 +96,7 @@
 
 1. **Core整合**：Core coin-land contract 與 Farm V2持久化API／UI已分別推到隔離分支；仍須整合進核准主線，並在正式Core Catalog／Wallet／paid-value及資料庫環境完成驗證。現在不能使用V1端點替代。
 2. **完整場景**：原圖與共用六田實體／世界面／美術投影已接線；原規格的角色、靈獸、完整CropEntity美術及倉庫飛行動畫尚未驗收。不得恢復錯位倉庫錨點。
-3. **缺接線**：田2/3解鎖已有 staged contract/API/UI；任務領獎需先新增Core核准獎勵入帳契約及Farm材料持久化欄位，再接claim流程。好友／盆栽／洞府完整持久流程與角色素材仍缺，未定契約或素材不臆造。
+3. **缺接線**：田2/3解鎖與任務領獎均有 Farm 隔離 API/UI 及 Core handler／migration staged 在隔離分支；仍要取得可用的 Core CI／本機檢查，按唯一 Supabase 專案核對完整 migration chain、ACL/RLS、多連線中斷復原和端到端 Wallet/Ledger。Core service 尚未通過這些 Gate 前不可合併、部署或套用 migration。好友／盆栽／洞府完整持久流程與角色素材仍缺，未定契約或素材不臆造。
 4. **真正交易Gate**：在可啟動独立PostgreSQL的隔離環境執行至少11個並發請求、同ID／不同ID、Core成功後丟回應、journal寫入失敗、Farm提交失敗、補償丟回應、進程重啟後重試、退款與資格讀取競態；本環境不能啟動OS PostgreSQL服務，PGlite不冒充這一Gate。
 5. **正式資料庫**：migration SQL與基本約束／ACL／RLS已在PGlite驗證；仍需確認核准目標、真實PostgreSQL及backend角色，正式套用須另外授權。
 
@@ -216,3 +217,26 @@ The authenticated scene now derives its display clock from the last server snaps
 The only warehouse-flight anchor found in the checked-in legacy code is `(13%, 22%)` in `HarvestAnimation.tsx`, calibrated to the old 390×843 scene and its separate `PLOT_CENTERS`. It is not a verified anchor for either current original artwork. The current image files show warehouse-like buildings, but no source hotspot/anchor metadata exists for them; no new coordinates were inferred or added. The checked-in public asset directory contains only the two scene backgrounds and generic site art, with no approved farmer/pet portrait sprites or crop-stage sprites. Those visual deliverables remain open.
 
 Verification limits this follow-up: the full Vitest run had 187 passing tests and one HTTP integration test blocked because the sandbox rejects binding `127.0.0.1` (`listen EPERM`). The browser fixture could not launch portable Chromium in this run; Chromium terminated with `sandbox_host_linux` “Operation not permitted” (`SIGTRAP`). Neither failure is counted as a product assertion pass. No database, merge or deployment action occurred.
+
+
+## Farm V2 mission claim implementation — 2026-10-13
+
+依核准設計新增 Farm 的每日／每週任務主動領獎流程。畫面標題逐項對齊 Canonical Master `MASTER_DATA` rows 80–87：今日播種、今日收成、福田交易、今日福田全勤、耕耘不輟、靈植豐收、福田通商、七日福田；金幣與材料固定值同列核對。前端只送 mission ID 和 request ID，不送 reward、material、period 或 completion 欄位。伺服器 state 投影日／週週期與八項 progress；未確認交易會顯示 pending 並沿用原 request ID，其他 mutation 暫停。倉庫顯示蘊靈砂與九霄玉髓數量。
+
+Farm migration 在 `farm_v2_mutation` 加入固定任務／週期／材料欄位、允許值與金額一致性檢查、週期唯一索引；新增材料庫存 safe-integer 累加。Claim 在接 Core 前提交凍結 intent，Core receipt 後以 Farm transaction 同步入材料、更新同週期 claimed 狀態與完成 journal。若復原跨過 05:00，只完成舊 intent，不把新週期標成已領。明確 Core 拒絕會結束並釋放週期 reservation；`UNKNOWN` 或網路中斷則保留 intent、不得換 ID。
+
+Core 任務 SQL、HTTP handler 與 route 已推至平台 repo 的隔離分支 `fix/farm-v2-core-coin-land-api`（最新 HEAD `a4a72283869b086b41e8249ff3f78098621e25e3`）。PGlite 以 pinned Wallet migration 驗證 8 個固定 credit、精確重放、request key 衝突、無效身份／request ID、suspended wallet、停用身分重送已成功領取、帳戶隔離、ledger failure rollback 及 service-role-only（15 cases）。handler contract test 驗證 trusted secret、launch token、body allowlist、8 個 mission IDs、stable request ID、RPC allowlist 與錯誤分類（7 cases）。Farm transport 仍按契約測試；Core 本機 checkout 未掛載，Actions startup_failure 零 job，因此實際 Core 測試未完成，也不能視為正式 Core 連線。
+
+本輪完整 `pnpm test` 通過：48 個 Vitest 檔案／225 項測試，加 4 項 paid-route guard；`PORT=4173 BASE_PATH=/ pnpm run build`（workspace Typecheck 與各 build）及 `git diff --check` 通過。任務聚焦案例包含八項任務逐次 claim、重放只入庫一次、未完成拒絕、明確拒絕後新 request 可安全申領、`WALLET_APPLIED` 跨每日 05:00 復原及不污染新週期，以及 authenticated Express route fixture。PGlite 是單連線證據；它不能驗證獨立 journal pool 的真正 durable commit、多連線競爭、程序重啟或 Core/Farm 跨庫中斷。
+
+四尺寸受控 browser fixture 已新增任務 claim 回應不明後使用原 ID 重試、材料只增加一次的案例；本輪無法執行，因 Playwright 缺少 `chromium_headless_shell` executable，環境未提供可用 portable Chromium。這項 fixture 更新未計入瀏覽器驗收通過。正式 Core HTTP route、完整平台 migration chain、Supabase ACL/RLS、多連線故障與正式端到端交易仍是 Gate，整體維持 **NO-GO**。沒有推送、合併、部署或執行遠端 Migration。
+
+後續唯讀核對已連到使用者指定的 `imperial-compass-dev`（project ref `qowjznvinqoxekiyjyvy`）：migration 清單最新項目為 `20261006000121`；`public` 與 `platform` 中沒有名稱含 `farm_v2` 的 base table。這證明本輪 Farm migration 尚未套用，並非資料庫連線不存在。只查詢 migration metadata 與 `information_schema.tables`；未讀取玩家資料，未寫入或變更遠端資料庫。
+
+Core Wallet 來源核對：遠端 Core 分支的 `supabase/migrations/0019_create_core_wallet_runtime.sql` 與 Farm contract test 的 pinned reference 相同（正規化換行後逐字一致）；任務 RPC 呼叫的 `core_wallet_get_or_create(uuid)`、`core_wallet_apply_transaction(uuid, integer, text, text, text, text, text, text, uuid)` 簽章相符。該分支後續權限 migration 只讓 `service_role` 執行 Wallet RPC。這項只讀來源比對確認 SQL 契約依據版本一致；仍未在 Core repo 實作或測試 mission handler。
+
+2026-10-13 後續本機工作補上 Core 任務獎勵 handler／Next route 的 staged source mirrors，並加 7 項 handler contract tests；handler 依既有 coin-land route pattern，僅接受 `missionId`、`launchToken`，以 `x-request-id` 呼叫 allowlisted Core RPC。當時它們仍只存在 Farm repo 的 `contracts/core/platform-files/`，未落入 Core checkout。fresh `vitest run` 結果為 49 檔、230 passed、2 項 HTTP integration tests 因 sandbox `listen EPERM` 無法執行；另有 11 項隔離 SQL integration tests passed。`tsc --build`、staged handler strict typecheck、1 項 paid-route guard、`git diff --check` 與 SQL mirror compare passed。Core 本身及正式交易尚未驗證；整體 **NO-GO**。
+
+### Core branch follow-up — 2026-10-13
+
+已將 mission reward migration、trusted Next route、handler 與 7-case handler contract test 推到平台 repo 的隔離分支 [`fix/farm-v2-core-coin-land-api`](https://github.com/williamLee-codex/imperial-compass-platform/tree/fix/farm-v2-core-coin-land-api)。首個提交 `fd5847c` 後複核發現「身分停用後重送既有成功領取」需回傳原 Ledger receipt；新增回歸測試、修正 SQL，最新 head 為 `a4a72283869b086b41e8249ff3f78098621e25e3`。Farm workspace 定向測試 3 檔、28 項全過（transport 6、handler 7、PGlite SQL 15），其中新增案例先重現失敗再驗證修正通過。GitHub Actions 在零個 job 啟動時回報 `startup_failure`，並非測試失敗；目前可見資料沒有說明啟動原因，不能據此認定是額度問題。Core 本身的 typecheck／Vitest／build 尚未執行，因本機沒有 Core checkout；Supabase 遷移也未套用。這只補上「Core 任務獎勵功能尚未進入隔離分支」這個缺口；完整 migration chain／ACL review、多連線與正式交易驗證、UI 美術交付仍未完成，因此整體維持 **NO-GO**。未合併、部署或修改遠端資料庫。

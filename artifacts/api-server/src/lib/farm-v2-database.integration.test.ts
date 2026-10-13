@@ -30,6 +30,8 @@ import {
 } from "./farm-v2-paid-access";
 import { purchaseFarmV2SeedPacks } from "./farm-v2-seed-purchase";
 import { exchangeFarmV2Crops } from "./farm-v2-crop-exchange";
+import { claimFarmV2Mission } from "./farm-v2-mission-claim";
+import { createMissionState, recordMissionEvent } from "../../../qiankun-farm/src/game/v2/missionRuntime";
 import express from "express";
 import farmRouter from "../routes/farm-v2";
 let pg: PGlite;
@@ -66,6 +68,15 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await pg.query(
+    "INSERT INTO farm_v2_mutation(user_id,request_id,action) VALUES('legacy','legacy-before-migration','old-action')",
+  );
+  await pg.exec(
+    readFileSync(
+      "supabase/migrations/20261013090000_farm_v2_mission_claim.sql",
+      "utf8",
+    ),
+  );
 });
 afterAll(async () => {
   await pg.close();
@@ -76,6 +87,97 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 describe("Farm V2 isolated PostgreSQL engine", () => {
+  it("claims all canonical missions once and credits Core and Farm-owned rewards", async () => {
+    const now = Date.parse("2026-10-13T10:00:00+08:00");
+    await ensureFarmV2PlayerInitialized({ userId: "mission-claim-user", now });
+    let missions = createMissionState(now);
+    for (let index = 0; index < 10; index++) missions = recordMissionEvent(missions, "SOW", now);
+    for (let index = 0; index < 10; index++) missions = recordMissionEvent(missions, "HARVEST", now);
+    for (let index = 0; index < 5; index++) missions = recordMissionEvent(missions, "EXCHANGE", now);
+    await pg.query("UPDATE farm_v2_player_state SET mission_state=$1::jsonb WHERE user_id='mission-claim-user'", [JSON.stringify(missions)]);
+
+    const rewards: Record<string, number> = { MISSION_D01: 2, MISSION_D02: 3, MISSION_D03: 3, MISSION_D04: 5, MISSION_W01: 10, MISSION_W02: 15, MISSION_W03: 15, MISSION_W04: 20 };
+    const calls: any[] = [];
+    vi.stubEnv("PLATFORM_BASE_URL", "https://core.test");
+    vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test-only");
+    vi.stubGlobal("fetch", async (url: any, init: any) => {
+      const body = JSON.parse(init.body);
+      calls.push({ url: String(url), requestId: init.headers["x-request-id"], body });
+      const amount = rewards[body.missionId];
+      return Response.json({
+        result_status: "created", mission_id: body.missionId, amount,
+        transaction: { id: `tx-${body.missionId}`, owner_id: "mission-claim-user", amount, currency: "coin", direction: "credit", reason: "farm_v2_mission_reward", reference_type: "farm_v2_mission_reward", reference_id: body.missionId, idempotency_key: `farm-v2:mission-claim:${init.headers["x-request-id"]}` },
+        wallet: { wallet_id: "wallet" },
+      }, { status: 201 });
+    });
+
+    for (const missionId of Object.keys(rewards)) {
+      const result = await claimFarmV2Mission({ userId: "mission-claim-user", launchToken: "launch", requestId: `claim-${missionId}`, missionId: missionId as any, now });
+      expect(result.missionId).toBe(missionId);
+      expect(result.coins).toBe(rewards[missionId]);
+      expect(result.missionState.progress[missionId].claimed).toBe(true);
+    }
+    const replay = await claimFarmV2Mission({ userId: "mission-claim-user", launchToken: "launch", requestId: "claim-MISSION_D01", missionId: "MISSION_D01", now });
+    expect(replay.warehouse.materials).toEqual({ "蘊靈砂": 1, "九霄玉髓": 0 });
+    expect(calls).toHaveLength(8);
+    expect(calls.every((call) => call.body && Object.keys(call.body).sort().join(",") === "launchToken,missionId")).toBe(true);
+    const stored = await ensureFarmV2PlayerInitialized({ userId: "mission-claim-user", now });
+    expect(stored.player.warehouseState).toMatchObject({ materials: { "蘊靈砂": 6, "九霄玉髓": 4 } });
+    const ledger = await pg.query("SELECT mission_id, transaction_state FROM farm_v2_mutation WHERE user_id='mission-claim-user' AND mission_id IS NOT NULL ORDER BY mission_id");
+    expect(ledger.rows).toHaveLength(8);
+    expect(ledger.rows.every((row: any) => row.transaction_state === "COMPLETED")).toBe(true);
+  });
+  it("releases a mission-period reservation after a definitive preflight rejection", async () => {
+    const now = Date.parse("2026-10-13T10:00:00+08:00");
+    await ensureFarmV2PlayerInitialized({ userId: "mission-rejected", now });
+    const calls: any[] = [];
+    vi.stubEnv("PLATFORM_BASE_URL", "https://core.test");
+    vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test-only");
+    vi.stubGlobal("fetch", async (_url: any, init: any) => { calls.push(init); return Response.json({}); });
+    await expect(claimFarmV2Mission({ userId: "mission-rejected", launchToken: "launch", requestId: "preflight-rejected", missionId: "MISSION_D01", now })).rejects.toThrow("MISSION_NOT_COMPLETE");
+    expect(calls).toHaveLength(0);
+    const rejected = await pg.query("SELECT transaction_state,mission_id FROM farm_v2_mutation WHERE user_id='mission-rejected' AND request_id='preflight-rejected'");
+    expect(rejected.rows).toEqual([{ transaction_state: "REJECTED", mission_id: null }]);
+
+    let missions = createMissionState(now);
+    missions = recordMissionEvent(missions, "SOW", now);
+    await pg.query("UPDATE farm_v2_player_state SET mission_state=$1::jsonb WHERE user_id='mission-rejected'", [JSON.stringify(missions)]);
+    vi.stubGlobal("fetch", async (_url: any, init: any) => {
+      const id = init.headers["x-request-id"];
+      return Response.json({ result_status: "created", mission_id: "MISSION_D01", amount: 2,
+        transaction: { id: "tx-after-reject", owner_id: "mission-rejected", amount: 2, currency: "coin", direction: "credit", reason: "farm_v2_mission_reward", reference_type: "farm_v2_mission_reward", reference_id: "MISSION_D01", idempotency_key: `farm-v2:mission-claim:${id}` }, wallet: { wallet_id: "wallet" } });
+    });
+    const result = await claimFarmV2Mission({ userId: "mission-rejected", launchToken: "launch", requestId: "valid-after-reject", missionId: "MISSION_D01", now });
+    expect(result.warehouse.materials).toEqual({ "蘊靈砂": 1, "九霄玉髓": 0 });
+  });
+  it("recovers a Core-applied daily claim after the Taiwan 05:00 reset without claiming the new period", async () => {
+    const oldNow = Date.parse("2026-10-13T04:59:00+08:00");
+    const newNow = Date.parse("2026-10-13T05:01:00+08:00");
+    await ensureFarmV2PlayerInitialized({ userId: "mission-boundary", now: oldNow });
+    let missions = createMissionState(oldNow);
+    missions = recordMissionEvent(missions, "SOW", oldNow);
+    await pg.query("UPDATE farm_v2_player_state SET mission_state=$1::jsonb WHERE user_id='mission-boundary'", [JSON.stringify(missions)]);
+    const receipt = {
+      duplicate: true, missionId: "MISSION_D01", amount: 2, transactionId: "core-committed",
+      transaction: { id: "core-committed" }, wallet: { wallet_id: "wallet" },
+    };
+    await pg.query(
+      `INSERT INTO farm_v2_mutation(user_id,request_id,action,response,transaction_state,wallet_direction,wallet_currency,wallet_amount,wallet_transaction,mission_id,mission_period_start,mission_material_id,mission_material_quantity)
+       VALUES('mission-boundary','boundary-request','mission-claim:MISSION_D01',NULL,'WALLET_APPLIED','credit','coin',2,$1::jsonb,'MISSION_D01',$2,'蘊靈砂',1)`,
+      [JSON.stringify(receipt), new Date(missions.dailyPeriodStart)],
+    );
+    let coreCalls = 0;
+    vi.stubEnv("PLATFORM_BASE_URL", "https://core.test");
+    vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test-only");
+    vi.stubGlobal("fetch", async () => { coreCalls++; throw new Error("should recover without contacting Core"); });
+    const result = await claimFarmV2Mission({ userId: "mission-boundary", launchToken: "launch", requestId: "boundary-request", missionId: "MISSION_D01", now: newNow });
+    expect(result.warehouse.materials).toEqual({ "蘊靈砂": 1, "九霄玉髓": 0 });
+    expect(result.missionState.dailyPeriodStart).toBeGreaterThan(missions.dailyPeriodStart);
+    expect(result.missionState.progress.MISSION_D01).toMatchObject({ progress: 0, completed: false, claimed: false });
+    expect(coreCalls).toBe(0);
+    const row = await pg.query("SELECT transaction_state FROM farm_v2_mutation WHERE user_id='mission-boundary' AND request_id='boundary-request'");
+    expect(row.rows).toEqual([{ transaction_state: "COMPLETED" }]);
+  });
   it("settles enabled farmer cycles into persisted warehouse once without claiming chaos", async () => {
     await ensureFarmV2PlayerInitialized({ userId: "farmer", now: 0 });
     await pg.query(
@@ -162,6 +264,51 @@ describe("Farm V2 isolated PostgreSQL engine", () => {
     );
     expect(rows.rows).toHaveLength(3);
     expect(rows.rows.every((row) => row.relrowsecurity)).toBe(true);
+  });
+  it("migration preserves legacy journal rows and enforces fixed mission reservations", async () => {
+    const legacy = await pg.query(
+      "SELECT mission_id, mission_period_start FROM farm_v2_mutation WHERE user_id='legacy' AND request_id='legacy-before-migration'",
+    );
+    expect(legacy.rows).toEqual([{ mission_id: null, mission_period_start: null }]);
+
+    const rewards = [
+      ["MISSION_D01", 2, "蘊靈砂", 1],
+      ["MISSION_D02", 3, "蘊靈砂", 1],
+      ["MISSION_D03", 3, "蘊靈砂", 1],
+      ["MISSION_D04", 5, "蘊靈砂", 3],
+      ["MISSION_W01", 10, "九霄玉髓", 1],
+      ["MISSION_W02", 15, "九霄玉髓", 1],
+      ["MISSION_W03", 15, "九霄玉髓", 1],
+      ["MISSION_W04", 20, "九霄玉髓", 1],
+    ] as const;
+    for (const [missionId, amount, material, quantity] of rewards) {
+      await pg.query(
+        `INSERT INTO farm_v2_mutation(user_id,request_id,action,wallet_direction,wallet_currency,wallet_amount,mission_id,mission_period_start,mission_material_id,mission_material_quantity)
+         VALUES('mission-user',$1,'mission-claim:' || $2,'credit','coin',$3,$2,'2026-10-12T21:00:00Z',$4,$5)`,
+        [`claim-${missionId}`, missionId, amount, material, quantity],
+      );
+    }
+    await expect(
+      pg.query(
+        `INSERT INTO farm_v2_mutation(user_id,request_id,action,wallet_direction,wallet_currency,wallet_amount,mission_id,mission_period_start,mission_material_id,mission_material_quantity)
+         VALUES('mission-user','claim-again','mission-claim:MISSION_D01','credit','coin',2,'MISSION_D01','2026-10-12T21:00:00Z','蘊靈砂',1)`,
+      ),
+    ).rejects.toThrow(/unique constraint/);
+    for (const values of [
+      ["partial", "mission-claim:MISSION_D01", "credit", "coin", 2, "MISSION_D01", null, "蘊靈砂", 1],
+      ["missing-id", "old-action", null, null, null, null, "2026-10-13T00:00:00Z", "蘊靈砂", 1],
+      ["wrong-reward", "mission-claim:MISSION_D01", "credit", "coin", 999, "MISSION_D01", "2026-10-13T00:00:00Z", "蘊靈砂", 1],
+      ["wrong-direction", "mission-claim:MISSION_D01", "debit", "coin", 2, "MISSION_D01", "2026-10-13T00:00:00Z", "蘊靈砂", 1],
+      ["unknown", "mission-claim:MISSION_X99", "credit", "coin", 2, "MISSION_X99", "2026-10-13T00:00:00Z", "蘊靈砂", 1],
+    ]) {
+      await expect(
+        pg.query(
+          `INSERT INTO farm_v2_mutation(user_id,request_id,action,wallet_direction,wallet_currency,wallet_amount,mission_id,mission_period_start,mission_material_id,mission_material_quantity)
+           VALUES('invalid-mission',$1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          values,
+        ),
+      ).rejects.toThrow(/check constraint/);
+    }
   });
   it("migration rejects invalid land identities and negative quantities", async () => {
     for (const [land, quantity] of [
@@ -268,11 +415,19 @@ describe("Farm V2 isolated PostgreSQL engine", () => {
         "content-type": "application/json",
       };
       expect((await nativeFetch(`${endpoint}/state`)).status).toBe(401);
+      const invalidClaim = await nativeFetch(`${endpoint}/missions/MISSION_D01/claim`, {
+        method: "POST",
+        headers: { ...headers, "x-request-id": "injected-claim" },
+        body: JSON.stringify({ coins: 999, materialId: "蘊靈砂", quantity: 99 }),
+      });
+      expect(invalidClaim.status).toBe(400);
+      expect(await invalidClaim.json()).toMatchObject({ error: "INVALID_MISSION_CLAIM_REQUEST", definitive: true });
       const response = await nativeFetch(`${endpoint}/state`, { headers });
       expect(response.status).toBe(200);
       const snapshot: any = await response.json();
       expect(snapshot.lands).toHaveLength(6);
       expect(Number.isFinite(snapshot.serverTime)).toBe(true);
+      expect(snapshot.player.missionState.progress.MISSION_D01).toMatchObject({ progress: 0, completed: false, claimed: false });
       const rejected = await nativeFetch(`${endpoint}/crops/1/exchange`, {
         method: "POST",
         headers: { ...headers, "x-request-id": "no-crops" },
@@ -400,6 +555,19 @@ describe("Farm V2 isolated PostgreSQL engine", () => {
         ).status,
       ).toBe(400);
       expect(walletRequests).toHaveLength(1);
+      const expiredAt = Date.now() - 24 * 3600000;
+      let expiredMissions = createMissionState(expiredAt);
+      expiredMissions = recordMissionEvent(expiredMissions, "SOW", expiredAt);
+      await pg.query("UPDATE farm_v2_player_state SET mission_state=$1::jsonb WHERE user_id='http-alice'", [JSON.stringify(expiredMissions)]);
+      const afterMissionReset: any = await (await nativeFetch(`${endpoint}/state`, { headers })).json();
+      expect(afterMissionReset.player.missionState.progress.MISSION_D01).toMatchObject({ progress: 0, completed: false, claimed: false });
+      expect(afterMissionReset.player.missionState.expiredMissionIds).toContain("MISSION_D01");
+      await pg.query(
+        `INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount,mission_id,mission_period_start,mission_material_id,mission_material_quantity)
+         VALUES('http-alice','pending-mission','mission-claim:MISSION_D01','PENDING','credit','coin',2,'MISSION_D01','2026-10-13T21:00:00Z','蘊靈砂',1)`,
+      );
+      const recoveredState: any = await (await nativeFetch(`${endpoint}/state`, { headers })).json();
+      expect(recoveredState.pendingMutation).toEqual({ requestId: "pending-mission", operation: "claimMission", missionId: "MISSION_D01" });
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
@@ -534,4 +702,50 @@ it('Core permanent unlock survives a lost response and replays the original Farm
  await purchaseFarmV2CoinLand({userId:'coin-land',launchToken:'launch',requestId:'original-unlock',landId:2});
  const result=await ensureFarmV2PlayerInitialized({userId:'coin-land'});expect(result.lands[1]).toMatchObject({lifecycle:'EMPTY',accessActive:true});expect(debits).toBe(1);expect(requestIds).toEqual(['original-unlock','original-unlock']);
  await purchaseFarmV2CoinLand({userId:'coin-land',launchToken:'launch',requestId:'original-unlock',landId:2});expect(debits).toBe(1);expect(requestIds).toHaveLength(2);
+});
+
+it("claims a mission through the authenticated HTTP route without accepting reward fields", async () => {
+  const userId = "route-mission-claim";
+  const now = Date.parse("2026-10-13T10:00:00+08:00");
+  await ensureFarmV2PlayerInitialized({ userId, now });
+  const missions = recordMissionEvent(createMissionState(now), "SOW", now);
+  await pg.query("UPDATE farm_v2_player_state SET mission_state=$1::jsonb WHERE user_id=$2", [JSON.stringify(missions), userId]);
+  const app = express();
+  app.use(express.json());
+  app.use("/api", farmRouter);
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const address = server.address() as { port: number };
+  const endpoint = `http://127.0.0.1:${address.port}/api/farm/v2/missions/MISSION_D01/claim`;
+  let coreCalls = 0;
+  const nativeFetch = globalThis.fetch;
+  vi.stubEnv("PLATFORM_BASE_URL", "https://core.test");
+  vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test-only");
+  vi.stubGlobal("fetch", async (url: any, init: any) => {
+    const path = new URL(url).pathname;
+    const body = JSON.parse(init.body ?? "{}");
+    if (path.endsWith("/launch/validate")) return Response.json({ userId, appId: "qiankun-futian" });
+    if (path.endsWith("/mission-rewards")) {
+      coreCalls++;
+      expect(body).toEqual({ missionId: "MISSION_D01", launchToken: "launch" });
+      return Response.json({ result_status: "created", mission_id: "MISSION_D01", amount: 2,
+        transaction: { id: "route-core-tx", owner_id: userId, amount: 2, currency: "coin", direction: "credit", reason: "farm_v2_mission_reward", reference_type: "farm_v2_mission_reward", reference_id: "MISSION_D01", idempotency_key: "farm-v2:mission-claim:route-claim-id" },
+        wallet: { wallet_id: "wallet" } });
+    }
+    throw new Error(`unexpected Core request ${path}`);
+  });
+  try {
+    const headers = { Authorization: "Bearer launch", "x-request-id": "route-claim-id" };
+    const first = await nativeFetch(endpoint, { method: "POST", headers });
+    expect(first.status).toBe(200);
+    expect(await first.json()).toMatchObject({ missionId: "MISSION_D01", coins: 2, material: { id: "蘊靈砂", quantity: 1 } });
+    const replay = await nativeFetch(endpoint, { method: "POST", headers });
+    expect(replay.status).toBe(200);
+    expect(await replay.json()).toMatchObject({ missionId: "MISSION_D01", coins: 2 });
+    expect(coreCalls).toBe(1);
+    const player = await ensureFarmV2PlayerInitialized({ userId, now });
+    expect(player.player.warehouseState).toMatchObject({ materials: { "蘊靈砂": 1, "九霄玉髓": 0 } });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
 });

@@ -1,7 +1,18 @@
 import type { ErrorRequestHandler } from "express";
 import { FarmWalletRejectedError } from "../lib/farm-v2-wallet-client";
+import { CoreMissionRewardError } from "../lib/farm-v2-core-mission-reward";
 
 const FARM_V2_STATUS_BY_ERROR: Readonly<Record<string, number>> = {
+  CORE_MISSION_REWARD_NOT_CONFIGURED: 503,
+  CORE_MISSION_REWARD_UNAVAILABLE: 503,
+  INVALID_CORE_MISSION_REWARD_RESPONSE: 502,
+  FARM_MISSION_INTENT_MISMATCH: 409,
+  FARM_MISSION_INTENT_NOT_RECOVERABLE: 503,
+  INVALID_SAVED_CORE_MISSION_RECEIPT: 503,
+  MISSION_NOT_COMPLETE: 409,
+  MISSION_PREREQUISITE_INCOMPLETE: 409,
+  MISSION_ALREADY_CLAIMED: 409,
+  UNKNOWN_MISSION: 400,
   CORE_COIN_LAND_NOT_CONFIGURED: 503,
   CORE_COIN_LAND_UNAVAILABLE: 503,
   INVALID_CORE_COIN_LAND_RESPONSE: 502,
@@ -52,6 +63,10 @@ export const farmV2ErrorHandler: ErrorRequestHandler = (
     res.status(400).json({ error: error.message, definitive: true });
     return;
   }
+  if (error instanceof CoreMissionRewardError && error.definitive) {
+    res.status(400).json({ error: error.message, definitive: true });
+    return;
+  }
   const code = error instanceof Error ? error.message : "";
   const status = FARM_V2_STATUS_BY_ERROR[code];
 
@@ -66,6 +81,10 @@ export const farmV2ErrorHandler: ErrorRequestHandler = (
       "FARM_MUTATION_COMPENSATED",
       "FARMER_NOT_ENTITLED",
       "INVALID_FARMER_PREFERENCE",
+      "UNKNOWN_MISSION",
+      "MISSION_NOT_COMPLETE",
+      "MISSION_PREREQUISITE_INCOMPLETE",
+      "MISSION_ALREADY_CLAIMED",
     ].includes(code)
       ? { definitive: true }
       : {}),

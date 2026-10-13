@@ -21,9 +21,18 @@ This is single-connection PostgreSQL-engine evidence. It does **not** validate t
 
 ## Required integration before release
 
-1. Port this contract into a generated, reviewed Core migration and verify it against the full current migration chain and advisors.
-2. Add a trusted Core endpoint and an account entitlement read endpoint; verify launch identities and return definitive rejections and authoritative receipts.
+1. Review this staged migration against the full current Core migration chain, run Supabase advisors, and verify ACLs in the target project before applying it.
+2. Run Core typecheck/tests and CI against the trusted endpoint; add an account entitlement read endpoint and verify authoritative receipts in an end-to-end environment.
 3. Reconcile Farm's permanent access projection from Core; expose the purchase in Farm's existing durable request/recovery flow. Never reverse a successful permanent unlock merely because Farm's subsequent read fails.
 4. Run true concurrent database, lost-response, restart and end-to-end UI/Wallet/Ledger gates.
 
-No remote database, main branch, deployment or production wallet was modified.
+The isolated Core feature branch now contains the mission reward migration and trusted endpoint. No main branch, remote database, deployment or production wallet was modified.
+
+
+# Farm V2 mission reward contract (staged)
+
+`farm-v2-mission-reward.sql` adds the `farm_v2_claim_mission_reward(owner UUID, mission ID text, request ID text)` Core Wallet contract. The server allowlist sets D01/D02/D03/D04 and W01/W02/W03/W04 credits to 2/3/3/5/10/15/15/20 coins. The RPC accepts no client amount, currency, material, period, or balance. Ledger reason/reference type are `farm_v2_mission_reward`; reference ID is the mission ID; idempotency key is `farm-v2:mission-claim:<requestId>`. Exact replay returns the original ledger entry, while request reuse with a different mission conflicts. It requires an active Core identity and wallet, and is executable only by `service_role`.
+
+`platform-files/supabase/migrations/20261013100000_farm_v2_mission_reward.sql` is the Farm-side contract mirror. The matching migration is staged in Core branch `fix/farm-v2-core-coin-land-api`, currently at `a4a72283869b086b41e8249ff3f78098621e25e3`; it has not been applied. `artifacts/api-server/src/lib/farm-v2-core-mission-reward-contract.test.ts` exercises the SQL contract with the pinned wallet reference migration on PGlite, including replay after an identity becomes inactive.
+
+The Core handler and route are mirrored under `platform-files/src/lib/farm-v2/mission-reward-handler.ts` and `platform-files/src/app/api/replit/farm-v2/mission-rewards/route.ts`, and are now staged in the same Core branch/commit above. The handler accepts only `missionId` and `launchToken`, reads the stable request ID from `x-request-id`, verifies the trusted secret and `qiankun-futian` launch token, and calls only `farm_v2_claim_mission_reward` with owner, mission and request ID. Its seven handler contract cases pass in the Farm workspace. The Core checkout is not mounted here, so the actual Core Vitest/typecheck and CI results remain pending; the staged endpoint is not deployed or database-backed until its migration is applied.
