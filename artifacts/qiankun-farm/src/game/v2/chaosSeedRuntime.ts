@@ -21,6 +21,12 @@ export const CHAOS_CYCLE_MS = 72 * 60 * 60 * 1000;
 export const CHAOS_PENDING_CAP = 3;
 
 export function cycleIndexAt(anchorAt: number, now: number): number {
+  if (!Number.isSafeInteger(anchorAt) || anchorAt < 0) {
+    throw new Error('INVALID_CHAOS_ANCHOR');
+  }
+  if (!Number.isSafeInteger(now) || now < 0) {
+    throw new Error('INVALID_CHAOS_TIME');
+  }
   if (now <= anchorAt) return 0;
   return Math.floor((now - anchorAt) / CHAOS_CYCLE_MS);
 }
@@ -35,18 +41,30 @@ export function settleChaosSeeds(input: {
   now: number;
   accessActive: boolean;
 }): ChaosSeedState {
-  const targetCycle = cycleIndexAt(input.state.anchorAt, input.now);
-  if (targetCycle <= input.state.processedCycle) return input.state;
-
-  let pending = input.state.pending;
-  for (let cycle = input.state.processedCycle + 1; cycle <= targetCycle; cycle += 1) {
-    if (input.accessActive && pending < CHAOS_PENDING_CAP) pending += 1;
+  const { state, now, accessActive } = input;
+  if (
+    !Number.isSafeInteger(state.processedCycle) ||
+    state.processedCycle < 0 ||
+    !Number.isSafeInteger(state.pending) ||
+    state.pending < 0 ||
+    state.pending > CHAOS_PENDING_CAP
+  ) {
+    throw new Error('INVALID_CHAOS_STATE');
   }
+  if (typeof accessActive !== 'boolean') throw new Error('INVALID_CHAOS_ACCESS');
+
+  const targetCycle = cycleIndexAt(state.anchorAt, now);
+  if (targetCycle <= state.processedCycle) return state;
+
+  const elapsedCycles = targetCycle - state.processedCycle;
+  const additionalPending = accessActive
+    ? Math.min(elapsedCycles, CHAOS_PENDING_CAP - state.pending)
+    : 0;
 
   return {
-    ...input.state,
+    ...state,
     processedCycle: targetCycle,
-    pending,
+    pending: state.pending + additionalPending,
   };
 }
 

@@ -82,4 +82,29 @@ describe('Farm V2 chaos seed runtime', () => {
     expect(offline.pending).toBe(3);
     expect(offline.processedCycle).toBe(3);
   });
+
+  it('advances a long offline cursor in one settlement while keeping the pending cap', () => {
+    const cycles = 1_000_000;
+    const offline = settleChaosSeeds({
+      state: createChaosSeedState(0),
+      now: CHAOS_CYCLE_MS * cycles,
+      accessActive: true,
+    });
+
+    expect(offline.pending).toBe(3);
+    expect(offline.processedCycle).toBe(cycles);
+  });
+
+  it('rejects corrupt chaos cursor and pending values', () => {
+    expect(() => settleChaosSeeds({
+      state: { anchorAt: 0, processedCycle: -1, pending: 0 },
+      now: CHAOS_CYCLE_MS,
+      accessActive: true,
+    })).toThrow('INVALID_CHAOS_STATE');
+    expect(() => settleChaosSeeds({
+      state: { anchorAt: 0, processedCycle: 0, pending: 4 },
+      now: CHAOS_CYCLE_MS,
+      accessActive: true,
+    })).toThrow('INVALID_CHAOS_STATE');
+  });
 });
