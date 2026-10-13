@@ -63,6 +63,14 @@ export function settleFarmerLand(input: {
   const { farmer, land, now } = input;
   let seedsRemaining = input.seedsAvailable;
 
+  if (
+    !Number.isSafeInteger(seedsRemaining) ||
+    seedsRemaining < 0 ||
+    !Number.isSafeInteger(now)
+  ) {
+    throw new Error('INVALID_FARMER_SETTLEMENT_INPUT');
+  }
+
   if (!farmer.entitled || !farmer.enabledByLand[land.landId] || !land.accessActive) {
     return { land, seedsRemaining, harvestedQuantity: 0, completedCycles: 0 };
   }
@@ -107,20 +115,29 @@ export function settleFarmerLand(input: {
   harvestedQuantity += plantedQuantity;
   completedCycles += 1;
 
-  // Replant only complete batches. Each fully elapsed subsequent cycle can be
-  // harvested; the first not-yet-mature batch remains growing.
-  let nextPlantAt = maturesAt;
-  while (seedsRemaining >= capacity) {
-    seedsRemaining -= capacity;
+  // Compute all complete offline cycles in constant time. Iterating once per
+  // crop batch made a long absence or large warehouse inventory block login.
+  const availableBatches = Math.floor(seedsRemaining / capacity);
+  const matureBatches = Math.min(
+    availableBatches,
+    Math.max(0, Math.floor((now - maturesAt) / growthMs)),
+  );
+  const additionalHarvest = matureBatches * capacity;
+  const totalHarvest = harvestedQuantity + additionalHarvest;
+  const totalCycles = completedCycles + matureBatches;
+  if (!Number.isSafeInteger(totalHarvest) || !Number.isSafeInteger(totalCycles)) {
+    throw new Error('FARMER_SETTLEMENT_OVERFLOW');
+  }
+  harvestedQuantity = totalHarvest;
+  completedCycles = totalCycles;
+
+  const nextPlantAt = maturesAt + matureBatches * growthMs;
+  if (availableBatches > matureBatches) {
     const nextMaturesAt = nextPlantAt + growthMs;
-
-    if (now >= nextMaturesAt) {
-      harvestedQuantity += capacity;
-      completedCycles += 1;
-      nextPlantAt = nextMaturesAt;
-      continue;
+    const nextSeedsRemaining = seedsRemaining - (matureBatches + 1) * capacity;
+    if (!Number.isSafeInteger(nextPlantAt) || !Number.isSafeInteger(nextMaturesAt)) {
+      throw new Error('FARMER_SETTLEMENT_OVERFLOW');
     }
-
     return {
       land: {
         ...land,
@@ -129,11 +146,13 @@ export function settleFarmerLand(input: {
         plantedAt: nextPlantAt,
         maturesAt: nextMaturesAt,
       },
-      seedsRemaining,
+      seedsRemaining: nextSeedsRemaining,
       harvestedQuantity,
       completedCycles,
     };
   }
+
+  seedsRemaining -= matureBatches * capacity;
 
   // No complete seed batch remains: stop on EMPTY after the last harvest.
   return {

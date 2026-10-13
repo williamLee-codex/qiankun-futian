@@ -111,4 +111,32 @@ describe('Farm V2 farmer runtime', () => {
     expect(oneSeed.seedsRemaining).toBe(0);
     expect(oneSeed.land.maturesAt).toBe(1000 + 60 * HOUR);
   });
+
+  it('settles extreme but safe elapsed field-6 inventories without iterating every cycle', () => {
+    let farmer = reconcileFarmerEntitlement(createFarmerState(), 999);
+    farmer = setFarmerLandEnabled(farmer, 6, true);
+    const land = {
+      ...createInitialLandEntities()[5],
+      lifecycle: 'MATURE' as const,
+      accessActive: true,
+      plantedQuantity: 1,
+      plantedAt: 0,
+      maturesAt: 60 * HOUR,
+    };
+    const now = 8_000_000_000_000_000;
+
+    const result = settleFarmerLand({
+      farmer,
+      land,
+      seedsAvailable: Number.MAX_SAFE_INTEGER,
+      now,
+    });
+
+    expect(result.harvestedQuantity).toBe(37_037_037);
+    expect(result.completedCycles).toBe(37_037_037);
+    expect(result.seedsRemaining).toBe(Number.MAX_SAFE_INTEGER - 37_037_037);
+    expect(result.land.lifecycle).toBe('GROWING');
+    expect(result.land.plantedAt).toBe(7_999_999_992_000_000);
+    expect(result.land.maturesAt).toBe(8_000_000_208_000_000);
+  });
 });
