@@ -67,10 +67,17 @@ export function applyNewbieHarvestMultiplier(
   firstFarmEnteredAt: number,
   harvestedAt: number,
 ): number {
-  if (!Number.isInteger(baseHarvestQuantity) || baseHarvestQuantity < 0) {
+  if (!Number.isSafeInteger(baseHarvestQuantity) || baseHarvestQuantity < 0) {
     throw new Error('INVALID_HARVEST_QUANTITY');
   }
-  return isNewbieHarvestWindow(firstFarmEnteredAt, harvestedAt)
+  if (!Number.isSafeInteger(firstFarmEnteredAt) || !Number.isSafeInteger(harvestedAt)) {
+    throw new Error('INVALID_HARVEST_TIME');
+  }
+  const creditedQuantity = isNewbieHarvestWindow(firstFarmEnteredAt, harvestedAt)
     ? baseHarvestQuantity * 6
     : baseHarvestQuantity;
+  if (!Number.isSafeInteger(creditedQuantity)) {
+    throw new Error('HARVEST_QUANTITY_OVERFLOW');
+  }
+  return creditedQuantity;
 }

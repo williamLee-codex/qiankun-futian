@@ -129,12 +129,18 @@ export function depositHarvest(
   landId: FarmLandId,
   quantity: number,
 ): FarmWarehouse {
-  if (!Number.isInteger(quantity) || quantity < 0) throw new Error('INVALID_HARVEST_QUANTITY');
+  if (!Number.isSafeInteger(quantity) || quantity < 0) throw new Error('INVALID_HARVEST_QUANTITY');
+  const currentQuantity = warehouse.crops[landId];
+  if (!Number.isSafeInteger(currentQuantity) || currentQuantity < 0) {
+    throw new Error('INVALID_FARM_INVENTORY');
+  }
+  const nextQuantity = currentQuantity + quantity;
+  if (!Number.isSafeInteger(nextQuantity)) throw new Error('INVALID_FARM_INVENTORY');
   return {
     ...warehouse,
     crops: {
       ...warehouse.crops,
-      [landId]: warehouse.crops[landId] + quantity,
+      [landId]: nextQuantity,
     },
   };
 }

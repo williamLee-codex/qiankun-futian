@@ -51,4 +51,10 @@ describe('Farm V2 canonical time boundaries', () => {
     expect(applyNewbieHarvestMultiplier(20, first, first + 7 * 24 * 60 * 60 * 1000))
       .toBe(20);
   });
+
+  it('rejects a newbie multiplier result that exceeds safe integer precision', () => {
+    const first = ts('2026-09-01T12:34:56+08:00');
+    expect(() => applyNewbieHarvestMultiplier(Number.MAX_SAFE_INTEGER, first, first))
+      .toThrow('HARVEST_QUANTITY_OVERFLOW');
+  });
 });

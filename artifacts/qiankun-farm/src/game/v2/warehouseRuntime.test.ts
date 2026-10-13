@@ -81,6 +81,14 @@ describe('Farm V2 canonical economy runtime', () => {
     expect(result.wallet.crystals).toBe(9);
     expect(result.warehouse.crops[6]).toBe(0);
   });
+
+  it('rejects crop inventory addition that exceeds safe integer precision', () => {
+    const warehouse = {
+      ...createEmptyFarmWarehouse(),
+      crops: { ...createEmptyFarmWarehouse().crops, 6: Number.MAX_SAFE_INTEGER },
+    };
+    expect(() => depositHarvest(warehouse, 6, 1)).toThrow('INVALID_FARM_INVENTORY');
+  });
 });
 
 describe('Farm V2 mission material inventory', () => {
