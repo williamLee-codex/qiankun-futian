@@ -7,10 +7,14 @@
   "functions": {
     "api/index.mjs": {
       "maxDuration": 60,
-      "includeFiles": "artifacts/api-server/dist/**"
+      "includeFiles": [
+        "artifacts/api-server/dist/**",
+        "certs/**"
+      ]
     },
     "api/isolation-check.mjs": {
-      "maxDuration": 15
+      "maxDuration": 15,
+      "includeFiles": "certs/**"
     }
   },
   "rewrites": [

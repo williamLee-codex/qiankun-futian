@@ -1,4 +1,5 @@
 // Temporary Preview-only, read-only connectivity acceptance. Never merge to production.
+import { readFileSync } from 'node:fs';
 const SQL=`SELECT current_user AS role,
  (SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()) AS tls,
  current_setting('statement_timeout')='15s' AS statement_timeout,
@@ -21,7 +22,7 @@ export function createHandler(env,connect){
   let client;
   try{
    url.search='';
-   client=await connect({connectionString:url.toString(),ssl:{rejectUnauthorized:true},connectionTimeoutMillis:5000,query_timeout:10000,application_name:'farm_isolated_acceptance',options:'-c statement_timeout=15000 -c lock_timeout=3000 -c idle_in_transaction_session_timeout=8000'});
+   client=await connect({connectionString:url.toString(),ssl:{rejectUnauthorized:true,ca:readFileSync(new URL('../certs/supabase-prod-ca-2021.crt',import.meta.url),'utf8')},connectionTimeoutMillis:5000,query_timeout:10000,application_name:'farm_isolated_acceptance',options:'-c statement_timeout=15000 -c lock_timeout=3000 -c idle_in_transaction_session_timeout=8000'});
    const {rows:[row]}=await client.query(SQL);
    const checks={...row,role:row.role==='farm_v2_runtime'};
    const passed=Object.values(checks).every(v=>v===true);
