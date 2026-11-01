@@ -26,7 +26,11 @@ export function createHandler(env,connect){
    const checks={...row,role:row.role==='farm_v2_runtime'};
    const passed=Object.values(checks).every(v=>v===true);
    return res.status(passed?200:503).json({status:passed?'pass':'not_ready',checks});
-  }catch{return res.status(503).json({status:'not_ready'})}
+  }catch(error){
+   const codes=['SELF_SIGNED_CERT_IN_CHAIN','UNABLE_TO_VERIFY_LEAF_SIGNATURE','ERR_TLS_CERT_ALTNAME_INVALID','28P01','28000','53300','42501','ETIMEDOUT','ECONNREFUSED','ENOTFOUND','ERR_MODULE_NOT_FOUND'];
+   console.error('FARM_ISOLATED_CONNECTION_CHECK_FAILED',codes.includes(error?.code)?error.code:'UNKNOWN');
+   return res.status(503).json({status:'not_ready'});
+  }
   finally{if(client)await client.end().catch(()=>{});}
  };
 }
