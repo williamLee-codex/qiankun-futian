@@ -92,7 +92,11 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       setError(cause instanceof Error ? cause.message : "FARM_V2_STATE_FAILED");
       return false;
     } finally {
-      if (sequence === readSequence.current) setLoading(false);
+      if (sequence === readSequence.current) {
+        setPendingWorkshop(api?.pendingWorkshop() ?? []);
+        setPendingFriends(api?.pendingFriends() ?? []);
+        setLoading(false);
+      }
     }
   }, [api, launchToken]);
 
