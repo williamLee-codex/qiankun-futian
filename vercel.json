@@ -1,9 +1,29 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @workspace/api-server run build",
-  "functions": { "api/index.mjs": { "maxDuration": 60, "includeFiles": "artifacts/api-server/dist/**" } },
-  "rewrites": [{ "source": "/api/:path*", "destination": "/api/index" }],
-  "git": { "deploymentEnabled": false }
+  "installCommand": "pnpm install --frozen-lockfile --ignore-scripts",
+  "buildCommand": "pnpm --filter @workspace/api-server run build && mkdir -p public",
+  "outputDirectory": "public",
+  "functions": {
+    "api/index.mjs": {
+      "maxDuration": 60,
+      "includeFiles": "artifacts/api-server/dist/**"
+    },
+    "api/isolation-check.mjs": {
+      "maxDuration": 15
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/isolation-check",
+      "destination": "/api/isolation-check"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index"
+    }
+  ],
+  "git": {
+    "deploymentEnabled": false
+  }
 }
