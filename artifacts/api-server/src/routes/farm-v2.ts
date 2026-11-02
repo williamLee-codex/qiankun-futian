@@ -1,3 +1,4 @@
+import { runFarmV2AuthorizedJson } from "../lib/farm-v2-authorized-json";
 import { timeFarmV2Function } from "../lib/farm-v2-stage-timing";
 import { completeFarmV2Mutation } from "../lib/farm-v2-mutation-snapshot";
 import { pool } from "@workspace/db";
@@ -64,6 +65,7 @@ const authorizedRoute =
         (req.method === "GET" ? randomUUID() : "");
       if (!/^[A-Za-z0-9._:-]{1,120}$/.test(requestId))
         throw new Error("REQUEST_ID_REQUIRED");
+      await runFarmV2AuthorizedJson(res, next, async (deferredNext) => {
       await withFarmAuthority(
         {
           userId: String(res.locals.authenticatedUserId),
@@ -72,9 +74,10 @@ const authorizedRoute =
           action: req.method + ":" + req.path,
         },
         async () => {
-          await handler(req, res, next);
+          await handler(req, res, deferredNext);
         },
       );
+      });
     } catch (error) {
       if (!res.headersSent) next(error);
     }
