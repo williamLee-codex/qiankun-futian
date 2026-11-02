@@ -1,3 +1,4 @@
+import { completeFarmV2Mutation } from "../lib/farm-v2-mutation-snapshot";
 import { pool } from "@workspace/db";
 import { mutateFarmV2Friend } from "../lib/farm-v2-friend-actions";
 import { withFarmFriendAuthority } from "../lib/farm-v2-friend-authority";
@@ -22,6 +23,16 @@ import { reconcileFarmV2PaidAccessFromCore } from "../lib/farm-v2-paid-access";
 import { requestFarmV2PlatformSession } from "../lib/farm-v2-platform";
 
 const router: IRouter = Router();
+async function mutationResponse<T extends object>(
+  includeSnapshot: boolean, userId: string, result: T,
+) {
+  if (!includeSnapshot) return result;
+  return completeFarmV2Mutation({
+    mutate: async () => result,
+    settle: () => settleFarmV2Farmer({ userId, requestId: "login-settle:" + randomUUID() }),
+    read: () => ensureFarmV2PlayerInitialized({ userId }),
+  });
+}
 // Fail closed before identity validation, database access or session creation.
 // Revocation is cleanup only and still passes the existing platform verification.
 router.use("/farm/v2", (req, res, next) => {
@@ -262,7 +273,8 @@ router.post(
         userId,
         landId: Number(req.params.landId),
       });
-      res.json(result);
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await mutationResponse(req.query.snapshot === "1", userId, result));
     } catch (error) {
       next(error);
     }
@@ -300,7 +312,8 @@ router.post(
         userId,
         landId: Number(req.params.landId),
       });
-      res.json(result);
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await mutationResponse(req.query.snapshot === "1", userId, result));
     } catch (error) {
       next(error);
     }
@@ -334,7 +347,8 @@ router.post(
         landId: Number(req.params.landId),
         packs: Number(req.body?.packs),
       });
-      res.json(result);
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await mutationResponse(req.query.snapshot === "1", userId, result));
     } catch (error) {
       next(error);
     }
@@ -368,7 +382,8 @@ router.post(
         landId: Number(req.params.landId),
         cropQuantity: Number(req.body?.cropQuantity),
       });
-      res.json(result);
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await mutationResponse(req.query.snapshot === "1", userId, result));
     } catch (error) {
       next(error);
     }

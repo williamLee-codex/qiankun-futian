@@ -1,3 +1,4 @@
+import { farmV2ErrorDiagnostic } from "./lib/farm-v2-error-diagnostic";
 import express, { type Express, type ErrorRequestHandler } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
@@ -54,7 +55,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api", router);
 // Unexpected driver/runtime errors must not expose connection details.
 app.use(((error, _req, res, _next) => {
-  logger.error({ code: "FARM_API_INTERNAL_ERROR" });
+  logger.error({ code: "FARM_API_INTERNAL_ERROR", ...farmV2ErrorDiagnostic(error) });
   if (!res.headersSent) res.status(503).json({ error: "FARM_API_UNAVAILABLE" });
 }) as ErrorRequestHandler);
 
