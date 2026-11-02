@@ -43,6 +43,14 @@ export function FarmV2AuthenticatedView(props: {
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
 
+  async function refreshManually() {
+    setNotice("正在更新農田…");
+    const ok = await refresh();
+    setNotice(ok
+      ? `農田已更新（${new Date().toLocaleTimeString("zh-TW")}）。`
+      : "農田更新失敗，請查看錯誤提示。");
+  }
+
   async function execute(
     operation:
       | "sow"
@@ -128,7 +136,7 @@ export function FarmV2AuthenticatedView(props: {
             }
           }}
         />
-        {notice && <p role="status">{notice}</p>}
+        {notice && <p role="status" aria-live="polite">{notice}</p>}
         {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
       </>
     );
@@ -153,7 +161,7 @@ export function FarmV2AuthenticatedView(props: {
         }}
         ownerLabel="我的福田"
         busy={busy || loading}
-        onRefresh={refresh}
+        onRefresh={() => { void refreshManually(); }}
         onLandSelect={setSelectedLand}
         onLandAction={execute}
         onSection={(tab) => {
@@ -256,10 +264,10 @@ export function FarmV2AuthenticatedView(props: {
         type="button"
         disabled={busy || loading}
         onClick={() => {
-          void refresh();
+          void refreshManually();
         }}
       >
-        更新農田
+        {loading ? "正在更新農田…" : "更新農田"}
       </button>
       {selectedLand === null && <p>請點選 2D 場景中的農田查看操作。</p>}
       <Dialog
