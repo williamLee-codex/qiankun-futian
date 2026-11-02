@@ -168,7 +168,9 @@ export function createFarmV2Api(input: {
     body?: unknown,
   ): Promise<T> {
     const token = await session();
-    const operation = JSON.stringify([path, body]);
+    // Response negotiation must not change durable operation identity: a
+    // pending purchase from the older client must keep its original key.
+    const operation = JSON.stringify([path.replace(/\?snapshot=1$/, ""), body]);
     const requestId =
       method === "POST"
         ? (pendingRequests.get(operation) ?? crypto.randomUUID())
@@ -286,15 +288,16 @@ export function createFarmV2Api(input: {
       ),
     readState: () => request<FarmV2State>("farm/v2/state", "GET"),
     sow: (landId: number) =>
-      request<FarmV2MutationResult>(`farm/v2/lands/${landId}/sow`, "POST"),
+      request<FarmV2MutationResult>(`farm/v2/lands/${landId}/sow?snapshot=1`, "POST"),
     harvest: (landId: number) =>
-      request<FarmV2MutationResult>(`farm/v2/lands/${landId}/harvest`, "POST"),
+      request<FarmV2MutationResult>(`farm/v2/lands/${landId}/harvest?snapshot=1`, "POST"),
     purchaseSeeds: (landId: number, packs: number) =>
-      request<unknown>(`farm/v2/seeds/${landId}/purchase`, "POST", { packs }),
+      request<unknown>(`farm/v2/seeds/${landId}/purchase?snapshot=1`, "POST", { packs }),
     exchangeCrops: (landId: number, cropQuantity: number) =>
-      request<unknown>(`farm/v2/crops/${landId}/exchange`, "POST", {
+      request<unknown>(`farm/v2/crops/${landId}/exchange?snapshot=1`, "POST", {
         cropQuantity,
       }),
   };
 }
+
 

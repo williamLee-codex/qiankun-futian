@@ -119,11 +119,11 @@ describe("Farm V2 API contract", () => {
     await api.purchaseSeeds(2, 3);
     await api.exchangeCrops(6, 6);
     expect(fetchMock.mock.calls[1][0]).toBe(
-      "https://example.test/api/farm/v2/seeds/2/purchase",
+      "https://example.test/api/farm/v2/seeds/2/purchase?snapshot=1",
     );
     expect(fetchMock.mock.calls[1][1].body).toBe(JSON.stringify({ packs: 3 }));
     expect(fetchMock.mock.calls[2][0]).toBe(
-      "https://example.test/api/farm/v2/crops/6/exchange",
+      "https://example.test/api/farm/v2/crops/6/exchange?snapshot=1",
     );
     expect(fetchMock.mock.calls[2][1].body).toBe(
       JSON.stringify({ cropQuantity: 6 }),
@@ -254,6 +254,18 @@ describe("Farm V2 API contract", () => {
     expect([...values.values()].join("")).not.toContain("launch-");
     expect([...values.values()].join("")).not.toContain("fvs1.");
   });
+  it("keeps a legacy pending purchase ID when requesting a snapshot response", async () => {
+    const operation = JSON.stringify(["farm/v2/seeds/1/purchase", { packs: 1 }]);
+    vi.stubGlobal("sessionStorage", {
+      getItem: () => JSON.stringify({ [operation]: "legacy-purchase-id" }),
+      setItem: () => {},
+    });
+    const fetchMock = fetchWithSession({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+    await createFarmV2Api({ baseUrl: "https://example.test/api", launchToken: "token" }).purchaseSeeds(1, 1);
+    expect(fetchMock.mock.calls[1][1].headers["x-request-id"]).toBe("legacy-purchase-id");
+    expect(fetchMock.mock.calls[1][0]).toContain("?snapshot=1");
+  });
 });
 
 it("friend lost response keeps the original target/body/key for explicit recovery", async () => {
@@ -287,4 +299,5 @@ it("friend lost response keeps the original target/body/key for explicit recover
   expect(new Set(keys).size).toBe(1);
   expect(api.pendingFriends()).toEqual([]);
 });
+
 
