@@ -27,6 +27,22 @@ export function FarmSceneInteractionLayer(props: {
     [interior, setInterior] = useState(false),
     [clock, setClock] = useState(Date.now());
   const maturityRead = useRef("");
+  const caveEntry = useRef<HTMLButtonElement>(null);
+  const caveExit = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!interior) return;
+    caveExit.current?.focus();
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !document.querySelector('[role="dialog"]')) {
+        setInterior(false);
+      }
+    };
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("keydown", escape);
+      caveEntry.current?.focus({ preventScroll: true });
+    };
+  }, [interior]);
   useEffect(() => {
     const q = window.matchMedia("(min-width:768px)");
     const update = () => setDesktop(q.matches);
@@ -75,7 +91,7 @@ export function FarmSceneInteractionLayer(props: {
   const section = (name: string) => props.onSection?.(name);
   return (
     <section
-      className={"farm-v2-interaction " + (desktop ? "desktop" : "mobile")}
+      className={"farm-v2-interaction " + (desktop ? "desktop" : "mobile") + (interior ? " cave-open" : "")}
       aria-label={props.ownerLabel + "場景互動層"}
       data-layout={desktop ? "desktop" : "mobile"}
     >
@@ -84,14 +100,23 @@ export function FarmSceneInteractionLayer(props: {
           {props.ownerLabel}
           {interior ? "・洞府" : "・農場"}
         </strong>
-        <span>點選農田查看操作</span>
+        <span>{interior ? "點選展示台管理陳設" : "點選農田查看操作"}</span>
+        {interior && (
+          <button ref={caveExit} className="farm-v2-cave-return" onClick={() => setInterior(false)}>
+            返回農場
+          </button>
+        )}
         {props.onReturnHome && (
           <button onClick={props.onReturnHome}>返回我的福田</button>
         )}
       </header>
+      <div className={interior ? "farm-v2-cave-viewport" : "farm-v2-exterior-viewport"}>
       <div
         className={"farm-v2-canvas " + (interior ? "interior" : "exterior")}
-        style={{ aspectRatio: layout.aspectRatio }}
+        style={interior ? {
+          aspectRatio: desktop ? "1672 / 941" : "941 / 1672",
+          width: `min(100cqw, calc(100cqh * ${desktop ? 1672 / 941 : 941 / 1672}))`,
+        } : { aspectRatio: layout.aspectRatio }}
       >
         {!interior && (
           <img
@@ -105,10 +130,14 @@ export function FarmSceneInteractionLayer(props: {
         )}
         {interior ? (
           <>
-            <button className="farm-v2-exit" onClick={() => setInterior(false)}>
-              離開洞府・回到{props.ownerLabel}農場
-            </button>
-            <div className="farm-v2-meditation">洞府主角・打坐</div>
+            <img
+              className="farm-v2-scene-original"
+              src={`${import.meta.env.BASE_URL ?? "/"}images/farm/cave-scene-${desktop ? "desktop" : "mobile"}.webp`}
+              alt="洞府內景：中央打坐台、左右各三座展示台，後方石門與尋寶區預留位置"
+              width={desktop ? 1672 : 941}
+              height={desktop ? 941 : 1672}
+              draggable={false}
+            />
             {Array.from({ length: 6 }, (_, i) => {
               const decor = props.state.decor.find((d) => d.slot === i + 1);
               return (
@@ -116,17 +145,18 @@ export function FarmSceneInteractionLayer(props: {
                   key={i}
                   className="farm-v2-decor"
                   style={{
-                    left: (desktop ? [5, 38, 71] : [5, 38, 71])[i % 3] + "%",
-                    top: (desktop ? (i < 3 ? 23 : 70) : i < 3 ? 20 : 70) + "%",
-                    width: "24%",
-                    height: desktop ? "17%" : "13%",
+                    left: (desktop ? [17, 10, 12, 83, 90, 89] : [15, 12, 13, 85, 88, 87])[i] + "%",
+                    top: (desktop ? [43, 55, 69, 44, 55, 69] : [41, 56, 74, 41, 56, 74])[i] + "%",
+                    width: desktop ? "13%" : "22%",
+                    height: desktop ? "10%" : "7%",
+                    transform: "translate(-50%, -50%)",
                   }}
                   disabled={props.readOnly || props.busy}
                   onClick={() => section("洞府")}
                 >
                   {decor
                     ? DECOR_CATALOG.find((d) => d.id === decor.catalogId)?.name
-                    : "陳設互動位 " + (i + 1)}
+                    : "空位 " + (i + 1)}
                 </button>
               );
             })}
@@ -134,6 +164,7 @@ export function FarmSceneInteractionLayer(props: {
         ) : (
           <>
             <button
+              ref={caveEntry}
               className="farm-v2-cave"
               style={position(layout.cave)}
               onClick={() => setInterior(true)}
@@ -262,6 +293,8 @@ export function FarmSceneInteractionLayer(props: {
           </>
         )}
       </div>
+      </div>
     </section>
   );
 }
+

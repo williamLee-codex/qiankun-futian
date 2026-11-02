@@ -1,4 +1,5 @@
 .farm-v2-authenticated-view {
+  font-family: system-ui, "Noto Sans TC", sans-serif;
   color: #f0e8d6;
   background: #17271e;
   padding-bottom: 16px;
@@ -213,6 +214,58 @@ body:has(.farm-v2-authenticated-view) {
   box-shadow: none;
   animation: none;
 }
+
+/* The cave uses its own viewport; artwork and hit regions share one exact
+   aspect-ratio box, including when a device rotates or letterboxes. */
+.farm-v2-interaction.cave-open {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  margin: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  font-family: system-ui, "Noto Sans TC", sans-serif;
+}
+.cave-open > header { flex: none; padding: 8px 12px; gap: 8px; }
+.cave-open > header span { display: none; }
+.farm-v2-cave-return {
+  margin-left: auto;
+  min-height: 44px;
+  padding: 8px 14px;
+  color: #fff5db;
+  background: #263c32;
+  border: 1px solid #bda66a;
+  border-radius: 8px;
+}
+.farm-v2-cave-viewport {
+  flex: 1;
+  min-height: 0;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #101a17;
+}
+.farm-v2-cave-viewport > .farm-v2-canvas { flex: none; }
+.farm-v2-canvas.interior .farm-v2-decor,
+.farm-v2-canvas.interior .farm-v2-decor:hover {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  text-shadow: 0 1px 3px #000, 0 0 5px #000;
+  font-weight: 600;
+}
+.farm-v2-canvas.interior .farm-v2-decor:hover:not(:focus-visible) { outline: none; }
+.farm-v2-canvas.interior .farm-v2-decor:focus-visible { outline: 2px solid #e5c879; }
+html:has(.farm-v2-interaction.cave-open),
+body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
+.farm-v2-authenticated-view:has(.cave-open) > :not(.farm-v2-interaction) { visibility: hidden; }
 .farm-v2-canvas.exterior button:hover:not(:focus-visible) {
   outline: none;
 }
@@ -220,4 +273,5 @@ body:has(.farm-v2-authenticated-view) {
   outline: 2px solid #e5c879;
   outline-offset: 2px;
 }
+
 
