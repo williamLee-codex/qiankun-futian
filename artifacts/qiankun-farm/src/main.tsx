@@ -40,9 +40,35 @@ if (launchToken && apiBaseUrl) {
   void import("./App").then(({ default: App }) => root.render(<App />));
 } else {
   root.render(
-    <main role="alert">
-      <h1>乾坤福田暫時無法啟動</h1>
-      <p>缺少正式平台授權或農場 API 設定。請由御策羅盤重新進入。</p>
+    <main
+      role="alert"
+      style={{
+        minHeight: "100dvh", boxSizing: "border-box", padding: 24,
+        display: "grid", placeItems: "center", background: "#0b1020",
+        color: "#f8fafc", fontFamily: "system-ui, sans-serif",
+        fontSize: 20, lineHeight: 1.6,
+      }}
+    >
+      <section style={{ maxWidth: 640 }}>
+        <h1 style={{ fontSize: 28, marginBottom: 16 }}>
+          {!launchToken ? "請重新進入乾坤福田" : "農田連線設定未完成"}
+        </h1>
+        <p>
+          {!launchToken
+            ? "目前頁面缺少平台啟動授權。直接開啟或重新整理農田網址後，請從平台入口重新進入。"
+            : "目前缺少農場 API 連線設定，暫時無法載入農田。"}
+        </p>
+        <a
+          href="/api/apps/qiankun-futian/launch?farmV2=1"
+          style={{
+            display: "inline-block", marginTop: 24, padding: "12px 20px",
+            color: "#fff", background: "#244a3b", border: "1px solid #cfb36b",
+            borderRadius: 8, textDecoration: "underline", fontWeight: 600,
+          }}
+        >
+          重新進入農田
+        </a>
+      </section>
     </main>,
   );
 }
