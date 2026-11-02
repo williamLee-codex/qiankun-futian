@@ -68,6 +68,11 @@ export function createFarmV2Api(input: {
     return new URL(normalizedPath, normalizedBase).toString();
   };
 
+  const browserResume = launchToken === "browser-session";
+  if (browserResume && (typeof window === "undefined" || normalizedApiBase.origin !== window.location.origin))
+    throw new Error("FARM_V2_SAME_ORIGIN_SESSION_REQUIRED");
+  const authHeader = (token: string): Record<string, string> =>
+    token === "cookie-session" ? {} : { Authorization: `Bearer ${token}` };
   let revoked = false;
   let sessionPromise: Promise<string> | null = null;
   let reauthenticateUrl: string | null = null;
@@ -112,8 +117,9 @@ export function createFarmV2Api(input: {
     if (revoked) throw new FarmV2ApiError(401, "FARM_SESSION_NOT_ACTIVE");
     sessionPromise ??= (async () => {
       const response = await fetch(endpoint("farm/v2/session"), {
-        method: "POST",
-        headers: { Authorization: `Bearer ${launchToken}` },
+        method: browserResume ? "GET" : "POST",
+        headers: browserResume ? {} : { Authorization: `Bearer ${launchToken}` },
+        credentials: "same-origin",
         cache: "no-store",
         redirect: "error",
         signal: AbortSignal.timeout(60_000),
@@ -127,7 +133,7 @@ export function createFarmV2Api(input: {
         typeof result.userId !== "string" ||
         !result.userId ||
         typeof result.sessionToken !== "string" ||
-        !result.sessionToken.startsWith("fvs1.") ||
+        !(result.sessionToken.startsWith("fvs1.") || (normalizedApiBase.origin === window.location.origin && result.sessionToken === "cookie-session")) ||
         typeof result.reauthenticateUrl !== "string"
       )
         throw new Error("INVALID_FARM_SESSION_RESPONSE");
@@ -182,7 +188,7 @@ export function createFarmV2Api(input: {
         const response = await fetch(endpoint(path), {
           method,
           headers: {
-            Authorization: `Bearer ${token}`,
+            ...authHeader(token),
             ...(requestId ? { "x-request-id": requestId } : {}),
             ...(body !== undefined
               ? { "content-type": "application/json" }
@@ -231,7 +237,7 @@ export function createFarmV2Api(input: {
         await fetch(endpoint("farm/v2/session"), {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
+            ...authHeader(token),
             "content-type": "application/json",
           },
           body: JSON.stringify({ action: "revoke" }),
@@ -299,5 +305,6 @@ export function createFarmV2Api(input: {
       }),
   };
 }
+
 
 

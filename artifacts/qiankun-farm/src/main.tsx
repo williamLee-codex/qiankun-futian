@@ -6,7 +6,7 @@ import "./index.css";
 // It is only a credential candidate: every Farm V2 request must be validated
 // by the API server against the platform before any state is returned.
 const params = new URLSearchParams(window.location.search);
-const launchToken = params.get("launchToken")?.trim() ?? "";
+const urlLaunchToken = params.get("launchToken")?.trim() ?? "";
 const configuredApiBase = import.meta.env.VITE_FARM_API_BASE_URL?.trim() ?? "";
 // A trusted build-time relative path supports the main site's same-origin proxy.
 const apiBaseUrl = configuredApiBase
@@ -27,6 +27,8 @@ if (params.has("launchToken")) {
   );
 }
 
+// Same-origin HttpOnly cookie resumes an existing server session after reload.
+const launchToken = urlLaunchToken || (apiBaseUrl && new URL(apiBaseUrl).origin === window.location.origin ? "browser-session" : "");
 const root = createRoot(document.getElementById("root")!);
 if (launchToken && apiBaseUrl) {
   root.render(
@@ -72,3 +74,4 @@ if (launchToken && apiBaseUrl) {
     </main>,
   );
 }
+
