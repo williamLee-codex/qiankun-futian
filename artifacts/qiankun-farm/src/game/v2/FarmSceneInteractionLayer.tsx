@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { SCENE_LAYOUTS, type SceneRegion } from "./sceneInteractionRuntime";
 import { FARM_V2_LANDS } from "./canonicalLandData";
-import { DECOR_CATALOG } from "./decorCatalog";
 import { FORMATION_NAMES } from "./formationSourcesRuntime";
 import type { Plot } from "../types";
 import "./farmSceneInteraction.css";
@@ -100,7 +99,7 @@ export function FarmSceneInteractionLayer(props: {
           {props.ownerLabel}
           {interior ? "・洞府" : "・農場"}
         </strong>
-        <span>{interior ? "點選展示台管理陳設" : "點選農田查看操作"}</span>
+        <span>{interior ? "洞府內景" : "點選農田查看操作"}</span>
         {interior && (
           <button ref={caveExit} className="farm-v2-cave-return" onClick={() => setInterior(false)}>
             返回農場
@@ -138,28 +137,7 @@ export function FarmSceneInteractionLayer(props: {
               height={desktop ? 941 : 1672}
               draggable={false}
             />
-            {Array.from({ length: 6 }, (_, i) => {
-              const decor = props.state.decor.find((d) => d.slot === i + 1);
-              return (
-                <button
-                  key={i}
-                  className="farm-v2-decor"
-                  style={{
-                    left: (desktop ? [17, 10, 12, 83, 90, 89] : [15, 12, 13, 85, 88, 87])[i] + "%",
-                    top: (desktop ? [43, 55, 69, 44, 55, 69] : [41, 56, 74, 41, 56, 74])[i] + "%",
-                    width: desktop ? "13%" : "22%",
-                    height: desktop ? "10%" : "7%",
-                    transform: "translate(-50%, -50%)",
-                  }}
-                  disabled={props.readOnly || props.busy}
-                  onClick={() => section("洞府")}
-                >
-                  {decor
-                    ? DECOR_CATALOG.find((d) => d.id === decor.catalogId)?.name
-                    : "空位 " + (i + 1)}
-                </button>
-              );
-            })}
+
           </>
         ) : (
           <>
