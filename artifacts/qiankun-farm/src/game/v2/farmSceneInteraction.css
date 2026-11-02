@@ -3,6 +3,15 @@
   background: #17271e;
   padding-bottom: 16px;
 }
+
+/* The V2 scene is taller than the viewport; the legacy fixed-canvas body
+   lock must not prevent reaching its lower fields and navigation. */
+html:has(.farm-v2-authenticated-view),
+body:has(.farm-v2-authenticated-view) {
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
 .farm-v2-authenticated-view > nav {
   display: flex;
   flex-wrap: wrap;
@@ -193,3 +202,22 @@
     animation: none;
   }
 }
+
+/* Artwork supplies the exterior controls' visual shapes. Hit regions stay
+   transparent even on hover; keyboard users retain a visible focus outline. */
+.farm-v2-canvas.exterior button,
+.farm-v2-canvas.exterior button:hover,
+.farm-v2-canvas.exterior button:focus-visible {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  animation: none;
+}
+.farm-v2-canvas.exterior button:hover:not(:focus-visible) {
+  outline: none;
+}
+.farm-v2-canvas.exterior button:focus-visible {
+  outline: 2px solid #e5c879;
+  outline-offset: 2px;
+}
+
