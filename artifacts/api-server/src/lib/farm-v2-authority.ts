@@ -1,3 +1,4 @@
+import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 import { randomUUID } from "node:crypto";
 import { createDatabaseConnection, pool } from "@workspace/db";
 import { farmV2PlatformConnection } from "./farm-v2-platform";
@@ -21,7 +22,7 @@ async function callAuthority(
   phase: "begin" | "end",
 ) {
   const { base, secret } = farmV2PlatformConnection();
-  const response = await fetch(
+  const response = await farmV2PlatformFetch(
     new URL("/api/replit/farm-v2/authorization", base),
     {
       method: "POST",

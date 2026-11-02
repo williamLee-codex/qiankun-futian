@@ -1,3 +1,4 @@
+import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 import { timingSafeEqual } from "node:crypto";
 import { farmV2PlatformConnection } from "./farm-v2-platform";
 import type {
@@ -38,7 +39,7 @@ export function findOfficialFestivalCode(codeHash: string): FestivalDefinition {
 }
 export async function readTrustedFormationGrants(launchToken: string) {
   const { base, secret } = farmV2PlatformConnection();
-  const response = await fetch(
+  const response = await farmV2PlatformFetch(
     new URL("/api/replit/farm-v2/formations", base),
     {
       method: "POST",

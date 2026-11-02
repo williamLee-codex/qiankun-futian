@@ -1,3 +1,4 @@
+import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 import { farmAuthorityContext } from "./farm-v2-authority-context";
 /**
  * Fetches paid qualification only from the Core Wallet service.
@@ -22,7 +23,7 @@ export async function fetchFarmV2CorePaidQualification(launchToken: string): Pro
   ) {
     throw new Error("INVALID_FARM_PLATFORM_BASE_URL");
   }
-  const response = await fetch(new URL("/api/replit/farm-v2/paid-value", platformBaseUrl), {
+  const response = await farmV2PlatformFetch(new URL("/api/replit/farm-v2/paid-value", platformBaseUrl), {
     method: "POST",
     redirect: "error",
     headers: {

@@ -1,3 +1,4 @@
+import { farmV2PlatformFetch } from "../lib/farm-v2-platform-fetch";
 import type { Request, Response, NextFunction } from "express";
 import { farmV2PlatformConnection } from "../lib/farm-v2-platform";
 
@@ -34,7 +35,7 @@ export async function requireFarmV2LaunchIdentity(
     }
     farmV2PlatformConnection();
 
-    const response = await fetch(
+    const response = await farmV2PlatformFetch(
       new URL("/api/replit/launch/validate", platformBaseUrl),
       {
         method: "POST",

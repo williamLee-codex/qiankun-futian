@@ -1,3 +1,4 @@
+import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 import { farmAuthorityContext } from "./farm-v2-authority-context";
 type FarmWalletCurrency = "coin" | "crystal";
 type FarmWalletDirection = "credit" | "debit";
@@ -95,7 +96,7 @@ export async function mutateFarmV2Wallet(
     throw new Error("INVALID_FARM_PLATFORM_BASE_URL");
   }
 
-  const response = await fetch(
+  const response = await farmV2PlatformFetch(
     new URL("/api/replit/farm-v2/wallet", platformBaseUrl),
     {
       method: "POST",

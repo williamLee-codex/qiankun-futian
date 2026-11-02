@@ -1,3 +1,4 @@
+import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 export function farmV2PlatformConnection() {
   const baseUrl = process.env.PLATFORM_BASE_URL;
   const secret = process.env.REPLIT_APP_SHARED_SECRET;
@@ -22,7 +23,7 @@ export async function requestFarmV2PlatformSession(
   action: "exchange" | "revoke",
 ) {
   const { base, secret } = farmV2PlatformConnection();
-  const response = await fetch(new URL("/api/replit/farm-v2/session", base), {
+  const response = await farmV2PlatformFetch(new URL("/api/replit/farm-v2/session", base), {
     method: "POST",
     redirect: "error",
     cache: "no-store",

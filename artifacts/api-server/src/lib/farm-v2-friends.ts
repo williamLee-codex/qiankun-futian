@@ -1,3 +1,4 @@
+import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 import { reconcileMilestonePets } from "../../../qiankun-farm/src/game/v2/petRuntime";
 import { decodeFarmPetState, encodeFarmPetState } from "./farm-v2-json-codecs";
 function publicPets(value: unknown, qualification: number, now: number) {
@@ -25,7 +26,7 @@ import {
 } from "../../../qiankun-farm/src/game/v2/workshopRuntime";
 async function readAuthority(launchToken: string, targetId?: string) {
   const { base, secret } = farmV2PlatformConnection();
-  const response = await fetch(new URL("/api/replit/farm-v2/friends", base), {
+  const response = await farmV2PlatformFetch(new URL("/api/replit/farm-v2/friends", base), {
     method: "POST",
     headers: {
       "content-type": "application/json",

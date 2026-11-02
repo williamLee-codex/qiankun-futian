@@ -12,9 +12,16 @@
     "api/isolation-check.mjs": {
       "maxDuration": 15,
       "includeFiles": "certs/**"
+    },
+    "api/preview-bridge-check.mjs": {
+      "maxDuration": 15
     }
   },
   "rewrites": [
+    {
+      "source": "/api/farm-preview-bridge-check",
+      "destination": "/api/preview-bridge-check"
+    },
     {
       "source": "/isolation-check",
       "destination": "/api/isolation-check"

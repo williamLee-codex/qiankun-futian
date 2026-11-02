@@ -1,3 +1,4 @@
+import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
 import { farmAuthorityPool, farmAuthorityLockKey } from "./farm-v2-authority";
@@ -30,7 +31,7 @@ export async function withFarmFriendAuthority<T>(
   let registered = false;
   async function call(phase: "begin" | "end") {
     const { base, secret } = farmV2PlatformConnection();
-    const response = await fetch(
+    const response = await farmV2PlatformFetch(
       new URL("/api/replit/farm-v2/friends/authorization", base),
       {
         method: "POST",
