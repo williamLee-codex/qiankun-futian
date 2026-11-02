@@ -116,7 +116,7 @@ export function createFarmV2Api(input: {
         headers: { Authorization: `Bearer ${launchToken}` },
         cache: "no-store",
         redirect: "error",
-        signal: AbortSignal.timeout(10_000),
+        signal: AbortSignal.timeout(60_000),
       });
       const result = await decode<{
         userId: string;
@@ -189,7 +189,8 @@ export function createFarmV2Api(input: {
           ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
           cache: "no-store",
           redirect: "error",
-          signal: AbortSignal.timeout(10_000),
+          // Backend acknowledgement 50s < host proxy 55s < browser 60s.
+          signal: AbortSignal.timeout(60_000),
         });
         const result = await decode<T>(response);
         pendingRequests.delete(operation);
@@ -296,3 +297,4 @@ export function createFarmV2Api(input: {
       }),
   };
 }
+

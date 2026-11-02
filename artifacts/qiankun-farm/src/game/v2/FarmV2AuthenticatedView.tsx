@@ -65,7 +65,7 @@ export function FarmV2AuthenticatedView(props: {
     return <section role="status">正在讀取正式農田資料…</section>;
   if (!data)
     return (
-      <section role="alert">
+      <section role="alert" style={{minHeight:"100vh",background:"#0b1020",color:"#f8fafc",fontFamily:"system-ui, sans-serif",fontSize:20,lineHeight:1.6,padding:24}}>
         <p>無法取得正式農田資料，已停止所有操作。</p>
         {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
         {pendingWorkshop.map((command, index) => (

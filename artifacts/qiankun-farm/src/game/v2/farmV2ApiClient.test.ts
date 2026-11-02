@@ -16,6 +16,20 @@ function fetchWithSession(response: object) {
 }
 
 describe("Farm V2 API contract", () => {
+  it('waits for an authoritative state response taking 21 seconds without overlapping retries', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(AbortSignal,'timeout').mockImplementation(ms=>{const c=new AbortController();setTimeout(()=>c.abort(new DOMException('timeout','TimeoutError')),ms);return c.signal;});
+    let reads=0;
+    vi.stubGlobal('fetch',async (_url:unknown,init?:RequestInit)=>{
+      if(!reads++) return Response.json(session);
+      return new Promise<Response>((resolve,reject)=>{const timer=setTimeout(()=>resolve(Response.json({player:{},lands:[]})),21000);init?.signal?.addEventListener('abort',()=>{clearTimeout(timer);reject(init.signal?.reason);});});
+    });
+    const result=createFarmV2Api({baseUrl:'https://example.test/api',launchToken:'token'}).readState().then(data=>({ok:true,data}),()=>({ok:false}));
+    await vi.advanceTimersByTimeAsync(21001);
+    expect(await result).toEqual({ok:true,data:{player:{},lands:[]}});
+    expect(reads).toBe(2);
+    vi.restoreAllMocks();vi.useRealTimers();
+  });
   it("requires an authenticated platform launch token", () => {
     expect(() =>
       createFarmV2Api({ baseUrl: "https://example.test/api", launchToken: "" }),
@@ -273,3 +287,4 @@ it("friend lost response keeps the original target/body/key for explicit recover
   expect(new Set(keys).size).toBe(1);
   expect(api.pendingFriends()).toEqual([]);
 });
+
