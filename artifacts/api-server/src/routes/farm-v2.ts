@@ -1,3 +1,4 @@
+import { timeFarmV2Function } from "../lib/farm-v2-stage-timing";
 import { completeFarmV2Mutation } from "../lib/farm-v2-mutation-snapshot";
 import { pool } from "@workspace/db";
 import { mutateFarmV2Friend } from "../lib/farm-v2-friend-actions";
@@ -7,21 +8,28 @@ import { mutateFarmV2Workshop } from "../lib/farm-v2-workshop";
 import {
   claimFarmV2ChaosSeeds,
   configureFarmV2Farmer,
-  settleFarmV2Farmer,
+  settleFarmV2Farmer as rawsettleFarmV2Farmer,
 } from "../lib/farm-v2-gameplay";
 import { randomUUID } from "node:crypto";
 import { withFarmAuthority } from "../lib/farm-v2-authority";
 import { Router, type IRouter, type RequestHandler } from "express";
-import { sowFarmV2Land } from "../lib/farm-v2-sow";
-import { harvestFarmV2Land } from "../lib/farm-v2-harvest";
+import { sowFarmV2Land as rawsowFarmV2Land } from "../lib/farm-v2-sow";
+import { harvestFarmV2Land as rawharvestFarmV2Land } from "../lib/farm-v2-harvest";
 import { requireFarmV2LaunchIdentity } from "../middlewares/farm-v2-launch-auth";
 import { farmV2ErrorHandler } from "../middlewares/farm-v2-error-handler";
-import { ensureFarmV2PlayerInitialized } from "../lib/farm-v2-init";
-import { purchaseFarmV2SeedPacks } from "../lib/farm-v2-seed-purchase";
-import { exchangeFarmV2Crops } from "../lib/farm-v2-crop-exchange";
-import { reconcileFarmV2PaidAccessFromCore } from "../lib/farm-v2-paid-access";
+import { ensureFarmV2PlayerInitialized as rawensureFarmV2PlayerInitialized } from "../lib/farm-v2-init";
+import { purchaseFarmV2SeedPacks as rawpurchaseFarmV2SeedPacks } from "../lib/farm-v2-seed-purchase";
+import { exchangeFarmV2Crops as rawexchangeFarmV2Crops } from "../lib/farm-v2-crop-exchange";
+import { reconcileFarmV2PaidAccessFromCore as rawreconcileFarmV2PaidAccessFromCore } from "../lib/farm-v2-paid-access";
 import { requestFarmV2PlatformSession } from "../lib/farm-v2-platform";
 
+const sowFarmV2Land = timeFarmV2Function("domain_sow", rawsowFarmV2Land);
+const harvestFarmV2Land = timeFarmV2Function("domain_harvest", rawharvestFarmV2Land);
+const purchaseFarmV2SeedPacks = timeFarmV2Function("domain_purchase", rawpurchaseFarmV2SeedPacks);
+const exchangeFarmV2Crops = timeFarmV2Function("domain_exchange", rawexchangeFarmV2Crops);
+const reconcileFarmV2PaidAccessFromCore = timeFarmV2Function("paid_access", rawreconcileFarmV2PaidAccessFromCore);
+const settleFarmV2Farmer = timeFarmV2Function("snapshot_settle", rawsettleFarmV2Farmer);
+const ensureFarmV2PlayerInitialized = timeFarmV2Function("snapshot_read", rawensureFarmV2PlayerInitialized);
 const router: IRouter = Router();
 async function mutationResponse<T extends object>(
   includeSnapshot: boolean, userId: string, result: T,

@@ -1,3 +1,4 @@
+import { measureFarmV2Stage } from "./farm-v2-stage-timing";
 import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 import { randomUUID } from "node:crypto";
 import { createDatabaseConnection, pool } from "@workspace/db";
@@ -77,25 +78,25 @@ export async function withFarmAuthority<T>(
   },
   run: () => Promise<T>,
 ) {
-  const client = await farmAuthorityPool.connect();
+  const client = await measureFarmV2Stage("authority_connect", () => farmAuthorityPool.connect());
   client.on("error", () => {
     /* Core barrier remains until local fencing/settlement. */
   });
   const operationId = randomUUID();
   let registered = false;
   try {
-    await client.query("select pg_advisory_lock(hashtextextended($1,0))", [
+    await measureFarmV2Stage("authority_lock", () => client.query("select pg_advisory_lock(hashtextextended($1,0))", [
       farmAuthorityLockKey(input.userId),
-    ]);
+    ]));
     await pool.query(
       "insert into farm_v2_authorization_attempt(id,user_id,request_id,action,state) values($1,$2,$3,$4,'OPEN')",
       [operationId, input.userId, input.requestId, input.action],
     );
     registered = true;
-    const qualification = await callAuthority(
+    const qualification = await measureFarmV2Stage("authority_begin", () => callAuthority(
       { ...input, operationId },
       "begin",
-    );
+    ));
     return await farmAuthorityContext.run(
       { operationId, userId: input.userId, qualification },
       run,
@@ -108,7 +109,7 @@ export async function withFarmAuthority<T>(
           "update farm_v2_authorization_attempt set state='SETTLED',settled_at=now() where id=$1 and state='OPEN'",
           [operationId],
         );
-        await callAuthority({ ...input, operationId }, "end");
+        await measureFarmV2Stage("authority_end", () => callAuthority({ ...input, operationId }, "end"));
         await pool.query(
           "update farm_v2_authorization_attempt set core_settled_at=now() where id=$1",
           [operationId],

@@ -1,3 +1,4 @@
+import { measureFarmV2Stage } from './farm-v2-stage-timing';
 import { getVercelOidcToken } from '@vercel/oidc';
 
 // Only the configured platform may receive this deployment's runtime identity.
@@ -12,5 +13,7 @@ export async function farmV2PlatformFetch(url: URL, init: RequestInit) {
     }
     headers.set('x-vercel-trusted-oidc-idp-token', await getVercelOidcToken());
   }
-  return fetch(url, { ...init, headers: Object.fromEntries(headers), redirect: 'error' });
+  const stage = url.pathname === '/api/replit/launch/validate' ? 'platform_validate'
+    : url.pathname.includes('/wallet') ? 'platform_wallet' : 'platform_other';
+  return measureFarmV2Stage(stage, () => fetch(url, { ...init, headers: Object.fromEntries(headers), redirect: 'error' }));
 }
