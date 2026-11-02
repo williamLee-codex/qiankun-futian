@@ -13,7 +13,7 @@ export async function farmV2PlatformFetch(url: URL, init: RequestInit) {
     }
     headers.set('x-vercel-trusted-oidc-idp-token', await getVercelOidcToken());
   }
-  const stage = url.pathname === '/api/replit/launch/validate' ? 'platform_validate'
+  const stage = ['/api/replit/launch/validate', '/api/replit/farm-v2/identity'].includes(url.pathname) ? 'platform_validate'
     : url.pathname.includes('/wallet') ? 'platform_wallet' : 'platform_other';
   return measureFarmV2Stage(stage, () => fetch(url, { ...init, headers: Object.fromEntries(headers), redirect: 'error' }));
 }

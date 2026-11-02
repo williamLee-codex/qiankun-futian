@@ -36,7 +36,12 @@ export async function requireFarmV2LaunchIdentity(
     farmV2PlatformConnection();
 
     const response = await farmV2PlatformFetch(
-      new URL("/api/replit/launch/validate", platformBaseUrl),
+      new URL(
+        /^fvs1\.[A-Za-z0-9_-]{43}$/.test(launchToken)
+          ? "/api/replit/farm-v2/identity"
+          : "/api/replit/launch/validate",
+        platformBaseUrl,
+      ),
       {
         method: "POST",
         redirect: "error",
