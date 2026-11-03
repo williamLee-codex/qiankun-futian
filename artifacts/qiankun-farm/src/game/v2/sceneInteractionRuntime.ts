@@ -51,7 +51,7 @@ export const SCENE_LAYOUTS = {
       region(5.5, 35.7, 10.5, 4.3),
       region(25, 35.7, 10.5, 4.3),
       region(21.7, 42.2, 10.5, 4.3),
-      region(5.5, 46.3, 10.5, 4.3),
+      region(5.5, 48, 10.5, 4.3),
     ],
     formation: region(43, 25.4, 23.6, 5.1),
   },
