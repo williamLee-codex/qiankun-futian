@@ -174,11 +174,9 @@ export function FarmSceneInteractionLayer(props: {
                     disabled={props.busy}
                     onClick={() => props.onLandSelect?.(land.id)}
                   >
-                    <span className="farm-v2-land-caption"><strong>{land.landName}</strong>
-                    <span>
-                      {!p.unlocked
-                        ? "未解鎖"
-                        : p.state === "ready"
+                    <span className="farm-v2-land-caption"><strong>{land.landName}{!p.unlocked && <span aria-hidden="true"> 🔒</span>}</strong>
+                    {p.unlocked && <span>
+                      {p.state === "ready"
                           ? "成熟・" + p.plantCount + "株"
                           : p.state === "growing"
                             ? "生長中・" +
@@ -190,7 +188,7 @@ export function FarmSceneInteractionLayer(props: {
                               ) +
                               "分"
                             : "待播種"}
-                    </span></span>
+                    </span>}</span>
                   </button>
                   {props.readOnly &&
                     props.onFriendAction &&

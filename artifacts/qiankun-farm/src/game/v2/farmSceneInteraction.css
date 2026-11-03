@@ -323,6 +323,6 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
 .farm-v2-canvas .farm-v2-land>button:first-child{position:relative}
 .farm-v2-land-caption{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;pointer-events:none}
 @media(min-width:768px){
-.farm-v2-interaction.desktop .farm-v2-land-caption{position:absolute;left:0;bottom:0}
+.farm-v2-interaction.desktop .farm-v2-land-caption{position:absolute;left:0;bottom:-14px}
 .farm-v2-interaction.desktop .farm-v2-platform-pot small{font-size:12px}
 }
