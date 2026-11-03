@@ -56,3 +56,10 @@
 .pot-grid{min-width:510px}
 .pot-recipe-info{gap:8px}
 }
+
+/* Both columns share the catalogue's heading, seven rows and seven gaps. */
+@media(min-width:761px){
+.farm-v2-operation-dialog .pot-recipe{box-sizing:border-box;height:calc(41px + var(--pot-row) * 7);min-height:0;align-items:stretch}
+.farm-v2-operation-dialog .pot-result-image{height:100%;min-height:0;max-height:100%;align-self:stretch}
+.farm-v2-operation-dialog .pot-recipe-info{max-height:100%;min-height:0;overflow:auto;justify-content:safe center}
+}
