@@ -56,19 +56,19 @@ export function PotSynthesisGrid(props: {
     <header><div><h3>靈植合成圖鑑</h3><p>點選目標盆栽，查看配方與合成條件</p></div><p>蘊靈砂 {state.materials.蘊靈砂} · 九霄玉髓 {state.materials.九霄玉髓}<br/>金幣 {coins === null ? "確認中" : coins}</p></header>
     <div className="pot-synthesis-layout">
       <div className="pot-grid-scroll"><div className="pot-grid" aria-label="六物種七階總覽">
-        {["靈植", ...POT_GRADES.map(g => `${g}階`)].map(label => <strong className="pot-grid-heading" key={label}>{label}</strong>)}
-        {FARM_V2_LANDS.flatMap(l => Array.from({ length: 7 }, (_, level) => {
+        <span aria-hidden="true"/>{FARM_V2_LANDS.map(l => <strong className="pot-grid-heading" key={l.id}>{l.cropName}</strong>)}
+        {Array.from({ length: 7 }, (_, level) => [<strong className="pot-grade-heading" key={`grade-${level}`}>{level === 0 ? "靈植" : POT_GRADES[level - 1] + "階"}</strong>, ...FARM_V2_LANDS.map(l => {
           const s = { species: l.id, level }; const g = POT_GRADES[level - 1];
           const count = level === 0 ? props.warehouse.crops[l.id] : state.pots.filter(p => p.species === l.id && p.grade === g).length;
           const active = selected.species === l.id && selected.level === level;
           return <button type="button" key={`${l.id}-${level}`} className={`pot-grid-cell${active ? " selected" : ""}`} style={{ borderColor: gradeColors[level] }} aria-pressed={active} aria-label={`${l.cropName} ${level === 0 ? "靈植" : g + "階盆栽"}，持有 ${count}`} disabled={stage === "working" || props.busy} onClick={() => select(s)}>
-            <img src={imageFor(s)} alt="" width="128" height="192" loading="eager"/><span>{l.cropName}</span><small>{level === 0 ? "靈植" : g + "階"} · {count}</small>
+            <img src={imageFor(s)} alt="" width="128" height="192" loading="eager"/><small>持有 {count}</small>
           </button>;
-        }))}
+        })]).flat()}
       </div></div>
       <aside className={`pot-recipe ${stage === "working" ? "working" : ""}`} aria-label="選中配方">
         <img className="pot-result-image" src={imageFor(selected)} alt={`${land.cropName}${selected.level ? grade + "階盆栽" : "靈植"}`} width="128" height="192"/>
-        <h4>{land.cropName} · {selected.level ? grade + "階盆栽" : "靈植"}</h4>
+        <div className="pot-recipe-info"><h4>{land.cropName} · {selected.level ? grade + "階盆栽" : "靈植"}</h4>
         {selected.level === 0 ? <><p>持有 {props.warehouse.crops[selected.species]} 株靈植</p><p>3 株靈植可合成一株黃階盆栽。</p><button type="button" onClick={() => select({ ...selected, level: 1 })}>查看黃階合成配方</button></> : <>
           <div className="pot-effects" aria-label="盆栽作用">
             <strong>盆栽作用（展示後生效）</strong>
@@ -88,6 +88,7 @@ export function PotSynthesisGrid(props: {
           <button type="button" className="pot-craft-button" disabled={!ready} onClick={() => void synthesize()}>{stage === "working" ? "合成中…" : `合成${grade}階盆栽`}</button>
           <small>金幣與材料以伺服器最後確認為準。</small>
         </>}
+        </div>
       </aside>
     </div>
     <details><summary>展示中的盆栽與倉庫管理</summary>{state.pots.map(p => <div key={p.id} className="pot-owned-row">{FARM_V2_LANDS[p.species - 1].cropName} · {p.grade}階 · {p.displayed ? "展示中" : "倉庫"}<button type="button" disabled={props.busy || stage === "working"} onClick={() => void props.transact(p.displayed ? { kind: "removePot", species: p.species } : { kind: "displayPot", potId: p.id })}>{p.displayed ? "取下" : "展示／替換"}</button></div>)}</details>
