@@ -4,6 +4,7 @@ import { POT_GRADES, POT_GRADE_COSTS, POT_FIRST_UNLOCK_REWARDS } from "./potRunt
 import { workshopState, planWorkshopMutation, type WorkshopCommand, type WorkshopWarehouse } from "./workshopRuntime";
 import "./potSynthesisGrid.css";
 import { potDisplayBonus } from "./potDisplayRuntime";
+import { getExchangeRate } from "./canonicalEconomyData";
 
 type Selection = { species: FarmLandId; level: number };
 const gradeColors = ["#b7e3b0", "#d5c36a", "#70b9ef", "#c19bef", "#efcd73", "#f08d8d", "#dfc5ff"];
@@ -32,6 +33,8 @@ export function PotSynthesisGrid(props: {
   const displayed = state.pots.find(p => p.species === selected.species && p.displayed && p.grade === sourceGrade);
   const available = selected.level === 1 ? props.warehouse.crops[selected.species] : state.pots.filter(p => p.species === selected.species && p.grade === sourceGrade && !p.displayed).length + (useDisplayed && displayed ? 1 : 0);
   const cost = POT_GRADE_COSTS[grade].coins;
+  const exchange = getExchangeRate(selected.species);
+  const yellowReady = props.warehouse.crops[selected.species] >= 3 && state.materials.蘊靈砂 >= 1 && coins !== null && coins >= POT_GRADE_COSTS.黃.coins;
   let recipeValid = selected.level > 0;
   if (recipeValid) {
     try { planWorkshopMutation(props.warehouse, command, "preview-only", Date.now()); }
@@ -69,7 +72,23 @@ export function PotSynthesisGrid(props: {
       <aside className={`pot-recipe ${stage === "working" ? "working" : ""}`} aria-label="選中配方">
         <img className="pot-result-image" src={imageFor(selected)} alt={`${land.cropName}${selected.level ? grade + "階盆栽" : "靈植"}`} width="128" height="192"/>
         <div className="pot-recipe-info"><h4>{land.cropName} · {selected.level ? grade + "階盆栽" : "靈植"}</h4>
-        {selected.level === 0 ? <><p>持有 {props.warehouse.crops[selected.species]} 株靈植</p><p>3 株靈植可合成一株黃階盆栽。</p><button type="button" onClick={() => select({ ...selected, level: 1 })}>查看黃階合成配方</button></> : <>
+        {selected.level === 0 ? <>
+          <p>持有 {props.warehouse.crops[selected.species]} 株靈植</p>
+          <div className="pot-effects"><strong>來源與用途</strong>
+            <p>{land.landName} · 生長 {land.growthHours} 小時 · 容量 {land.capacity} 株</p>
+            <p>兌換：{exchange.cropQuantity} 株 → {exchange.rewardQuantity} {exchange.currency === "coins" ? "金幣" : "水晶"}</p>
+            <small>可用於兌換或合成盆栽；靈植本身沒有展示加成。</small>
+          </div>
+          <h5>合成黃階盆栽所需</h5>
+          <ul className="pot-requirements">
+            <li className={props.warehouse.crops[selected.species] >= 3 ? "enough" : "missing"}>同種靈植<b>{props.warehouse.crops[selected.species]} / 3</b></li>
+            <li className={state.materials.蘊靈砂 >= 1 ? "enough" : "missing"}>蘊靈砂<b>{state.materials.蘊靈砂} / 1</b></li>
+            <li className={coins !== null && coins >= POT_GRADE_COSTS.黃.coins ? "enough" : "missing"}>金幣<b>{coins ?? "確認中"} / {POT_GRADE_COSTS.黃.coins}</b></li>
+          </ul>
+          <small>黃階展示後：靈韻 +{potDisplayBonus(selected.species, "黃")} · 好友上限 +{potDisplayBonus(selected.species, "黃")}。首次取得獎勵 {POT_FIRST_UNLOCK_REWARDS.黃} 金幣。</small>
+          <p>{yellowReady ? "黃階所需材料與金幣齊全" : "黃階尚缺上方標示的材料或金幣"}</p>
+          <button type="button" onClick={() => select({ ...selected, level: 1 })}>查看黃階合成配方</button>
+        </> : <>
           <div className="pot-effects" aria-label="盆栽作用">
             <strong>盆栽作用（展示後生效）</strong>
             <p>靈韻 +{potDisplayBonus(selected.species, grade)} · 好友上限 +{potDisplayBonus(selected.species, grade)}</p>
