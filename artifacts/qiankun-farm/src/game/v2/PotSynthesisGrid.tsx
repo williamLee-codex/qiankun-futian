@@ -3,6 +3,7 @@ import { FARM_V2_LANDS, type FarmLandId } from "./canonicalLandData";
 import { POT_GRADES, POT_GRADE_COSTS, POT_FIRST_UNLOCK_REWARDS } from "./potRuntime";
 import { workshopState, planWorkshopMutation, type WorkshopCommand, type WorkshopWarehouse } from "./workshopRuntime";
 import "./potSynthesisGrid.css";
+import { potDisplayBonus } from "./potDisplayRuntime";
 
 type Selection = { species: FarmLandId; level: number };
 const gradeColors = ["#b7e3b0", "#d5c36a", "#70b9ef", "#c19bef", "#efcd73", "#f08d8d", "#dfc5ff"];
@@ -69,6 +70,11 @@ export function PotSynthesisGrid(props: {
         <img className="pot-result-image" src={imageFor(selected)} alt={`${land.cropName}${selected.level ? grade + "階盆栽" : "靈植"}`} width="128" height="192"/>
         <h4>{land.cropName} · {selected.level ? grade + "階盆栽" : "靈植"}</h4>
         {selected.level === 0 ? <><p>持有 {props.warehouse.crops[selected.species]} 株靈植</p><p>3 株靈植可合成一株黃階盆栽。</p><button type="button" onClick={() => select({ ...selected, level: 1 })}>查看黃階合成配方</button></> : <>
+          <div className="pot-effects" aria-label="盆栽作用">
+            <strong>盆栽作用（展示後生效）</strong>
+            <p>靈韻 +{potDisplayBonus(selected.species, grade)} · 好友上限 +{potDisplayBonus(selected.species, grade)}</p>
+            <small>靈韻每達 20 點解鎖下一陳設位，最多 6 位。同物種僅一株生效，取下即停止加成。</small>
+          </div>
           <h5>所需盆栽及材料</h5>
           <ul className="pot-requirements">
             <li className={available < required ? "missing" : "enough"}>{selected.level === 1 ? land.cropName + "靈植" : sourceGrade + "階同種盆栽"}<b>{available} / {required}</b></li>

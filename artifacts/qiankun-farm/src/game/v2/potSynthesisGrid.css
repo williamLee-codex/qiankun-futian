@@ -10,20 +10,20 @@
 .farm-v2-operation-dialog:has(.pot-synthesis) nav{gap:4px;margin-bottom:6px}
 .farm-v2-operation-dialog:has(.pot-synthesis) nav button{font:inherit;min-height:32px;padding:4px 12px;margin:0}
 .farm-v2-operation-dialog:has(.pot-synthesis) fieldset{display:block;min-width:0;border:0;margin:0;padding:0}
-.farm-v2-operation-dialog .pot-synthesis{--pot-row:clamp(56px,calc((100dvh - 180px)/6),96px);display:block;min-width:0}
+.farm-v2-operation-dialog .pot-synthesis{--pot-row:clamp(50px,calc((100dvh - 235px)/6),86px);display:block;min-width:0}
 .farm-v2-operation-dialog .pot-synthesis>header{margin:0 0 6px;gap:12px}
 .farm-v2-operation-dialog .pot-synthesis h3{font-size:20px;line-height:26px;margin:0}
 .farm-v2-operation-dialog .pot-synthesis p{font-size:13px;line-height:1.4;margin:0}
 .farm-v2-operation-dialog .pot-synthesis-layout{display:grid;height:auto;align-items:start;gap:12px;grid-template-columns:minmax(0,1fr) 280px}
 .farm-v2-operation-dialog .pot-grid-scroll{height:auto;overflow:auto;min-width:0}
-.farm-v2-operation-dialog .pot-grid{height:auto;min-width:0;grid-template-rows:20px repeat(6,var(--pot-row));gap:4px}
+.farm-v2-operation-dialog .pot-grid{height:auto;min-width:0;grid-template-rows:18px repeat(6,var(--pot-row));gap:3px}
 .farm-v2-operation-dialog .pot-grid-heading{font-size:12px;line-height:18px;padding:0}
 .farm-v2-operation-dialog .pot-grid button.pot-grid-cell{height:var(--pot-row);min-height:0;max-height:var(--pot-row);padding:2px;margin:0;gap:0;overflow:hidden}
 .farm-v2-operation-dialog .pot-grid-cell img{flex:none;min-height:0;max-height:calc(var(--pot-row) - 34px);width:100%;height:calc(var(--pot-row) - 34px);object-fit:contain}
 .farm-v2-operation-dialog .pot-grid-cell span{font-size:12px;line-height:16px;flex:none}
 .farm-v2-operation-dialog .pot-grid-cell small{font-size:11px;line-height:14px;flex:none}
 .farm-v2-operation-dialog .pot-recipe{height:auto;overflow:visible;padding:10px;gap:6px}
-.farm-v2-operation-dialog .pot-result-image{width:160px;height:clamp(100px,23dvh,210px);max-height:none;flex:none}
+.farm-v2-operation-dialog .pot-result-image{width:160px;height:clamp(80px,17dvh,160px);max-height:none;flex:none}
 .farm-v2-operation-dialog .pot-recipe h4{font-size:16px;line-height:22px;margin:0}
 .farm-v2-operation-dialog .pot-recipe h5{font-size:14px;line-height:20px;margin:0}
 .farm-v2-operation-dialog .pot-requirements{gap:4px}
@@ -31,3 +31,7 @@
 .farm-v2-operation-dialog .pot-recipe button{font:inherit;min-height:36px;padding:5px 8px;margin:0;flex:none}
 .farm-v2-operation-dialog .pot-synthesis>details{margin:6px 0 0;font-size:13px;line-height:20px}
 }
+
+.pot-effects{width:100%;padding:6px 8px;border:1px solid #a9b67b55;border-radius:7px;background:#b8cf8c0c}
+.pot-effects>strong{font-size:13px;line-height:18px;color:#eedca7}
+.pot-effects>small{display:block;line-height:1.35}
