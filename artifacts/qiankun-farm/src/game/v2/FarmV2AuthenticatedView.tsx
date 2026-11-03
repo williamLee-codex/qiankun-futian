@@ -33,6 +33,7 @@ export function FarmV2AuthenticatedView(props: {
     workshop,
     pendingWorkshop,
     readFriends,
+    readWallet,
     visitCave,
     friendAction,
     pendingFriends,
@@ -186,6 +187,7 @@ export function FarmV2AuthenticatedView(props: {
               setVisited(view);
               return view;
             }}
+            readWallet={readWallet}
             warehouse={data.warehouse}
             missions={data.missions}
             pets={data.pets}
@@ -363,3 +365,4 @@ export function FarmV2AuthenticatedView(props: {
     </section>
   );
 }
+

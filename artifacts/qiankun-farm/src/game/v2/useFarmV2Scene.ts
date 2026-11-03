@@ -223,7 +223,12 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     },
     [api, refresh],
   );
+  const readWallet = useCallback(() => {
+    if (!api) throw new Error("AUTH_REQUIRED");
+    return api.readWallet();
+  }, [api]);
   return {
+    readWallet,
     friendAction,
     pendingFriends,
     readFriends: () => {
@@ -246,4 +251,5 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     reauthenticateUrl,
   };
 }
+
 

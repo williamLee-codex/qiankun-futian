@@ -292,6 +292,7 @@ export function createFarmV2Api(input: {
         "POST",
         { kind, landId },
       ),
+    readWallet: () => request<{ coins: number }>("farm/v2/wallet", "GET"),
     readState: () => request<FarmV2State>("farm/v2/state", "GET"),
     sow: (landId: number) =>
       request<FarmV2MutationResult>(`farm/v2/lands/${landId}/sow?snapshot=1`, "POST"),
@@ -305,6 +306,7 @@ export function createFarmV2Api(input: {
       }),
   };
 }
+
 
 
 
