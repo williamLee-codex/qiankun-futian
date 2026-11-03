@@ -219,30 +219,6 @@ export function FarmSceneInteractionLayer(props: {
                 </div>
               );
             })}
-            {FARM_V2_LANDS.map((land, i) => {
-              const pot = props.state.pots.find((p) => p.species === land.id);
-              return (
-                <button
-                  className="farm-v2-pot"
-                  aria-label={
-                    pot
-                      ? `${land.cropName} ${pot.grade}品盆栽`
-                      : `${land.cropName}展示位`
-                  }
-                  title={
-                    pot
-                      ? `${land.cropName} ${pot.grade}品`
-                      : `${land.cropName}展示位`
-                  }
-                  key={land.id}
-                  style={position(layout.pots[i])}
-                  disabled={props.readOnly || props.busy}
-                  onClick={() => section("盆栽")}
-                >
-                  <span className="farm-v2-hotspot-label">{land.cropName}</span>
-                </button>
-              );
-            })}
             {["尋星犬", "辟邪狻猊", "噬時諦聽", "乾坤麒麟"].map((pet, i) => {
               const active =
                 props.state.pets?.activePetId === pet &&
