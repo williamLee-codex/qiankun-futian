@@ -16,6 +16,8 @@ import {
 import { FARM_V2_MISSIONS, type MissionState } from "./missionRuntime";
 import { RELEASED_DECOR } from "./decorCatalog";
 import { FARM_V2_LANDS } from "./canonicalLandData";
+const BAG_CATEGORIES = ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"] as const;
+type BagCategory = (typeof BAG_CATEGORIES)[number];
 export function FarmWorkshopPanel(props: {
   tab?: string;
   onTabChange?: (tab: string) => void;
@@ -45,6 +47,7 @@ export function FarmWorkshopPanel(props: {
     } | null>(null),
     [friendError, setFriendError] = useState("");
   const [localTab, setLocalTab] = useState("盆栽");
+  const [bagCategory, setBagCategory] = useState<BagCategory>("材料");
   const [festivalCode, setFestivalCode] = useState("");
   const tab = props.tab ?? localTab;
   const [species, setSpecies] = useState(1),
@@ -69,7 +72,7 @@ export function FarmWorkshopPanel(props: {
   return (
     <section aria-label="福田倉庫與洞府管理">
       <nav>
-        {["盆栽", "洞府", "任務", "靈寵", "護陣", "好友"].map((t) => (
+        {["盆栽", "洞府", "任務", "靈寵", "護陣", "好友", "乾坤寶囊", "福田倉庫"].map((t) => (
           <button
             key={t}
             onClick={() => (props.onTabChange ?? setLocalTab)(t)}
@@ -80,6 +83,114 @@ export function FarmWorkshopPanel(props: {
         ))}
       </nav>
       <fieldset disabled={props.busy}>
+        {tab === "乾坤寶囊" && (
+          <>
+            <h3>乾坤寶囊</h3>
+            <p>六類道具分開整理；靈寵本體、金幣與水晶不放入寶囊。</p>
+            <nav aria-label="乾坤寶囊分類" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+              {BAG_CATEGORIES.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  aria-pressed={bagCategory === category}
+                  onClick={() => setBagCategory(category)}
+                >
+                  {category}
+                </button>
+              ))}
+            </nav>
+            {bagCategory === "材料" && (
+              <div style={{ display: "grid", gap: 8 }}>
+                {Object.entries(state.materials).map(([name, quantity]) => (
+                  <article key={name} style={{ border: "1px solid #8c7650", borderRadius: 8, padding: 10 }}>
+                    {name}<strong style={{ float: "right" }}>{quantity}</strong>
+                  </article>
+                ))}
+                <article style={{ border: "1px solid #8c7650", borderRadius: 8, padding: 10 }}>
+                  太乙五穀散<strong style={{ float: "right" }}>庫存資料尚未接入</strong>
+                </article>
+              </div>
+            )}
+            {bagCategory === "碎片" && (
+              <p role="status">碎片分類已保留，暫無可讀取的碎片庫存；下一版接入陳列。</p>
+            )}
+            {bagCategory === "傢俱" && (
+              <div style={{ display: "grid", gap: 8 }}>
+                {state.decor.length === 0 && <p>目前尚無已取得的洞府陳設。</p>}
+                {state.decor.map((item) => (
+                  <article key={item.id} style={{ border: "1px solid #8c7650", borderRadius: 8, padding: 10 }}>
+                    {RELEASED_DECOR.find((entry) => entry.id === item.catalogId)?.name ?? "洞府陳設"}
+                    <span style={{ float: "right" }}>{item.slot === null ? "倉庫" : `已陳列・位置 ${item.slot}`}</span>
+                  </article>
+                ))}
+                <p>陳設清單使用目前伺服器保存的洞府物品；展示配置依下一版規劃擴充。</p>
+              </div>
+            )}
+            {bagCategory === "外型" && (
+              <div style={{ display: "grid", gap: 8 }}>
+                <h4>法陣</h4>
+                {(state.formations ?? [])
+                  .filter((item) => item.expiresAt === null || item.expiresAt > Date.now())
+                  .map((item) => (
+                    <article key={item.id} style={{ border: "1px solid #8c7650", borderRadius: 8, padding: 10 }}>
+                      {FORMATION_NAMES[item.id] ?? item.id}
+                      <span style={{ float: "right" }}>{state.activeFormation === item.id ? "使用中" : "已持有"}</span>
+                    </article>
+                  ))}
+                {!state.formations?.length && <p>目前沒有已取得的法陣。</p>}
+                <p>稱號、皮膚、徽章：目前尚未接入持有資料。</p>
+              </div>
+            )}
+            {bagCategory === "盆栽" && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(135px, 1fr))", gap: 8 }}>
+                {FARM_V2_LANDS.flatMap((land) =>
+                  POT_GRADES.map((potGrade) => {
+                    const owned = state.pots.filter((item) => item.species === land.id && item.grade === potGrade);
+                    return (
+                      <article key={`${land.id}:${potGrade}`} style={{ border: "1px solid #8c7650", borderRadius: 8, padding: 10, background: "#10231c" }}>
+                        <strong>{land.cropName}</strong>
+                        <div>{potGrade}階盆栽</div>
+                        <div>持有 {owned.length} 株</div>
+                        {owned.some((item) => item.displayed) && <small>其中展示中 {owned.filter((item) => item.displayed).length} 株</small>}
+                      </article>
+                    );
+                  }),
+                )}
+              </div>
+            )}
+            {bagCategory === "其他" && (
+              <div style={{ display: "grid", gap: 8 }}>
+                <article style={{ border: "1px solid #8c7650", borderRadius: 8, padding: 10 }}>
+                  靈獸百味糧（現行程式道具名）<strong style={{ float: "right" }}>{state.petFood ?? 0}</strong>
+                </article>
+                <p>靈獸本體與貨幣不列入寶囊；金幣、水晶仍顯示在 HEADER。</p>
+              </div>
+            )}
+          </>
+        )}
+        {tab === "福田倉庫" && (
+          <>
+            <h3>福田倉庫</h3>
+            <p>此處讀取正式農田庫存；靈植與種子分區顯示。</p>
+            <h4>靈植</h4>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
+              {FARM_V2_LANDS.map((land) => (
+                <article key={`crop-${land.id}`} style={{ border: "1px solid #8c7650", borderRadius: 8, padding: 10 }}>
+                  {land.cropName}<strong style={{ float: "right" }}>{props.warehouse.crops[land.id]}</strong>
+                </article>
+              ))}
+            </div>
+            <h4>種子</h4>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
+              {FARM_V2_LANDS.map((land) => (
+                <article key={`seed-${land.id}`} style={{ border: "1px solid #8c7650", borderRadius: 8, padding: 10 }}>
+                  {land.seedName}<strong style={{ float: "right" }}>{props.warehouse.seeds[land.id]}</strong>
+                </article>
+              ))}
+            </div>
+            <p>混沌種子由特殊方式取得，非商店購買。</p>
+          </>
+        )}
         {tab === "盆栽" && (
           <>
             <h3>盆栽合成與展示</h3>

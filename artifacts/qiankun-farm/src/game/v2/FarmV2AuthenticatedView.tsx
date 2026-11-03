@@ -161,6 +161,37 @@ export function FarmV2AuthenticatedView(props: {
           setPanelOpen(true);
         }}
       />
+      <button
+        type="button"
+        className="farm-v2-bag-launcher"
+        aria-label="開啟乾坤寶囊"
+        title="乾坤寶囊"
+        disabled={busy || loading}
+        onClick={() => {
+          setPanelTab("乾坤寶囊");
+          setPanelOpen(true);
+        }}
+        style={{
+          position: "fixed",
+          top: "max(12px, env(safe-area-inset-top, 12px))",
+          right: "max(12px, env(safe-area-inset-right, 12px))",
+          zIndex: 1000,
+          width: "clamp(54px, 6vw, 78px)",
+          aspectRatio: "1",
+          padding: 0,
+          border: 0,
+          borderRadius: 16,
+          background: "transparent",
+          cursor: "pointer",
+          filter: "drop-shadow(0 4px 8px rgba(0,0,0,.55))",
+        }}
+      >
+        <img
+          src="/images/farm/qiankun-bag.webp"
+          alt=""
+          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+        />
+      </button>
       <h2>乾坤福田</h2>
       {friendRetries}
       <Dialog open={panelOpen} onOpenChange={setPanelOpen}>
