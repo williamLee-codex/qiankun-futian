@@ -138,7 +138,7 @@ export function FarmWorkshopPanel(props: {
                       <span style={{ float: "right" }}>{state.activeFormation === item.id ? "使用中" : "已持有"}</span>
                     </article>
                   ))}
-                {!state.formations?.length && <p>目前沒有已取得的法陣。</p>}
+                {!state.formations?.some((item) => item.expiresAt === null || item.expiresAt > Date.now()) && <p>目前沒有有效的已取得法陣。</p>}
                 <p>稱號、皮膚、徽章：目前尚未接入持有資料。</p>
               </div>
             )}
