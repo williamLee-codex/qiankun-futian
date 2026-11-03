@@ -235,7 +235,7 @@ export function FarmSceneInteractionLayer(props: {
             })}
             <button className="farm-v2-pot-entry" style={position(layout.potEntry)}
               disabled={props.busy || props.readOnly} onClick={() => section("盆栽")}>
-              盆栽合成
+              <span>盆栽合成</span>
             </button>
             {["尋星犬", "辟邪狻猊", "噬時諦聽", "乾坤麒麟"].map((pet, i) => {
               const active =

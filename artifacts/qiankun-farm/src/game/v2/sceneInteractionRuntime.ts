@@ -24,8 +24,8 @@ export const SCENE_LAYOUTS = {
       region(64.6, 64.3, 18.5, 7.2),
     ],
     cave: region(43.5, 27, 21.0, 10.5),
-    pots: [35, 40, 45, 61, 66, 71].map((x) => region(x, 37.8, 5, 3.2)),
-    potEntry: region(40, 41.5, 25, 2.5),
+    pots: [region(34, 36.5, 6, 4.8), region(40, 37.1, 6, 4.8), region(46, 37.5, 6, 4.8), region(60, 37.5, 6, 4.8), region(66, 37.1, 6, 4.8), region(72, 36.5, 6, 4.8)],
+    potEntry: region(74, 42.5, 17, 4),
     pets: [
       region(3, 43.7, 13.5, 3.5),
       region(23, 43.1, 13.5, 3.5),
@@ -37,16 +37,16 @@ export const SCENE_LAYOUTS = {
   desktop: {
     aspectRatio: "1215 / 1295",
     lands: [
-      region(23.8, 50.3, 18.1, 8.6),
-      region(45.5, 50.3, 16.0, 8.6),
-      region(63.9, 50.3, 17.5, 8.6),
+      region(25.6, 49.9, 18.1, 8.6),
+      region(47.0, 49.9, 16.0, 8.6),
+      region(65.2, 49.9, 17.5, 8.6),
       region(22.2, 60.5, 18.5, 10.3),
       region(43.8, 60.5, 17.0, 10.3),
       region(64, 60.5, 18.4, 10.3),
     ],
     cave: region(44.8, 12.4, 21.8, 12.2),
-    pots: [36, 41, 46, 61, 66, 71].map((x) => region(x, 25.2, 5, 4.8)),
-    potEntry: region(44, 31, 23, 3),
+    pots: [region(34, 23.1, 7, 7), region(41, 23.8, 7, 7), region(48, 24.2, 7, 7), region(60, 24.2, 7, 7), region(67, 23.8, 7, 7), region(74, 23.1, 7, 7)],
+    potEntry: region(72, 31.7, 13, 4.5),
     pets: [
       region(5.5, 35.7, 10.5, 4.3),
       region(25, 35.7, 10.5, 4.3),
