@@ -275,3 +275,10 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
 }
 
 
+
+/* Cave-side display slots remain visible even before the first pot is owned. */
+.farm-v2-canvas.exterior .farm-v2-platform-pot{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:0;padding:0;gap:0;overflow:visible;z-index:2}
+.farm-v2-platform-pot img{display:block;width:100%;height:75%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 1px 2px #000)}
+.farm-v2-platform-pot>span{display:flex;align-items:center;justify-content:center;width:65%;height:65%;border:1px dashed #f3dda9;border-radius:50%;color:#ffe7a4;font-size:clamp(13px,2vw,24px);text-shadow:0 1px 3px #000}
+.farm-v2-platform-pot small{font:600 clamp(9px,.85vw,12px)/1.2 system-ui,sans-serif;white-space:nowrap;color:#fff2d0;text-shadow:0 1px 3px #000,0 0 4px #000}
+.farm-v2-canvas.exterior .farm-v2-pot-entry{position:absolute;min-width:0;min-height:32px;font-family:system-ui,sans-serif;font-weight:700;color:#ffe6a3;text-shadow:0 1px 3px #000,0 0 4px #000;z-index:3}

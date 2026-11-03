@@ -219,6 +219,24 @@ export function FarmSceneInteractionLayer(props: {
                 </div>
               );
             })}
+            {/* Six visible display positions flank the cave platform. Each opens synthesis. */}
+            {FARM_V2_LANDS.map((land, i) => {
+              const pot = props.state.pots.find(p => p.species === land.id);
+              const level = pot ? ["黃", "玄", "地", "天", "仙", "神"].indexOf(pot.grade) + 1 : 0;
+              return <button key={land.id} className="farm-v2-platform-pot"
+                style={position(layout.pots[i])}
+                aria-label={`${land.cropName}展示位，${pot ? pot.grade + "階盆栽" : "空位"}，開啟盆栽合成`}
+                title={`${land.cropName} · ${pot ? pot.grade + "階" : "空位"}`}
+                disabled={props.busy || props.readOnly}
+                onClick={() => section("盆栽")}>
+                {pot && level > 0 ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/plants/${land.id}-${level}.webp`} alt="" /> : <span aria-hidden="true">♧</span>}
+                <small>{pot ? land.cropName : "展示位 " + (i + 1)}</small>
+              </button>;
+            })}
+            <button className="farm-v2-pot-entry" style={position(layout.potEntry)}
+              disabled={props.busy || props.readOnly} onClick={() => section("盆栽")}>
+              盆栽合成
+            </button>
             {["尋星犬", "辟邪狻猊", "噬時諦聽", "乾坤麒麟"].map((pet, i) => {
               const active =
                 props.state.pets?.activePetId === pet &&
