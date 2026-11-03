@@ -174,7 +174,7 @@ export function FarmSceneInteractionLayer(props: {
                     disabled={props.busy}
                     onClick={() => props.onLandSelect?.(land.id)}
                   >
-                    <strong>{land.landName}</strong>
+                    <span className="farm-v2-land-caption"><strong>{land.landName}</strong>
                     <span>
                       {!p.unlocked
                         ? "未解鎖"
@@ -190,7 +190,7 @@ export function FarmSceneInteractionLayer(props: {
                               ) +
                               "分"
                             : "待播種"}
-                    </span>
+                    </span></span>
                   </button>
                   {props.readOnly &&
                     props.onFriendAction &&
@@ -233,9 +233,9 @@ export function FarmSceneInteractionLayer(props: {
                 <small>{pot ? land.cropName : "展示位 " + (i + 1)}</small>
               </button>;
             })}
-            <button className="farm-v2-pot-entry" style={position(layout.potEntry)}
+            <button className="farm-v2-pot-entry" aria-label="盆栽合成" style={position(layout.potEntry)}
               disabled={props.busy || props.readOnly} onClick={() => section("盆栽")}>
-              <span>盆栽合成</span>
+              <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/pot-synthesis-sign.webp`} alt="" draggable={false}/>
             </button>
             {["尋星犬", "辟邪狻猊", "噬時諦聽", "乾坤麒麟"].map((pet, i) => {
               const active =
