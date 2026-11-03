@@ -41,7 +41,7 @@
 .pot-grade-heading{display:flex;align-items:center;justify-content:center;font-size:12px;color:#eedca7}
 .pot-recipe-info{display:flex;flex-direction:column;gap:6px;width:100%;min-width:0}
 @media(min-width:761px){
-.farm-v2-operation-dialog .pot-synthesis{--pot-row:clamp(44px,calc((100dvh - 170px)/7),76px)}
+.farm-v2-operation-dialog .pot-synthesis{--pot-row:clamp(44px,calc((100dvh - 215px)/7),76px)}
 .farm-v2-operation-dialog .pot-synthesis-layout{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px}
 .farm-v2-operation-dialog .pot-grid{grid-template-columns:30px repeat(6,minmax(0,1fr));grid-template-rows:20px repeat(7,var(--pot-row))}
 .farm-v2-operation-dialog .pot-grid-heading{font-size:11px;white-space:nowrap}
