@@ -326,3 +326,6 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
 .farm-v2-interaction.desktop .farm-v2-land-caption{position:absolute;left:0;bottom:-14px}
 .farm-v2-interaction.desktop .farm-v2-platform-pot small{font-size:12px}
 }
+
+/* Sixth display pot stands in front of the synthesis sign. */
+.farm-v2-canvas.exterior .farm-v2-platform-pot-front{z-index:4}

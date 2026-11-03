@@ -221,7 +221,7 @@ export function FarmSceneInteractionLayer(props: {
             {FARM_V2_LANDS.map((land, i) => {
               const pot = props.state.pots.find(p => p.species === land.id);
               const level = pot ? ["黃", "玄", "地", "天", "仙", "神"].indexOf(pot.grade) + 1 : 0;
-              return <button key={land.id} className="farm-v2-platform-pot"
+              return <button key={land.id} className={"farm-v2-platform-pot" + (i === 5 ? " farm-v2-platform-pot-front" : "")}
                 style={position(layout.pots[i])}
                 aria-label={`${land.cropName}展示位，${pot ? pot.grade + "階盆栽" : "空位"}，開啟盆栽合成`}
                 title={`${land.cropName} · ${pot ? pot.grade + "階" : "空位"}`}
@@ -250,12 +250,9 @@ export function FarmSceneInteractionLayer(props: {
                 >
                   <span className="farm-v2-hotspot-label">
                     {pet}
-                    <br />
-                    {active
-                      ? "活動中"
-                      : props.state.pets?.owned.includes(pet)
-                        ? "休息中"
-                        : "未取得"}
+                    {!props.state.pets?.owned.includes(pet) && !active
+                      ? <span aria-hidden="true"> 🔒</span>
+                      : <><br />{active ? "活動中" : "休息中"}</>}
                   </span>
                 </button>
               );
