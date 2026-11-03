@@ -101,6 +101,7 @@ export function FarmWorkshopPanel(props: {
             </nav>
             {bagCategory === "材料" && (
               <div style={{ display: "grid", gap: 8 }}>
+                <p>目前 V2 伺服器庫存欄位可確認蘊靈砂、九霄玉髓；太乙五穀散尚無庫存欄位。</p>
                 {Object.entries(state.materials).map(([name, quantity]) => (
                   <article key={name} style={{ border: "1px solid #8c7650", borderRadius: 8, padding: 10 }}>
                     {name}<strong style={{ float: "right" }}>{quantity}</strong>
