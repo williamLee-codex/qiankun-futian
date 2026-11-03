@@ -172,7 +172,7 @@ export function FarmWorkshopPanel(props: {
         {tab === "福田倉庫" && (
           <>
             <h3>福田倉庫</h3>
-            <p>此處讀取正式農田庫存；靈植與種子分區顯示。</p>
+            <p>此處讀取目前 V2 伺服器回傳的農田庫存；靈植與種子分區顯示。</p>
             <h4>靈植</h4>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
               {FARM_V2_LANDS.map((land) => (
