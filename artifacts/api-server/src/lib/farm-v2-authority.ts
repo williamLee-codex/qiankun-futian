@@ -122,7 +122,17 @@ export async function withFarmAuthority<T>(
       }
     } catch (cleanupFailure) {
       if (!originalFailure) throw cleanupFailure;
-      // Preserve the original exception; never mistake a cleanup error for its cause.
+      // Log only a correlation ID and safe SQLSTATE; never log the token or error message.
+      try {
+        const sqlstate = cleanupFailure && typeof cleanupFailure === "object" && "code" in cleanupFailure
+          && typeof cleanupFailure.code === "string" && /^[0-9A-Z]{5}$/.test(cleanupFailure.code)
+          ? cleanupFailure.code : undefined;
+        console.error(JSON.stringify({
+          code: "FARM_AUTHORITY_CLEANUP_FAILED",
+          traceId: operationId,
+          ...(sqlstate ? { sqlstate } : {}),
+        }));
+      } catch { /* Logging must never replace the primary failure. */ }
     } finally {
       // Destroy rather than pooling a connection that might retain a session lock.
       client.release(true);
