@@ -104,3 +104,40 @@ it("does not release the local authorization lock as reusable", async () => {
   expect(mocks.platformFetch).not.toHaveBeenCalled();
   expect(mocks.client.release).toHaveBeenCalledWith(true);
 });
+
+it("preserves begin failure when end fails, without invoking the domain action", async () => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  mocks.platformFetch.mockResolvedValue(Response.json({ error: "unavailable" }, { status: 503 }));
+  const run = vi.fn();
+  await expect(withFarmAuthority(input, run)).rejects.toThrow("FARM_PAID_AUTHORITY_UNAVAILABLE");
+  expect(run).not.toHaveBeenCalled();
+  expect(mocks.platformFetch).toHaveBeenCalledTimes(2);
+  expect(mocks.dbQuery).toHaveBeenCalledTimes(2);
+  expect(log).toHaveBeenCalledTimes(1);
+  const diagnostic = JSON.parse(String(log.mock.calls[0]?.[0]));
+  expect(diagnostic).toEqual({
+    code: "FARM_AUTHORITY_CLEANUP_FAILED",
+    primaryCode: "FARM_PAID_AUTHORITY_UNAVAILABLE",
+    settlementCode: "FARM_PAID_AUTHORITY_UNAVAILABLE",
+  });
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
+
+it("does not leak arbitrary driver errors or credentials through cleanup diagnostics", async () => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  const secret = "DO_NOT_LOG_SECRET";
+  mocks.platformFetch.mockImplementation(async (_url: URL, init: RequestInit) => {
+    const { phase, operationId } = JSON.parse(String(init.body));
+    return phase === "begin"
+      ? Response.json({ operationId, effectivePaidCrystals: 10 })
+      : Response.json({ error: "unavailable" }, { status: 503 });
+  });
+  const original = new Error("driver detail: " + secret);
+  await expect(withFarmAuthority(input, async () => { throw original; })).rejects.toBe(original);
+  const emitted = log.mock.calls.map((args) => args.join(" ")).join("\n");
+  expect(emitted).toContain("FARM_AUTHORITY_CLEANUP_FAILED");
+  expect(emitted).toContain("UNCLASSIFIED");
+  expect(emitted).not.toContain(secret);
+  expect(emitted).not.toContain(input.launchToken);
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
