@@ -23,7 +23,9 @@ async function callAuthority(
   phase: "begin" | "end",
 ) {
   const { base, secret } = farmV2PlatformConnection();
-  const response = await farmV2PlatformFetch(
+  let response: Response;
+  try {
+    response = await farmV2PlatformFetch(
     new URL("/api/replit/farm-v2/authorization", base),
     {
       method: "POST",
@@ -43,6 +45,17 @@ async function callAuthority(
       signal: AbortSignal.timeout(5000),
     },
   );
+  } catch (error) {
+    // Distinguish a transport/OIDC failure from an HTTP response without exposing secrets.
+    try {
+      console.error(JSON.stringify({
+        code: "FARM_AUTHORITY_CORE_TRANSPORT_FAILURE",
+        traceId: input.operationId,
+        phase,
+      }));
+    } catch { /* Logging must not replace the original failure. */ }
+    throw error;
+  }
   const data = (await response.json().catch(() => null)) as {
     settled?: boolean;
     operationId?: string;
