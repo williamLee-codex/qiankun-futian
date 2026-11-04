@@ -84,6 +84,8 @@ export async function withFarmAuthority<T>(
   });
   const operationId = randomUUID();
   let registered = false;
+  let primaryError: unknown;
+  let primaryFailed = false;
   try {
     await measureFarmV2Stage("authority_lock", () => client.query("select pg_advisory_lock(hashtextextended($1,0))", [
       farmAuthorityLockKey(input.userId),
@@ -101,6 +103,10 @@ export async function withFarmAuthority<T>(
       { operationId, userId: input.userId, qualification },
       run,
     );
+  } catch (error) {
+    primaryFailed = true;
+    primaryError = error;
+    throw error;
   } finally {
     try {
       if (registered) {
@@ -115,6 +121,21 @@ export async function withFarmAuthority<T>(
           [operationId],
         );
       }
+    } catch (settlementError) {
+      if (!primaryFailed) throw settlementError;
+      // Do not replace the original domain/authorization failure with a
+      // secondary cleanup failure. The local fence remains unsettled until
+      // the Core end acknowledgement succeeds; never mark it completed here.
+      // Only log fixed diagnostic codes, never tokens, SQL or driver messages.
+      try {
+        console.error(JSON.stringify({
+          code: "FARM_AUTHORITY_CLEANUP_FAILED",
+          primaryCode: primaryError instanceof Error && /^FARM_[A-Z0-9_]{1,90}$/.test(primaryError.message)
+            ? primaryError.message : "UNCLASSIFIED",
+          settlementCode: settlementError instanceof Error && /^FARM_[A-Z0-9_]{1,90}$/.test(settlementError.message)
+            ? settlementError.message : "UNCLASSIFIED",
+        }));
+      } catch { /* Logging must not replace the original error. */ }
     } finally {
       // Destroy rather than pooling a connection that might retain a session lock.
       client.release(true);
