@@ -7,13 +7,13 @@ import vm from 'node:vm';
 const ts = createRequire(import.meta.url)('typescript');
 const source = readFileSync(new URL('./farm-v2-authority.ts', import.meta.url), 'utf8');
 function runScenario(options = {}) {
-  const { primary, cleanup, beginStatus } = options;
+  const { primary, cleanup, beginStatus, lockFailure, registerFailure } = options;
   const hasPrimary = Object.hasOwn(options, 'primary');
   const events = [];
   const logs = [];
-  const client = { on() {}, query: async () => { events.push('lock'); }, release: x => events.push(['release', x]) };
+  const client = { on() {}, query: async () => { events.push('lock'); if (lockFailure) throw lockFailure; }, release: x => events.push(['release', x]) };
   const pool = { query: async sql => {
-    if (sql.startsWith('insert')) events.push('register');
+    if (sql.startsWith('insert')) { events.push('register'); if (registerFailure) throw registerFailure; }
     else if (sql.includes("state='SETTLED'")) { events.push('settle'); if (cleanup) throw cleanup; }
     else events.push('core-settled');
     return {};
@@ -90,4 +90,17 @@ test('Core begin HTTP 401 maps to session inactive and still closes authority ba
   const { events, invoke } = runScenario({ beginStatus: 401 });
   await assert.rejects(invoke(), e => e?.message === 'FARM_SESSION_NOT_ACTIVE');
   assert.deepEqual(events, ['lock', 'register', 'begin', 'settle', 'end', 'core-settled', ['release', true]]);
+});
+
+test('advisory lock failure does not register or call Core and releases client', async () => {
+  const failure = Error('lock failed');
+  const { events, invoke } = runScenario({ lockFailure: failure });
+  await assert.rejects(invoke(), e => e === failure);
+  assert.deepEqual(events, ['lock', ['release', true]]);
+});
+test('registration failure does not call Core and releases client', async () => {
+  const failure = Error('register failed');
+  const { events, invoke } = runScenario({ registerFailure: failure });
+  await assert.rejects(invoke(), e => e === failure);
+  assert.deepEqual(events, ['lock', 'register', ['release', true]]);
 });
