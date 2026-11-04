@@ -82,13 +82,17 @@ test('Core begin HTTP 503 preserves authority error while recording cleanup fail
   const { events, logs, invoke } = runScenario({ beginStatus: 503, cleanup });
   await assert.rejects(invoke(), e => e?.message === 'FARM_PAID_AUTHORITY_UNAVAILABLE');
   assert.deepEqual(events, ['lock', 'register', 'begin', 'settle', ['release', true]]);
-  assert.equal(logs.length, 1);
-  assert.equal(logs[0].sqlstate, '08006');
+  assert.equal(logs.length, 2);
+  assert.deepEqual(logs[0], { code: 'FARM_AUTHORITY_CORE_HTTP_FAILURE', traceId: 'b3e51e88-8c8c-4f44-a64b-3a8175b6aa10', phase: 'begin', status: 503 });
+  assert.equal(logs[1].code, 'FARM_AUTHORITY_CLEANUP_FAILED');
+  assert.equal(logs[1].sqlstate, '08006');
   assert.equal(JSON.stringify(logs).includes('secret from database'), false);
 });
 test('Core begin HTTP 401 maps to session inactive and still closes authority barrier', async () => {
-  const { events, invoke } = runScenario({ beginStatus: 401 });
+  const { events, logs, invoke } = runScenario({ beginStatus: 401 });
   await assert.rejects(invoke(), e => e?.message === 'FARM_SESSION_NOT_ACTIVE');
+  assert.equal(logs.length, 1);
+  assert.deepEqual(logs[0], { code: 'FARM_AUTHORITY_CORE_HTTP_FAILURE', traceId: 'b3e51e88-8c8c-4f44-a64b-3a8175b6aa10', phase: 'begin', status: 401 });
   assert.deepEqual(events, ['lock', 'register', 'begin', 'settle', 'end', 'core-settled', ['release', true]]);
 });
 
