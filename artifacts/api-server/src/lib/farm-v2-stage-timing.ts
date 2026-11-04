@@ -1,6 +1,6 @@
-export type FarmV2Stage = "authority_connect" | "authority_lock" | "authority_begin" | "authority_end" | "paid_access" | "domain_sow" | "domain_harvest" | "domain_purchase" | "domain_exchange" | "snapshot_settle" | "snapshot_read" | "platform_validate" | "platform_wallet" | "platform_other";
+export type FarmV2Stage = "authority_connect" | "authority_lock" | "authority_register" | "authority_begin" | "authority_end" | "paid_access" | "domain_sow" | "domain_harvest" | "domain_purchase" | "domain_exchange" | "snapshot_settle" | "snapshot_read" | "platform_validate" | "platform_wallet" | "platform_other";
 export async function measureFarmV2Stage<T>(stage: FarmV2Stage, run: () => Promise<T>): Promise<T> {
-  const allowed = new Set<string>(["authority_connect", "authority_lock", "authority_begin", "authority_end", "paid_access", "domain_sow", "domain_harvest", "domain_purchase", "domain_exchange", "snapshot_settle", "snapshot_read", "platform_validate", "platform_wallet", "platform_other"]);
+  const allowed = new Set<string>(["authority_connect", "authority_lock", "authority_register", "authority_begin", "authority_end", "paid_access", "domain_sow", "domain_harvest", "domain_purchase", "domain_exchange", "snapshot_settle", "snapshot_read", "platform_validate", "platform_wallet", "platform_other"]);
   if (!allowed.has(stage)) return run();
   const start = performance.now();
   let success = false;
