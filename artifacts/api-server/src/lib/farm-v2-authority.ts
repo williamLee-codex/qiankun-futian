@@ -82,6 +82,8 @@ export async function withFarmAuthority<T>(
   });
   const operationId = randomUUID();
   let registered = false;
+  let primaryFailed = false;
+  let primaryError: unknown;
   try {
     await client.query("select pg_advisory_lock(hashtextextended($1,0))", [
       farmAuthorityLockKey(input.userId),
@@ -99,6 +101,10 @@ export async function withFarmAuthority<T>(
       { operationId, userId: input.userId, qualification },
       run,
     );
+  } catch (error) {
+    primaryFailed = true;
+    primaryError = error;
+    throw error;
   } finally {
     try {
       if (registered) {
@@ -113,6 +119,19 @@ export async function withFarmAuthority<T>(
           [operationId],
         );
       }
+    } catch (settlementError) {
+      if (!primaryFailed) throw settlementError;
+      // Keep the original failure. Do not mark Core settlement as complete
+      // unless the end acknowledgement succeeded.
+      try {
+        console.error(JSON.stringify({
+          code: "FARM_AUTHORITY_CLEANUP_FAILED",
+          primaryCode: primaryError instanceof Error && /^FARM_[A-Z0-9_]{1,90}$/.test(primaryError.message)
+            ? primaryError.message : "UNCLASSIFIED",
+          settlementCode: settlementError instanceof Error && /^FARM_[A-Z0-9_]{1,90}$/.test(settlementError.message)
+            ? settlementError.message : "UNCLASSIFIED",
+        }));
+      } catch { /* Preserve the original error if logging fails. */ }
     } finally {
       // Destroy rather than pooling a connection that might retain a session lock.
       client.release(true);
