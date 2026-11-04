@@ -78,25 +78,26 @@ export async function withFarmAuthority<T>(
   },
   run: () => Promise<T>,
 ) {
-  const client = await measureFarmV2Stage("authority_connect", () => farmAuthorityPool.connect());
+  // Internal per-operation correlation ID; no user, token or request ID in logs.
+  const operationId = randomUUID();
+  const client = await measureFarmV2Stage("authority_connect", () => farmAuthorityPool.connect(), operationId);
   client.on("error", () => {
     /* Core barrier remains until local fencing/settlement. */
   });
-  const operationId = randomUUID();
   let registered = false;
   try {
     await measureFarmV2Stage("authority_lock", () => client.query("select pg_advisory_lock(hashtextextended($1,0))", [
       farmAuthorityLockKey(input.userId),
-    ]));
+    ]), operationId);
     await measureFarmV2Stage("authority_register", () => pool.query(
       "insert into farm_v2_authorization_attempt(id,user_id,request_id,action,state) values($1,$2,$3,$4,'OPEN')",
       [operationId, input.userId, input.requestId, input.action],
-    ));
+    ), operationId);
     registered = true;
     const qualification = await measureFarmV2Stage("authority_begin", () => callAuthority(
       { ...input, operationId },
       "begin",
-    ));
+    ), operationId);
     return await farmAuthorityContext.run(
       { operationId, userId: input.userId, qualification },
       run,
@@ -109,7 +110,7 @@ export async function withFarmAuthority<T>(
           "update farm_v2_authorization_attempt set state='SETTLED',settled_at=now() where id=$1 and state='OPEN'",
           [operationId],
         );
-        await measureFarmV2Stage("authority_end", () => callAuthority({ ...input, operationId }, "end"));
+        await measureFarmV2Stage("authority_end", () => callAuthority({ ...input, operationId }, "end"), operationId);
         await pool.query(
           "update farm_v2_authorization_attempt set core_settled_at=now() where id=$1",
           [operationId],
