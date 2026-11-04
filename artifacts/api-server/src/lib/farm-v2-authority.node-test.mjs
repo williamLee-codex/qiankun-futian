@@ -10,6 +10,7 @@ function runScenario(options = {}) {
   const { primary, cleanup } = options;
   const hasPrimary = Object.hasOwn(options, 'primary');
   const events = [];
+  const logs = [];
   const client = { on() {}, query: async () => { events.push('lock'); }, release: x => events.push(['release', x]) };
   const pool = { query: async sql => {
     if (sql.startsWith('insert')) events.push('register');
@@ -34,9 +35,9 @@ function runScenario(options = {}) {
   vm.runInNewContext(js, { module, exports: module.exports, require: name => {
     if (!(name in mocks)) throw Error('Unexpected dependency: ' + name);
     return mocks[name];
-  }, URL, AbortSignal, JSON, console: { error() {} } });
+  }, URL, AbortSignal, JSON, console: { error: line => logs.push(JSON.parse(line)) } });
   const input = { userId: 'test-user', launchToken: 'test-token', requestId: 'test-request', action: 'GET:/farm/v2/state' };
-  return { events, invoke: () => module.exports.withFarmAuthority(input, async () => {
+  return { events, logs, invoke: () => module.exports.withFarmAuthority(input, async () => {
     events.push('domain'); if (hasPrimary) throw primary;
     return { ok: true };
   }) };
@@ -62,4 +63,16 @@ test('null primary rejection is not masked by cleanup error', async () => {
   const { events, invoke } = runScenario({ primary: null, cleanup: Error('cleanup') });
   await assert.rejects(invoke(), e => e === null);
   assert.deepEqual(events.at(-1), ['release', true]);
+});
+
+test('simultaneous cleanup failure emits only sanitized diagnostic metadata', async () => {
+  const primary = Error('FARM_PAID_AUTHORITY_UNAVAILABLE');
+  const cleanup = Object.assign(Error('private-password and token must not appear'), { code: '55P03' });
+  const { logs, invoke } = runScenario({ primary, cleanup });
+  await assert.rejects(invoke(), e => e === primary);
+  assert.equal(logs.length, 1);
+  assert.deepEqual(Object.keys(logs[0]).sort(), ['code', 'sqlstate', 'traceId']);
+  assert.equal(logs[0].code, 'FARM_AUTHORITY_CLEANUP_FAILED');
+  assert.equal(logs[0].sqlstate, '55P03');
+  assert.equal(JSON.stringify(logs).includes('private-password'), false);
 });
