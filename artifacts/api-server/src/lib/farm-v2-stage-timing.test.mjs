@@ -43,3 +43,30 @@ test('decorated domain calls preserve arguments, return identity and call count'
     assert.equal(await wrapped(command,'private-token'),result);assert.equal(calls,1);
   } finally {console.info=original;}
 });
+
+test('authority_register stage reports success and preserves a successful write', async () => {
+  const lines=[]; const original=console.info; console.info=line=>lines.push(JSON.parse(line));
+  try {
+    let writes=0;const result={rowCount:1};
+    assert.equal(await measureFarmV2Stage('authority_register',async()=>{writes++;return result;}),result);
+    assert.equal(writes,1);
+    assert.equal(lines.length,1);
+    assert.deepEqual(Object.keys(lines[0]).sort(),['code','durationMs','stage','success']);
+    assert.equal(lines[0].stage,'authority_register');
+    assert.equal(lines[0].success,true);
+    assert.equal(Number.isFinite(lines[0].durationMs),true);
+  } finally {console.info=original;}
+});
+
+test('authority_register stage reports failure without masking or logging the database error', async () => {
+  const lines=[];const original=console.info;console.info=line=>lines.push(line);
+  try {
+    const error=new Error('postgres://private-password@host secret-token');
+    await assert.rejects(measureFarmV2Stage('authority_register',async()=>{throw error;}),e=>e===error);
+    assert.equal(lines.length,1);
+    assert.equal(JSON.parse(lines[0]).stage,'authority_register');
+    assert.equal(JSON.parse(lines[0]).success,false);
+    assert.equal(lines[0].includes('private-password'),false);
+    assert.equal(lines[0].includes('secret-token'),false);
+  } finally {console.info=original;}
+});
