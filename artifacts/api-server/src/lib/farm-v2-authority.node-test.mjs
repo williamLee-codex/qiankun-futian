@@ -7,7 +7,7 @@ import vm from 'node:vm';
 const ts = createRequire(import.meta.url)('typescript');
 const source = readFileSync(new URL('./farm-v2-authority.ts', import.meta.url), 'utf8');
 function runScenario(options = {}) {
-  const { primary, cleanup, beginStatus, lockFailure, registerFailure } = options;
+  const { primary, cleanup, beginStatus, transportFailure, lockFailure, registerFailure } = options;
   const hasPrimary = Object.hasOwn(options, 'primary');
   const events = [];
   const logs = [];
@@ -22,6 +22,7 @@ function runScenario(options = {}) {
     './farm-v2-stage-timing': { measureFarmV2Stage: (_stage, fn) => fn() },
     './farm-v2-platform-fetch': { farmV2PlatformFetch: async (_url, init) => {
       const data = JSON.parse(init.body); events.push(data.phase);
+      if (transportFailure && data.phase === 'begin') throw transportFailure;
       return { ok: !(data.phase === 'begin' && beginStatus), status: data.phase === 'begin' && beginStatus ? beginStatus : 200, json: async () => data.phase === 'begin'
         ? { operationId: data.operationId, effectivePaidCrystals: 0 } : { settled: true } };
     }},
@@ -107,4 +108,17 @@ test('registration failure does not call Core and releases client', async () => 
   const { events, invoke } = runScenario({ registerFailure: failure });
   await assert.rejects(invoke(), e => e === failure);
   assert.deepEqual(events, ['lock', 'register', ['release', true]]);
+});
+
+test('Core transport failure retains original exception and emits sanitized phase-only metadata', async () => {
+  const transportFailure = Error('private upstream URL and token must not appear');
+  const { events, logs, invoke } = runScenario({ transportFailure });
+  await assert.rejects(invoke(), e => e === transportFailure);
+  assert.deepEqual(events, ['lock', 'register', 'begin', 'settle', 'end', 'core-settled', ['release', true]]);
+  assert.deepEqual(logs, [{
+    code: 'FARM_AUTHORITY_CORE_TRANSPORT_FAILURE',
+    traceId: 'b3e51e88-8c8c-4f44-a64b-3a8175b6aa10',
+    phase: 'begin',
+  }]);
+  assert.equal(JSON.stringify(logs).includes('private upstream'), false);
 });
