@@ -48,12 +48,24 @@ async function callAuthority(
     operationId?: string;
     effectivePaidCrystals?: number;
   } | null;
-  if (!response.ok)
+  if (!response.ok) {
+    // The HTTP status distinguishes a Core 503 from an upstream timeout or DB failure.
+    // Never log the launch token, request ID, response body, or shared secret.
+    try {
+      console.error(JSON.stringify({
+        code: "FARM_AUTHORITY_CORE_HTTP_FAILURE",
+        traceId: input.operationId,
+        phase,
+        status: Number.isInteger(response.status) && response.status >= 100 && response.status <= 599
+          ? response.status : 0,
+      }));
+    } catch { /* Logging must never replace the authorization failure. */ }
     throw new Error(
       response.status === 401
         ? "FARM_SESSION_NOT_ACTIVE"
         : "FARM_PAID_AUTHORITY_UNAVAILABLE",
     );
+  }
   if (phase === "end") {
     if (data?.settled !== true)
       throw new Error("FARM_PAID_AUTHORITY_UNAVAILABLE");
