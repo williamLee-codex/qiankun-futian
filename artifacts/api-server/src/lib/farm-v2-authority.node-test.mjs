@@ -7,7 +7,7 @@ import vm from 'node:vm';
 const ts = createRequire(import.meta.url)('typescript');
 const source = readFileSync(new URL('./farm-v2-authority.ts', import.meta.url), 'utf8');
 function runScenario(options = {}) {
-  const { primary, cleanup } = options;
+  const { primary, cleanup, beginStatus } = options;
   const hasPrimary = Object.hasOwn(options, 'primary');
   const events = [];
   const logs = [];
@@ -22,7 +22,7 @@ function runScenario(options = {}) {
     './farm-v2-stage-timing': { measureFarmV2Stage: (_stage, fn) => fn() },
     './farm-v2-platform-fetch': { farmV2PlatformFetch: async (_url, init) => {
       const data = JSON.parse(init.body); events.push(data.phase);
-      return { ok: true, json: async () => data.phase === 'begin'
+      return { ok: !(data.phase === 'begin' && beginStatus), status: data.phase === 'begin' && beginStatus ? beginStatus : 200, json: async () => data.phase === 'begin'
         ? { operationId: data.operationId, effectivePaidCrystals: 0 } : { settled: true } };
     }},
     'node:crypto': { randomUUID: () => 'b3e51e88-8c8c-4f44-a64b-3a8175b6aa10' },
@@ -75,4 +75,19 @@ test('simultaneous cleanup failure emits only sanitized diagnostic metadata', as
   assert.equal(logs[0].code, 'FARM_AUTHORITY_CLEANUP_FAILED');
   assert.equal(logs[0].sqlstate, '55P03');
   assert.equal(JSON.stringify(logs).includes('private-password'), false);
+});
+
+test('Core begin HTTP 503 preserves authority error while recording cleanup failure', async () => {
+  const cleanup = Object.assign(Error('secret from database'), { code: '08006' });
+  const { events, logs, invoke } = runScenario({ beginStatus: 503, cleanup });
+  await assert.rejects(invoke(), e => e?.message === 'FARM_PAID_AUTHORITY_UNAVAILABLE');
+  assert.deepEqual(events, ['lock', 'register', 'begin', 'settle', ['release', true]]);
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0].sqlstate, '08006');
+  assert.equal(JSON.stringify(logs).includes('secret from database'), false);
+});
+test('Core begin HTTP 401 maps to session inactive and still closes authority barrier', async () => {
+  const { events, invoke } = runScenario({ beginStatus: 401 });
+  await assert.rejects(invoke(), e => e?.message === 'FARM_SESSION_NOT_ACTIVE');
+  assert.deepEqual(events, ['lock', 'register', 'begin', 'settle', 'end', 'core-settled', ['release', true]]);
 });
