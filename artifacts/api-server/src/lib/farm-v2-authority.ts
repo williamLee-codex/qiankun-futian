@@ -85,6 +85,7 @@ export async function withFarmAuthority<T>(
     /* Core barrier remains until local fencing/settlement. */
   });
   let registered = false;
+  let originalFailure: unknown;
   try {
     await measureFarmV2Stage("authority_lock", () => client.query("select pg_advisory_lock(hashtextextended($1,0))", [
       farmAuthorityLockKey(input.userId),
@@ -102,6 +103,9 @@ export async function withFarmAuthority<T>(
       { operationId, userId: input.userId, qualification },
       run,
     );
+  } catch (error) {
+    originalFailure = error;
+    throw error;
   } finally {
     try {
       if (registered) {
@@ -116,6 +120,9 @@ export async function withFarmAuthority<T>(
           [operationId],
         );
       }
+    } catch (cleanupFailure) {
+      if (originalFailure === undefined) throw cleanupFailure;
+      // Preserve the original exception; never mistake a cleanup error for its cause.
     } finally {
       // Destroy rather than pooling a connection that might retain a session lock.
       client.release(true);
