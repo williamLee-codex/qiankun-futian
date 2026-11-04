@@ -8,7 +8,8 @@
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "test": "vitest run",
-    "farm:reconcile": "pnpm --filter @workspace/scripts exec tsx ../artifacts/api-server/src/cli/farm-v2-reconcile.ts"
+    "farm:reconcile": "pnpm --filter @workspace/scripts exec tsx ../artifacts/api-server/src/cli/farm-v2-reconcile.ts",
+    "test:farm-authority": "node --test artifacts/api-server/src/lib/farm-v2-authority.node-test.mjs artifacts/api-server/src/lib/farm-v2-stage-timing.test.mjs"
   },
   "private": true,
   "devDependencies": {
