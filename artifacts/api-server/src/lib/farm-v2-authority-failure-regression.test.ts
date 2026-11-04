@@ -91,8 +91,7 @@ it("REGRESSION: preserves the domain failure when end settlement also fails", as
       : Response.json({ error: "unavailable" }, { status: 503 });
   });
   const run = vi.fn(async () => { throw domainError; });
-  // Expected safe behavior. This test should FAIL against the current implementation:
-  // the finally block currently replaces domainError with the settlement error.
+  // The primary domain failure must survive a secondary settlement failure.
   await expect(withFarmAuthority(input, run)).rejects.toBe(domainError);
   expect(mocks.platformFetch).toHaveBeenCalledTimes(2);
   expect(mocks.client.release).toHaveBeenCalledWith(true);
@@ -139,5 +138,17 @@ it("does not leak arbitrary driver errors or credentials through cleanup diagnos
   expect(emitted).toContain("UNCLASSIFIED");
   expect(emitted).not.toContain(secret);
   expect(emitted).not.toContain(input.launchToken);
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
+
+it("surfaces settlement failure when the domain operation itself succeeded", async () => {
+  mocks.platformFetch.mockImplementation(async (_url: URL, init: RequestInit) => {
+    const { phase, operationId } = JSON.parse(String(init.body));
+    return phase === "begin"
+      ? Response.json({ operationId, effectivePaidCrystals: 10 })
+      : Response.json({ error: "unavailable" }, { status: 503 });
+  });
+  await expect(withFarmAuthority(input, async () => "domain-done"))
+    .rejects.toThrow("FARM_PAID_AUTHORITY_UNAVAILABLE");
   expect(mocks.client.release).toHaveBeenCalledWith(true);
 });
