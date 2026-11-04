@@ -88,10 +88,10 @@ export async function withFarmAuthority<T>(
     await measureFarmV2Stage("authority_lock", () => client.query("select pg_advisory_lock(hashtextextended($1,0))", [
       farmAuthorityLockKey(input.userId),
     ]));
-    await pool.query(
+    await measureFarmV2Stage("authority_register", () => pool.query(
       "insert into farm_v2_authorization_attempt(id,user_id,request_id,action,state) values($1,$2,$3,$4,'OPEN')",
       [operationId, input.userId, input.requestId, input.action],
-    );
+    ));
     registered = true;
     const qualification = await measureFarmV2Stage("authority_begin", () => callAuthority(
       { ...input, operationId },
