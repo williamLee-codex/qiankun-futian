@@ -6,7 +6,9 @@ import vm from 'node:vm';
 
 const ts = createRequire(import.meta.url)('typescript');
 const source = readFileSync(new URL('./farm-v2-authority.ts', import.meta.url), 'utf8');
-function runScenario({ primary, cleanup } = {}) {
+function runScenario(options = {}) {
+  const { primary, cleanup } = options;
+  const hasPrimary = Object.hasOwn(options, 'primary');
   const events = [];
   const client = { on() {}, query: async () => { events.push('lock'); }, release: x => events.push(['release', x]) };
   const pool = { query: async sql => {
@@ -35,7 +37,7 @@ function runScenario({ primary, cleanup } = {}) {
   }, URL, AbortSignal, JSON, console: { error() {} } });
   const input = { userId: 'test-user', launchToken: 'test-token', requestId: 'test-request', action: 'GET:/farm/v2/state' };
   return { events, invoke: () => module.exports.withFarmAuthority(input, async () => {
-    events.push('domain'); if (Object.hasOwn(arguments[0] ?? {}, 'primary')) throw primary;
+    events.push('domain'); if (hasPrimary) throw primary;
     return { ok: true };
   }) };
 }
