@@ -27,9 +27,6 @@ vi.mock("./farm-v2-platform", () => ({
     secret: "test-only",
   }),
 }));
-vi.mock("./farm-v2-platform-fetch", () => ({
-  farmV2PlatformFetch: mocks.platformFetch,
-}));
 vi.mock("./farm-v2-authority-context", () => ({
   farmAuthorityContext: {
     run: async (_context: unknown, run: () => Promise<unknown>) => run(),
@@ -49,6 +46,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.client.query.mockResolvedValue({ rows: [] });
   mocks.dbQuery.mockResolvedValue({ rowCount: 1 });
+  vi.stubGlobal("fetch", mocks.platformFetch);
   mocks.platformFetch.mockImplementation(async (_url: URL, init: RequestInit) => {
     const body = JSON.parse(String(init.body));
     if (body.phase === "begin")
@@ -59,7 +57,10 @@ beforeEach(() => {
     return Response.json({ settled: true });
   });
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 it("settles an authorized operation and destroys its advisory-lock connection", async () => {
   await expect(withFarmAuthority(input, async () => "done")).resolves.toBe("done");
