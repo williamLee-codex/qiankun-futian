@@ -1,0 +1,63 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import vm from 'node:vm';
+
+const ts = createRequire(import.meta.url)('typescript');
+const source = readFileSync(new URL('./farm-v2-authority.ts', import.meta.url), 'utf8');
+function runScenario({ primary, cleanup } = {}) {
+  const events = [];
+  const client = { on() {}, query: async () => { events.push('lock'); }, release: x => events.push(['release', x]) };
+  const pool = { query: async sql => {
+    if (sql.startsWith('insert')) events.push('register');
+    else if (sql.includes("state='SETTLED'")) { events.push('settle'); if (cleanup) throw cleanup; }
+    else events.push('core-settled');
+    return {};
+  }};
+  const mocks = {
+    './farm-v2-stage-timing': { measureFarmV2Stage: (_stage, fn) => fn() },
+    './farm-v2-platform-fetch': { farmV2PlatformFetch: async (_url, init) => {
+      const data = JSON.parse(init.body); events.push(data.phase);
+      return { ok: true, json: async () => data.phase === 'begin'
+        ? { operationId: data.operationId, effectivePaidCrystals: 0 } : { settled: true } };
+    }},
+    'node:crypto': { randomUUID: () => 'b3e51e88-8c8c-4f44-a64b-3a8175b6aa10' },
+    '@workspace/db': { pool, createDatabaseConnection: () => ({ pool: { connect: async () => client } }) },
+    './farm-v2-platform': { farmV2PlatformConnection: () => ({ base: 'https://example.invalid', secret: 'mock' }) },
+    './farm-v2-authority-context': { farmAuthorityContext: { run: (_context, fn) => fn() } },
+  };
+  const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const module = { exports: {} };
+  vm.runInNewContext(js, { module, exports: module.exports, require: name => {
+    if (!(name in mocks)) throw Error('Unexpected dependency: ' + name);
+    return mocks[name];
+  }, URL, AbortSignal, JSON, console: { error() {} } });
+  const input = { userId: 'test-user', launchToken: 'test-token', requestId: 'test-request', action: 'GET:/farm/v2/state' };
+  return { events, invoke: () => module.exports.withFarmAuthority(input, async () => {
+    events.push('domain'); if (Object.hasOwn(arguments[0] ?? {}, 'primary')) throw primary;
+    return { ok: true };
+  }) };
+}
+test('primary failure survives a simultaneous cleanup failure', async () => {
+  const original = Error('FARM_PAID_AUTHORITY_UNAVAILABLE');
+  const { events, invoke } = runScenario({ primary: original, cleanup: Error('cleanup') });
+  await assert.rejects(invoke(), e => e === original);
+  assert.deepEqual(events.at(-1), ['release', true]);
+});
+test('cleanup-only failure propagates', async () => {
+  const failure = Error('cleanup');
+  const { events, invoke } = runScenario({ cleanup: failure });
+  await assert.rejects(invoke(), e => e === failure);
+  assert.deepEqual(events.at(-1), ['release', true]);
+});
+test('success waits for Core settlement and destroys the lock session', async () => {
+  const { events, invoke } = runScenario();
+  assert.deepEqual(await invoke(), { ok: true });
+  assert.deepEqual(events, ['lock','register','begin','domain','settle','end','core-settled',['release',true]]);
+});
+test('null primary rejection is not masked by cleanup error', async () => {
+  const { events, invoke } = runScenario({ primary: null, cleanup: Error('cleanup') });
+  await assert.rejects(invoke(), e => e === null);
+  assert.deepEqual(events.at(-1), ['release', true]);
+});
