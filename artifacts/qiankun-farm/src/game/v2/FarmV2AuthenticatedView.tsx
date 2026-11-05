@@ -186,8 +186,8 @@ export function FarmV2AuthenticatedView(props: {
               <table><thead><tr><th scope="col">田別</th><th scope="col">種子</th><th scope="col">靈植</th></tr></thead>
                 <tbody>{FARM_V2_LANDS.map((land) => (
                   <tr key={land.id}><th scope="row">{land.landName}</th>
-                    <td>{data.seedInventory[land.id] ?? 0}</td>
-                    <td>{data.cropInventory[land.id] ?? 0}</td></tr>
+                    <td>{data.seedInventory[data.plots[land.id - 1].cropId] ?? 0}</td>
+                    <td>{data.cropInventory[data.plots[land.id - 1].cropId] ?? 0}</td></tr>
                 ))}</tbody>
               </table>
             </section>
