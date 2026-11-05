@@ -118,10 +118,12 @@ export async function withFarmAuthority<T>(
         if (settlement.rowCount !== 1)
           throw new Error("FARM_LOCAL_SETTLEMENT_NOT_CONFIRMED");
         await measureFarmV2Stage("authority_end", () => callAuthority({ ...input, operationId }, "end"));
-        await pool.query(
+        const receipt = await pool.query(
           "update farm_v2_authorization_attempt set core_settled_at=now() where id=$1",
           [operationId],
         );
+        if (receipt.rowCount !== 1)
+          throw new Error("FARM_CORE_SETTLEMENT_RECEIPT_NOT_CONFIRMED");
       }
     } catch (settlementError) {
       if (!primaryFailed) throw settlementError;
