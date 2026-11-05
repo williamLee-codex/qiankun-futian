@@ -97,15 +97,21 @@ export function createFarmV2Api(input: {
         reauthenticateUrl?: string;
       } | null;
       if (payload?.reauthenticateUrl) {
-        const login = new URL(payload.reauthenticateUrl);
-        if (
-          (login.protocol === "https:" ||
+        try {
+          const login = new URL(payload.reauthenticateUrl);
+          const secure = login.protocol === "https:" ||
             (login.protocol === "http:" &&
-              ["localhost", "127.0.0.1", "[::1]"].includes(login.hostname))) &&
-          !login.username &&
-          !login.password
-        )
-          reauthenticateUrl = login.toString();
+              ["localhost", "127.0.0.1", "[::1]"].includes(login.hostname));
+          // Never replace the trusted same-origin recovery link with a
+          // different host supplied by an error response.
+          const trustedOrigin = normalizedApiBase.pathname === platformProxyPath
+            ? login.origin === normalizedApiBase.origin
+            : true;
+          if (secure && trustedOrigin && !login.username && !login.password)
+            reauthenticateUrl = login.toString();
+        } catch {
+          // A malformed recovery URL must not mask the original API error.
+        }
       }
       throw new FarmV2ApiError(
         response.status,
