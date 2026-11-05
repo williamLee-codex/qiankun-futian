@@ -210,11 +210,15 @@ export function FarmV2AuthenticatedView(props: {
             <section aria-label="福田倉庫庫存">
               <p>以下數量來自目前伺服器回傳的農田庫存。</p>
               <table><thead><tr><th scope="col">田別</th><th scope="col">種子</th><th scope="col">靈植</th></tr></thead>
-                <tbody>{FARM_V2_LANDS.map((land) => (
-                  <tr key={land.id}><th scope="row">{land.landName}</th>
-                    <td>{land.seedName}：{data.seedInventory[data.plots[land.id - 1].cropId] ?? 0}</td>
-                    <td>{land.cropName}：{data.cropInventory[data.plots[land.id - 1].cropId] ?? 0}</td></tr>
-                ))}</tbody>
+                <tbody>{FARM_V2_LANDS.map((land) => {
+                  const plot = data.plots.find((item) => item.id === land.id - 1);
+                  return (
+                    <tr key={land.id}><th scope="row">{land.landName}</th>
+                      <td>{land.seedName}：{plot ? (data.seedInventory[plot.cropId] ?? 0) : "資料缺失"}</td>
+                      <td>{land.cropName}：{plot ? (data.cropInventory[plot.cropId] ?? 0) : "資料缺失"}</td>
+                    </tr>
+                  );
+                })}</tbody>
               </table>
             </section>
           ) : (
