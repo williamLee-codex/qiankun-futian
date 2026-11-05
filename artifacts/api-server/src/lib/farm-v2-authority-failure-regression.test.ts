@@ -91,8 +91,6 @@ it("REGRESSION: preserves the domain failure when end settlement also fails", as
       : Response.json({ error: "unavailable" }, { status: 503 });
   });
   const run = vi.fn(async () => { throw domainError; });
-  // Expected safe behavior. This test should FAIL against the current implementation:
-  // the finally block currently replaces domainError with the settlement error.
   await expect(withFarmAuthority(input, run)).rejects.toBe(domainError);
   expect(mocks.platformFetch).toHaveBeenCalledTimes(2);
   expect(mocks.client.release).toHaveBeenCalledWith(true);
@@ -102,5 +100,59 @@ it("does not release the local authorization lock as reusable", async () => {
   mocks.dbQuery.mockRejectedValueOnce(new Error("FARM_LOCAL_REGISTRATION_FAILED"));
   await expect(withFarmAuthority(input, async () => "not-run")).rejects.toThrow("FARM_LOCAL_REGISTRATION_FAILED");
   expect(mocks.platformFetch).not.toHaveBeenCalled();
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
+
+it("does not call Core end when local settlement updates zero rows", async () => {
+  mocks.dbQuery.mockResolvedValueOnce({ rowCount: 1 });
+  mocks.dbQuery.mockResolvedValueOnce({ rowCount: 0 });
+  await expect(withFarmAuthority(input, async () => "domain-complete"))
+    .rejects.toThrow("FARM_LOCAL_SETTLEMENT_NOT_CONFIRMED");
+  const phases = mocks.platformFetch.mock.calls.map(([_url, init]: [URL, RequestInit]) =>
+    JSON.parse(String(init.body)).phase,
+  );
+  expect(phases).toEqual(["begin"]);
+  expect(mocks.dbQuery.mock.calls.some(([sql]: [string]) =>
+    sql.includes("core_settled_at=now()"))).toBe(false);
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
+
+it("does not acknowledge Core end when local settlement update throws", async () => {
+  mocks.dbQuery.mockResolvedValueOnce({ rowCount: 1 });
+  mocks.dbQuery.mockRejectedValueOnce(new Error("FARM_LOCAL_SETTLEMENT_FAILED"));
+  await expect(withFarmAuthority(input, async () => "domain-complete"))
+    .rejects.toThrow("FARM_LOCAL_SETTLEMENT_FAILED");
+  const phases = mocks.platformFetch.mock.calls.map(([_url, init]: [URL, RequestInit]) =>
+    JSON.parse(String(init.body)).phase,
+  );
+  expect(phases).toEqual(["begin"]);
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
+
+it("does not mark Core settled when end returns HTTP 503", async () => {
+  mocks.platformFetch.mockImplementation(async (_url: URL, init: RequestInit) => {
+    const { phase, operationId } = JSON.parse(String(init.body));
+    return phase === "begin"
+      ? Response.json({ operationId, effectivePaidCrystals: 10 })
+      : Response.json({ error: "unavailable" }, { status: 503 });
+  });
+  await expect(withFarmAuthority(input, async () => "domain-complete"))
+    .rejects.toThrow("FARM_PAID_AUTHORITY_UNAVAILABLE");
+  expect(mocks.dbQuery.mock.calls.some(([sql]: [string]) =>
+    sql.includes("core_settled_at=now()"))).toBe(false);
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
+
+it("rejects HTTP 200 without Core settled acknowledgement", async () => {
+  mocks.platformFetch.mockImplementation(async (_url: URL, init: RequestInit) => {
+    const { phase, operationId } = JSON.parse(String(init.body));
+    return phase === "begin"
+      ? Response.json({ operationId, effectivePaidCrystals: 10 })
+      : Response.json({ settled: false });
+  });
+  await expect(withFarmAuthority(input, async () => "domain-complete"))
+    .rejects.toThrow("FARM_PAID_AUTHORITY_UNAVAILABLE");
+  expect(mocks.dbQuery.mock.calls.some(([sql]: [string]) =>
+    sql.includes("core_settled_at=now()"))).toBe(false);
   expect(mocks.client.release).toHaveBeenCalledWith(true);
 });
