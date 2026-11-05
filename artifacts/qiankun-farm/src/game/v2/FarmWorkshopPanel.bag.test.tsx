@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
+import { BagPotInventoryGrid, FarmWorkshopPanel } from "./FarmWorkshopPanel";
 import { FARM_V2_LANDS } from "./canonicalLandData";
 import { POT_GRADES } from "./potRuntime";
 import type { WorkshopWarehouse } from "./workshopRuntime";
@@ -34,6 +34,13 @@ describe("Qiankun bag initial render", () => {
     expect(html).toContain("蘊靈砂：2");
     expect(html).toContain("九霄玉髓：3");
     expect(html).not.toContain("洞府</button>");
+  });
+
+  it("renders all 36 pot inventory cells, not just a calculated combination count", () => {
+    const html = renderToStaticMarkup(<BagPotInventoryGrid pots={[]} />);
+    expect((html.match(/<article\b/g) ?? []).length).toBe(36);
+    expect((html.match(/持有 0 株/g) ?? []).length).toBe(36);
+    expect(html).toContain('aria-label="盆栽庫存格位"');
   });
 
   it("defines 36 distinct species-and-grade slots", () => {
