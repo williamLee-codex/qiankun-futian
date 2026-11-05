@@ -17,7 +17,7 @@ describe('42-slot synthesis interaction',()=>{
   fireEvent.click(screen.getByRole('button',{name:/曜金粟 靈植，持有 9/}));
   expect(screen.getByText('持有 9 株靈植')).toBeTruthy();
   expect(screen.getByText('9 / 3')).toBeTruthy();
-  expect(screen.getByRole('button',{name:/黑金.*靈植，持有 4/})).toBeTruthy();
+  expect(screen.getByRole('button',{name:/混沌晶華 靈植，持有 4/})).toBeTruthy();
  });
  it('manages placement in synthesis, not in a duplicate bag grid',async()=>{
   const w=base();
