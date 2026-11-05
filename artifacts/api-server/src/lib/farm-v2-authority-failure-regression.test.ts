@@ -246,3 +246,16 @@ it("preserves domain error when local settlement updates two rows", async () => 
   expect(mocks.platformFetch).toHaveBeenCalledTimes(1);
   expect(mocks.client.release).toHaveBeenCalledWith(true);
 });
+
+it("rejects missing local Core settlement receipt after successful Core end", async () => {
+  mocks.dbQuery.mockResolvedValueOnce({ rowCount: 1 });
+  mocks.dbQuery.mockResolvedValueOnce({ rowCount: 1 });
+  mocks.dbQuery.mockResolvedValueOnce({ rowCount: 0 });
+  await expect(withFarmAuthority(input, async () => "domain-complete"))
+    .rejects.toThrow("FARM_CORE_SETTLEMENT_RECEIPT_NOT_CONFIRMED");
+  const phases = mocks.platformFetch.mock.calls.map(([_url, init]: [URL, RequestInit]) =>
+    JSON.parse(String(init.body)).phase,
+  );
+  expect(phases).toEqual(["begin", "end"]);
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
