@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { BagPotInventoryGrid, FarmWorkshopPanel } from "./FarmWorkshopPanel";
+import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
 import { FARM_V2_LANDS } from "./canonicalLandData";
 import { POT_GRADES } from "./potRuntime";
 import type { WorkshopWarehouse } from "./workshopRuntime";
@@ -36,50 +36,13 @@ describe("Qiankun bag initial render", () => {
     expect(html).not.toContain("洞府</button>");
   });
 
-  it("renders all 36 pot inventory cells, not just a calculated combination count", () => {
-    const html = renderToStaticMarkup(<BagPotInventoryGrid pots={[]} />);
-    expect((html.match(/<article\b/g) ?? []).length).toBe(36);
-    expect((html.match(/持有 0 株/g) ?? []).length).toBe(36);
-    expect(html).toContain("盆栽總數：0 株");
-    expect(html).toContain("已擺放：0 株");
-    expect(html).toContain("未擺放：0 株");
-    expect(html).toContain('aria-label="盆栽庫存格位"');
-  });
-
-  it("counts matching pots without mixing land or grade", () => {
-    const pots = [
-      { id: "pot-1", species: 1 as const, grade: "黃" as const, displayed: false, acquiredAt: 1 },
-      { id: "pot-2", species: 1 as const, grade: "黃" as const, displayed: true, acquiredAt: 2 },
-      { id: "pot-3", species: 6 as const, grade: "神" as const, displayed: false, acquiredAt: 3 },
-    ];
-    const html = renderToStaticMarkup(<BagPotInventoryGrid pots={pots} />);
-    expect((html.match(/<article\b/g) ?? []).length).toBe(36);
-    expect((html.match(/持有 2 株/g) ?? []).length).toBe(1);
-    expect((html.match(/持有 1 株/g) ?? []).length).toBe(1);
-    expect((html.match(/持有 0 株/g) ?? []).length).toBe(34);
-    expect(html).toContain("編號 pot-1・未擺放");
-    expect(html).toContain("編號 pot-2・已擺放");
-    expect(html).toContain("編號 pot-3・未擺放");
-    expect((html.match(/<li\b/g) ?? []).length).toBe(3);
-    expect(html).toContain("盆栽總數：3 株");
-    expect(html).toContain("已擺放：1 株");
-    expect(html).toContain("未擺放：2 株");
-  });
-
-  it("exposes pot display and removal controls when transactions are available", () => {
-    const pots = [
-      { id: "pot-a", species: 1 as const, grade: "黃" as const, displayed: false, acquiredAt: 1 },
-      { id: "pot-b", species: 1 as const, grade: "玄" as const, displayed: true, acquiredAt: 2 },
-    ];
+  it("keeps the 36-pot inventory out of the bag and directs players to synthesis", () => {
     const html = renderToStaticMarkup(
-      <BagPotInventoryGrid pots={pots} busy={false} transact={async () => true} />,
+      <FarmWorkshopPanel tab="乾坤寶囊" warehouse={warehouse} busy={false} transact={async () => true} />,
     );
-    expect(html).toContain("擺放／替換");
-    expect(html).toContain("取下");
-    const busyHtml = renderToStaticMarkup(
-      <BagPotInventoryGrid pots={pots} busy={true} transact={async () => true} />,
-    );
-    expect((busyHtml.match(/<button[^>]*disabled/g) ?? []).length).toBe(2);
+    expect(html).not.toContain('aria-label="盆栽庫存格位"');
+    expect(html).not.toContain("盆栽總數：");
+    expect(html).toContain("盆栽合成");
   });
 
   it("defines 36 distinct species-and-grade slots", () => {
