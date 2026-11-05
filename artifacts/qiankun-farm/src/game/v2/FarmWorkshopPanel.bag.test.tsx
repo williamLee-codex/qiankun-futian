@@ -40,6 +40,9 @@ describe("Qiankun bag initial render", () => {
     const html = renderToStaticMarkup(<BagPotInventoryGrid pots={[]} />);
     expect((html.match(/<article\b/g) ?? []).length).toBe(36);
     expect((html.match(/持有 0 株/g) ?? []).length).toBe(36);
+    expect(html).toContain("盆栽總數：0 株");
+    expect(html).toContain("已擺放：0 株");
+    expect(html).toContain("未擺放：0 株");
     expect(html).toContain('aria-label="盆栽庫存格位"');
   });
 
@@ -58,6 +61,9 @@ describe("Qiankun bag initial render", () => {
     expect(html).toContain("編號 pot-2・已擺放");
     expect(html).toContain("編號 pot-3・未擺放");
     expect((html.match(/<li\b/g) ?? []).length).toBe(3);
+    expect(html).toContain("盆栽總數：3 株");
+    expect(html).toContain("已擺放：1 株");
+    expect(html).toContain("未擺放：2 株");
   });
 
   it("defines 36 distinct species-and-grade slots", () => {
