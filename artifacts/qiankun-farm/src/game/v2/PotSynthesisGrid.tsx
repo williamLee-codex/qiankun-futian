@@ -110,6 +110,6 @@ export function PotSynthesisGrid(props: {
         </div>
       </aside>
     </div>
-    <details><summary>展示中的盆栽與倉庫管理</summary>{state.pots.map(p => <div key={p.id} className="pot-owned-row">{FARM_V2_LANDS[p.species - 1].cropName} · {p.grade}階 · {p.displayed ? "展示中" : "倉庫"}<button type="button" disabled={props.busy || stage === "working"} onClick={() => void props.transact(p.displayed ? { kind: "removePot", species: p.species } : { kind: "displayPot", potId: p.id })}>{p.displayed ? "取下" : "展示／替換"}</button></div>)}</details>
+    <details><summary>已持有盆栽（查看庫存）</summary><p>盆栽擺放與取下請至「乾坤寶囊 → 盆栽」操作，以免在合成與庫存畫面重複送出交易。</p>{state.pots.length === 0 && <p>目前沒有盆栽。</p>}{state.pots.map(p => <div key={p.id} className="pot-owned-row">{FARM_V2_LANDS[p.species - 1].cropName} · {p.grade}階 · {p.displayed ? "展示中" : "倉庫"} · 編號 {p.id}</div>)}</details>
   </section>;
 }
