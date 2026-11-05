@@ -394,6 +394,32 @@ describe("Farm V2 session recovery regression", () => {
     });
   });
 
+  it("restores an existing browser cookie session using GET after refresh", async () => {
+    vi.stubGlobal("window", { location: { origin: "https://platform.test" } });
+    const transport = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({
+        ...session, sessionToken: "cookie-session",
+      }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ lands: [] }) });
+    vi.stubGlobal("fetch", transport);
+    const api = createFarmV2Api({
+      baseUrl: "https://platform.test/api/farm-backend/",
+      launchToken: "browser-session",
+    });
+    await api.readState();
+    expect(transport.mock.calls[0][1].method).toBe("GET");
+    expect(transport.mock.calls[0][1].headers.Authorization).toBeUndefined();
+    expect(transport.mock.calls[0][1].credentials).toBe("same-origin");
+    expect(transport.mock.calls[1][1].headers.Authorization).toBeUndefined();
+  });
+
+  it("rejects browser-session outside the same-origin platform proxy", () => {
+    expect(() => createFarmV2Api({
+      baseUrl: "https://backend.test/api/",
+      launchToken: "browser-session",
+    })).toThrow("FARM_V2_SAME_ORIGIN_SESSION_REQUIRED");
+  });
+
   it("uses the platform cookie session without exposing a bearer credential", async () => {
     vi.stubGlobal("window", { location: { origin: "https://platform.test" } });
     const cookieSession = {
