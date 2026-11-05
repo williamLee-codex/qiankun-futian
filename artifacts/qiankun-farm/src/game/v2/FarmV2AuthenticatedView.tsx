@@ -228,7 +228,7 @@ export function FarmV2AuthenticatedView(props: {
             busy={busy || loading}
             transact={workshop}
           />
-          )
+          )}
         </DialogContent>
       </Dialog>
       <nav aria-label="農場操作">
