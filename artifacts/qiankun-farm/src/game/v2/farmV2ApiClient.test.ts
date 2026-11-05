@@ -395,6 +395,7 @@ describe("Farm V2 session recovery regression", () => {
   });
 
   it("uses the platform cookie session without exposing a bearer credential", async () => {
+    vi.stubGlobal("window", { location: { origin: "https://platform.test" } });
     const cookieSession = {
       ...session,
       sessionToken: "cookie-session",
