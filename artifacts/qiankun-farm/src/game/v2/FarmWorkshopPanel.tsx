@@ -12,6 +12,7 @@ import {
 import { FARM_V2_MISSIONS, type MissionState } from "./missionRuntime";
 import { RELEASED_DECOR } from "./decorCatalog";
 import { FARM_V2_LANDS } from "./canonicalLandData";
+import { POT_GRADES } from "./potRuntime";
 const BAG_CATEGORIES = ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"] as const;
 export function FarmWorkshopPanel(props: {
   tab?: string;
@@ -94,7 +95,7 @@ export function FarmWorkshopPanel(props: {
             {bagCategory === "盆栽" && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(135px, 1fr))", gap: 8 }}>
                 {FARM_V2_LANDS.flatMap((land) =>
-                  (["黃", "玄", "地", "天", "仙", "神"] as const).map((grade) => {
+                  POT_GRADES.map((grade) => {
                     const owned = state.pots.filter((item) => item.species === land.id && item.grade === grade);
                     return (
                       <article key={`${land.id}:${grade}`}>
