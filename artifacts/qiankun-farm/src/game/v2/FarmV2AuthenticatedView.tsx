@@ -265,7 +265,7 @@ export function FarmV2AuthenticatedView(props: {
       ))}
       {data.chaos && (
         <button
-          disabled={busy || loading || !data.plots[5]?.unlocked}
+          disabled={busy || loading || !data.plots.find((plot) => plot.id === 5)?.unlocked}
           onClick={() => void execute("claimChaos", 6)}
         >
           領取混沌種子（待領 {data.chaos.pending}）
