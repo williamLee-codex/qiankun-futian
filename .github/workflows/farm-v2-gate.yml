@@ -40,7 +40,7 @@ jobs:
       - name: Build API server
         run: pnpm --filter @workspace/api-server run build
       - name: Install isolated UI test dependencies
-        run: pnpm --filter @workspace/qiankun-farm add -D @testing-library/react jsdom --ignore-scripts
+        run: pnpm --filter @workspace/qiankun-farm add -D @testing-library/react @testing-library/dom jsdom --ignore-scripts
       - name: Typecheck Farm V2 UI
         run: pnpm --filter @workspace/qiankun-farm run typecheck
       - name: Build Farm V2 UI
