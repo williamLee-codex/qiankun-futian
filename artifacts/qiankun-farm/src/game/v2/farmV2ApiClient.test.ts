@@ -319,6 +319,43 @@ describe("Farm V2 session recovery regression", () => {
     expect(transport).toHaveBeenCalledTimes(1);
   });
 
+  it("retains the original mutation request ID after session expiry for a fresh login", async () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal("sessionStorage", {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    });
+    let nextId = 0;
+    vi.stubGlobal("crypto", { randomUUID: () => `recovery-${++nextId}` });
+    const expired = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => session })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => ({ error: "FARM_SESSION_NOT_ACTIVE" }),
+      });
+    vi.stubGlobal("fetch", expired);
+    const first = createFarmV2Api({
+      baseUrl: "https://platform.test/api/farm-backend/",
+      launchToken: "first-launch",
+    });
+    await expect(first.purchaseSeeds(1, 2)).rejects.toMatchObject({ status: 401 });
+    const originalId = expired.mock.calls[1][1].headers["x-request-id"];
+    expect(originalId).toBe("recovery-1");
+    const restored = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => session })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", restored);
+    const second = createFarmV2Api({
+      baseUrl: "https://platform.test/api/farm-backend/",
+      launchToken: "fresh-launch",
+    });
+    await second.purchaseSeeds(1, 2);
+    expect(restored.mock.calls[1][1].headers["x-request-id"]).toBe(originalId);
+    expect([...values.values()].join("")).not.toContain("first-launch");
+    expect([...values.values()].join("")).not.toContain("fresh-launch");
+  });
+
   it("does not invent a platform reauthentication link for an arbitrary API origin", () => {
     const api = createFarmV2Api({
       baseUrl: "https://unrelated.test/api/",
