@@ -8,7 +8,7 @@ import { getExchangeRate } from "./canonicalEconomyData";
 
 type Selection = { species: FarmLandId; level: number };
 const gradeColors = ["#b7e3b0", "#d5c36a", "#70b9ef", "#c19bef", "#efcd73", "#f08d8d", "#dfc5ff"];
-const imageFor = (s: Selection) => `/farm-v2/images/plants/${s.species}-${s.level}.webp`;
+const imageFor = (s: Selection) => `${import.meta.env.BASE_URL ?? "/"}images/plants/${s.species}-${s.level}.webp`;
 
 export function PotSynthesisGrid(props: {
   warehouse: WorkshopWarehouse;
