@@ -25,6 +25,7 @@ export function PotSynthesisGrid(props: {
   const [placementStatus, setPlacementStatus] = useState("");
   const [placementPending, setPlacementPending] = useState(false);
   const state = workshopState(props.warehouse);
+  const inventoryAvailable = props.warehouse.workshop !== undefined;
   const land = FARM_V2_LANDS[selected.species - 1];
   const grade = POT_GRADES[Math.max(0, selected.level - 1)];
   const command = { kind: "synthesize", species: selected.species, grade, useDisplayed } as const;
@@ -42,14 +43,14 @@ export function PotSynthesisGrid(props: {
     try { planWorkshopMutation(props.warehouse, command, "preview-only", Date.now()); }
     catch { recipeValid = false; }
   }
-  const ready = recipeValid && coins !== null && coins >= cost && !props.busy && stage === "recipe";
+  const ready = inventoryAvailable && recipeValid && coins !== null && coins >= cost && !props.busy && stage === "recipe";
   async function reloadWallet() {
     setCoins(null); setWalletError(false);
     try { const wallet = await props.readWallet(); if (!Number.isSafeInteger(wallet.coins) || wallet.coins < 0) throw Error(); setCoins(wallet.coins); }
     catch { setWalletError(true); }
   }
   useEffect(() => { let active = true; props.readWallet().then(w => { if (!Number.isSafeInteger(w.coins) || w.coins < 0) throw Error("INVALID_WALLET"); if (active) setCoins(w.coins); }).catch(() => { if (active) setWalletError(true); }); return () => { active = false; }; }, [props.readWallet]);
-  function select(s: Selection) { if (inFlight.current) return; setSelected(s); setUseDisplayed(false); setStage("recipe"); }
+  function select(s: Selection) { if (inFlight.current) return; setSelected(s); setUseDisplayed(false); if (stage !== "failed") setStage("recipe"); }
   async function changePlacement(pot: ReturnType<typeof workshopState>["pots"][number]) {
     if (props.busy || inFlight.current || stage === "working" || stage === "failed") return;
     inFlight.current = true;
@@ -77,6 +78,7 @@ export function PotSynthesisGrid(props: {
     finally { inFlight.current = false; }
   }
   return <section className="pot-synthesis" aria-label="42 格靈植與盆栽合成">
+    {!inventoryAvailable && <p role="alert">伺服器尚未提供盆栽及合成材料庫存，已停止合成與擺放操作，請重新讀取農田。</p>}
     <header><div><h3>靈植合成圖鑑</h3><p>點選目標盆栽，查看配方與合成條件</p></div><p>蘊靈砂 {state.materials.蘊靈砂} · 九霄玉髓 {state.materials.九霄玉髓}<br/>金幣 {coins === null ? "確認中" : coins}</p></header>
     <div className="pot-synthesis-layout">
       <div className="pot-grid-scroll"><div className="pot-grid" aria-label="六物種七階總覽">
@@ -131,6 +133,6 @@ export function PotSynthesisGrid(props: {
         </div>
       </aside>
     </div>
-    <details><summary>已持有盆栽與擺放管理</summary><p>36 種盆栽統一在本介面統計與管理，合成所需靈植數量直接讀取福田倉庫。</p>{placementStatus && <p role="status" aria-live="polite">{placementStatus}</p>}{state.pots.length === 0 && <p>目前沒有盆栽。</p>}{state.pots.map(p => <div key={p.id} className="pot-owned-row">{FARM_V2_LANDS[p.species - 1].cropName} · {p.grade}階 · {p.displayed ? "已擺放" : "未擺放"} · 編號 {p.id}<button type="button" disabled={props.busy || placementPending || stage === "working" || stage === "failed"} onClick={() => void changePlacement(p)}>{p.displayed ? "取下" : "擺放／替換"}</button></div>)}</details>
+    <details><summary>已持有盆栽與擺放管理</summary><p>36 種盆栽統一在本介面統計與管理，合成所需靈植數量直接讀取福田倉庫。</p>{placementStatus && <p role="status" aria-live="polite">{placementStatus}</p>}{state.pots.length === 0 && <p>目前沒有盆栽。</p>}{state.pots.map(p => <div key={p.id} className="pot-owned-row">{FARM_V2_LANDS[p.species - 1].cropName} · {p.grade}階 · {p.displayed ? "已擺放" : "未擺放"} · 編號 {p.id}<button type="button" disabled={!inventoryAvailable || props.busy || placementPending || stage === "working" || stage === "failed"} onClick={() => void changePlacement(p)}>{p.displayed ? "取下" : "擺放／替換"}</button></div>)}</details>
   </section>;
 }
