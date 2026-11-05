@@ -16,7 +16,9 @@ import { POT_GRADES } from "./potRuntime";
 const BAG_CATEGORIES = ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"] as const;
 export function BagPotInventoryGrid(props: { pots: ReturnType<typeof workshopState>["pots"] }) {
   return (
-    <div aria-label="盆栽庫存格位" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(135px, 1fr))", gap: 8 }}>
+    <section aria-label="盆栽庫存總覽">
+      <p>盆栽總數：{props.pots.length} 株・已擺放：{props.pots.filter((pot) => pot.displayed).length} 株・未擺放：{props.pots.filter((pot) => !pot.displayed).length} 株</p>
+      <div aria-label="盆栽庫存格位" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(135px, 1fr))", gap: 8 }}>
       {FARM_V2_LANDS.flatMap((land) =>
         POT_GRADES.map((grade) => {
           const owned = props.pots.filter((item) => item.species === land.id && item.grade === grade);
@@ -37,7 +39,8 @@ export function BagPotInventoryGrid(props: { pots: ReturnType<typeof workshopSta
           );
         }),
       )}
-    </div>
+      </div>
+    </section>
   );
 }
 
