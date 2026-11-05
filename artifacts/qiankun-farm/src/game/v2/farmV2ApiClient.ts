@@ -68,7 +68,10 @@ export function createFarmV2Api(input: {
     return new URL(normalizedPath, normalizedBase).toString();
   };
 
-  const platformCookieMode = normalizedApiBase.pathname === "/api/farm-backend/";
+  const platformCookieMode =
+    normalizedApiBase.pathname === "/api/farm-backend/" &&
+    typeof window !== "undefined" &&
+    normalizedApiBase.origin === window.location.origin;
   let revoked = false;
   let sessionPromise: Promise<string> | null = null;
   // The trusted platform proxy can always offer a fresh launch flow, even if
