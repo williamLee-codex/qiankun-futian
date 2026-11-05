@@ -138,17 +138,7 @@ export function FarmWorkshopPanel(props: {
               </>
             )}
             {bagCategory === "碎片" && <p>碎片庫存尚未接入。</p>}
-            {bagCategory === "傢俱" && (
-              <>
-                {state.decor.length === 0 && <p>目前沒有洞府陳設。</p>}
-                {state.decor.map((item) => (
-                  <article key={item.id}>
-                    {RELEASED_DECOR.find((entry) => entry.id === item.catalogId)?.name ?? "洞府陳設"}
-                    {item.slot === null ? "（倉庫）" : `（陳設位 ${item.slot}）`}
-                  </article>
-                ))}
-              </>
-            )}
+            {bagCategory === "傢俱" && <p>傢俱系統預定於下一版本開放，本版不提供傢俱操作。</p>}
             {bagCategory === "外型" && <p>外型與稱號庫存尚未接入。</p>}
             {bagCategory === "盆栽" && <BagPotInventoryGrid pots={state.pots} busy={props.busy} transact={props.transact} />}
             {bagCategory === "其他" && <p>靈獸飼料：{state.petFood ?? 0}</p>}
