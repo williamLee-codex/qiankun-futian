@@ -68,6 +68,7 @@ export function createFarmV2Api(input: {
     return new URL(normalizedPath, normalizedBase).toString();
   };
 
+  const platformCookieMode = normalizedApiBase.pathname === "/api/farm-backend/";
   let revoked = false;
   let sessionPromise: Promise<string> | null = null;
   // The trusted platform proxy can always offer a fresh launch flow, even if
@@ -139,7 +140,8 @@ export function createFarmV2Api(input: {
         typeof result.userId !== "string" ||
         !result.userId ||
         typeof result.sessionToken !== "string" ||
-        !result.sessionToken.startsWith("fvs1.") ||
+        !(result.sessionToken.startsWith("fvs1.") ||
+          (platformCookieMode && result.sessionToken === "cookie-session")) ||
         typeof result.reauthenticateUrl !== "string"
       )
         throw new Error("INVALID_FARM_SESSION_RESPONSE");
@@ -165,6 +167,8 @@ export function createFarmV2Api(input: {
       )
         throw new Error("INVALID_FARM_SESSION_RESPONSE");
       if (login.username || login.password)
+        throw new Error("INVALID_FARM_SESSION_RESPONSE");
+      if (platformCookieMode && login.origin !== normalizedApiBase.origin)
         throw new Error("INVALID_FARM_SESSION_RESPONSE");
       reauthenticateUrl = login.toString();
       return result.sessionToken;
@@ -196,13 +200,16 @@ export function createFarmV2Api(input: {
         const response = await fetch(endpoint(path), {
           method,
           headers: {
-            Authorization: `Bearer ${token}`,
+            ...(platformCookieMode && token === "cookie-session"
+              ? {}
+              : { Authorization: `Bearer ${token}` }),
             ...(requestId ? { "x-request-id": requestId } : {}),
             ...(body !== undefined
               ? { "content-type": "application/json" }
               : {}),
           },
           ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+          credentials: platformCookieMode && token === "cookie-session" ? "same-origin" : "omit",
           cache: "no-store",
           redirect: "error",
           signal: AbortSignal.timeout(10_000),
@@ -250,10 +257,13 @@ export function createFarmV2Api(input: {
         await fetch(endpoint("farm/v2/session"), {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
+            ...(platformCookieMode && token === "cookie-session"
+              ? {}
+              : { Authorization: `Bearer ${token}` }),
             "content-type": "application/json",
           },
           body: JSON.stringify({ action: "revoke" }),
+          credentials: platformCookieMode && token === "cookie-session" ? "same-origin" : "omit",
           cache: "no-store",
           redirect: "error",
           signal: AbortSignal.timeout(10_000),
