@@ -154,10 +154,12 @@ export async function reconcileFarmWallet(
         p_user_id: input.userId,
         p_operation_id: attempt.id,
       });
-      await pool.query(
-        "update farm_v2_authorization_attempt set core_settled_at=now() where id=$1",
-        [attempt.id],
+      const receipt = await pool.query(
+        "update farm_v2_authorization_attempt set core_settled_at=now() where id=$1 and user_id=$2",
+        [attempt.id, input.userId],
       );
+      if (receipt.rowCount !== 1)
+        throw new Error("FARM_CORE_SETTLEMENT_RECEIPT_NOT_CONFIRMED");
       await event("AUTHORIZATION_FENCED", { operationId: attempt.id });
     }
     // Acquire the exact mutation lock too: online compensation uses it.
@@ -349,10 +351,12 @@ export async function fenceFarmAuthorization(
     });
     await client.query("BEGIN");
     try {
-      await client.query(
-        "update farm_v2_authorization_attempt set core_settled_at=now() where id=$1",
-        [input.operationId],
+      const receipt = await client.query(
+        "update farm_v2_authorization_attempt set core_settled_at=now() where id=$1 and user_id=$2",
+        [input.operationId, input.userId],
       );
+      if (receipt.rowCount !== 1)
+        throw new Error("FARM_CORE_SETTLEMENT_RECEIPT_NOT_CONFIRMED");
       await client.query(
         "update farm_v2_reconciliation_case set status='CLOSED',resolution='AUTHORIZATION_FENCED',updated_at=now() where id=$1",
         [input.caseId],
