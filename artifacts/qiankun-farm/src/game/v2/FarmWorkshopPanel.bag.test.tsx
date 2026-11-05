@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
 import { FARM_V2_LANDS } from "./canonicalLandData";
 import { POT_GRADES } from "./potRuntime";
@@ -42,7 +43,11 @@ describe("Qiankun bag initial render", () => {
     );
     expect(html).not.toContain('aria-label="盆栽庫存格位"');
     expect(html).not.toContain("盆栽總數：");
-    expect(html).toContain("盆栽合成");
+    const view = render(<FarmWorkshopPanel tab="乾坤寶囊" warehouse={warehouse} busy={false} transact={async () => true} />);
+    fireEvent.click(screen.getByRole("button", { name: "盆栽" }));
+    expect(screen.getByRole("button", { name: "前往盆栽合成" })).toBeTruthy();
+    view.unmount();
+    cleanup();
   });
 
   it("defines 36 distinct species-and-grade slots", () => {
