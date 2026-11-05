@@ -72,6 +72,9 @@ export function createFarmV2Api(input: {
     normalizedApiBase.pathname === "/api/farm-backend/" &&
     typeof window !== "undefined" &&
     normalizedApiBase.origin === window.location.origin;
+  const browserSession = launchToken === "browser-session";
+  if (browserSession && !platformCookieMode)
+    throw new Error("FARM_V2_SAME_ORIGIN_SESSION_REQUIRED");
   let revoked = false;
   let sessionPromise: Promise<string> | null = null;
   // The trusted platform proxy can always offer a fresh launch flow, even if
@@ -128,8 +131,9 @@ export function createFarmV2Api(input: {
     if (revoked) throw new FarmV2ApiError(401, "FARM_SESSION_NOT_ACTIVE");
     sessionPromise ??= (async () => {
       const response = await fetch(endpoint("farm/v2/session"), {
-        method: "POST",
-        headers: { Authorization: `Bearer ${launchToken}` },
+        method: browserSession ? "GET" : "POST",
+        headers: browserSession ? {} : { Authorization: `Bearer ${launchToken}` },
+        credentials: platformCookieMode ? "same-origin" : "omit",
         cache: "no-store",
         redirect: "error",
         signal: AbortSignal.timeout(10_000),
