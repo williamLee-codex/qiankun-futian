@@ -225,3 +225,24 @@ it("preserves domain failure if local settlement SQL also fails", async () => {
   expect(phases).toEqual(["begin"]);
   expect(mocks.client.release).toHaveBeenCalledWith(true);
 });
+
+for (const rowCount of [2, -1]) {
+  it(`rejects unexpected local settlement rowCount ${rowCount}`, async () => {
+    mocks.dbQuery.mockResolvedValueOnce({ rowCount: 1 });
+    mocks.dbQuery.mockResolvedValueOnce({ rowCount });
+    await expect(withFarmAuthority(input, async () => "completed"))
+      .rejects.toThrow("FARM_LOCAL_SETTLEMENT_NOT_CONFIRMED");
+    expect(mocks.platformFetch).toHaveBeenCalledTimes(1);
+    expect(mocks.client.release).toHaveBeenCalledWith(true);
+  });
+}
+
+it("preserves domain error when local settlement updates two rows", async () => {
+  const original = new Error("FARM_DOMAIN_OPERATION_FAILED");
+  mocks.dbQuery.mockResolvedValueOnce({ rowCount: 1 });
+  mocks.dbQuery.mockResolvedValueOnce({ rowCount: 2 });
+  await expect(withFarmAuthority(input, async () => { throw original; }))
+    .rejects.toBe(original);
+  expect(mocks.platformFetch).toHaveBeenCalledTimes(1);
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
