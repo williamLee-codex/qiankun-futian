@@ -329,10 +329,12 @@ describe("Farm V2 session recovery regression", () => {
     });
     await expect(api.sow(1)).rejects.toMatchObject({ status: 401 });
     expect(transport).toHaveBeenCalledTimes(2);
-    await expect(api.readState()).rejects.toMatchObject({ status: 401 });
-    expect(transport.mock.calls[2][0]).toBe(
-      "https://platform.test/api/farm-backend/farm/v2/session",
-    );
+    await expect(api.readState()).rejects.toMatchObject({
+      status: 401,
+      code: "FARM_SESSION_NOT_ACTIVE",
+    });
+    // No replay of the already-consumed launch token after expiry.
+    expect(transport).toHaveBeenCalledTimes(2);
     expect(api.getReauthenticationUrl()).toBe(session.reauthenticateUrl);
   });
 });
