@@ -300,6 +300,25 @@ describe("Farm V2 session recovery regression", () => {
     expect(transport).toHaveBeenCalledTimes(1);
   });
 
+  it("does not replay a rejected launch token on repeated reads", async () => {
+    const transport = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: "FARM_SESSION_NOT_ACTIVE" }),
+    });
+    vi.stubGlobal("fetch", transport);
+    const api = createFarmV2Api({
+      baseUrl: "https://platform.test/api/farm-backend/",
+      launchToken: "consumed-launch",
+    });
+    await expect(api.readState()).rejects.toMatchObject({ status: 401 });
+    await expect(api.readState()).rejects.toMatchObject({
+      status: 401,
+      code: "FARM_SESSION_NOT_ACTIVE",
+    });
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
+
   it("does not invent a platform reauthentication link for an arbitrary API origin", () => {
     const api = createFarmV2Api({
       baseUrl: "https://unrelated.test/api/",
