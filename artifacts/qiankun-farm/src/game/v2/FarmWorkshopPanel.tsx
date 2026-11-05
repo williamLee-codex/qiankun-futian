@@ -2,7 +2,7 @@ import { PotSynthesisGrid } from "./PotSynthesisGrid";
 const unavailableWallet = async (): Promise<{ coins: number }> => { throw new Error("WALLET_UNAVAILABLE"); };
 import { FORMATION_NAMES } from "./formationSourcesRuntime";
 import { nextFarmMonthReset } from "./timeRuntime";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   workshopState,
   workshopPublicState,
@@ -15,10 +15,12 @@ import { FARM_V2_LANDS } from "./canonicalLandData";
 import { POT_GRADES } from "./potRuntime";
 const BAG_CATEGORIES = ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"] as const;
 export function BagPotInventoryGrid(props: { pots: ReturnType<typeof workshopState>["pots"]; busy?: boolean; transact?: (command: WorkshopCommand) => Promise<boolean> }) {
+  const operationInFlight = useRef(false);
   const [pendingPotId, setPendingPotId] = useState<string | null>(null);
   const [operationStatus, setOperationStatus] = useState("");
   async function changePlacement(pot: ReturnType<typeof workshopState>["pots"][number]) {
-    if (!props.transact || props.busy || pendingPotId !== null) return;
+    if (!props.transact || props.busy || operationInFlight.current) return;
+    operationInFlight.current = true;
     setPendingPotId(pot.id);
     setOperationStatus("正在等待伺服器確認盆栽操作…");
     try {
@@ -31,6 +33,7 @@ export function BagPotInventoryGrid(props: { pots: ReturnType<typeof workshopSta
     } catch {
       setOperationStatus("盆栽操作發生錯誤，請先更新庫存並查核結果。");
     } finally {
+      operationInFlight.current = false;
       setPendingPotId(null);
     }
   }
