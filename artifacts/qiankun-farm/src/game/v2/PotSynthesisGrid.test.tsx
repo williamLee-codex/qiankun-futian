@@ -44,6 +44,15 @@ describe('42-slot synthesis interaction',()=>{
   finish(false);
   await screen.findByText(/操作未確認/);
   expect(button.hasAttribute('disabled')).toBe(true);
+  fireEvent.click(screen.getByRole('button',{name:/月海曇 黃階盆栽，持有 0/}));
+  expect(button.hasAttribute('disabled')).toBe(true);
+ });
+
+ it('blocks synthesis when the server omits the workshop inventory',async()=>{
+  const w=base();delete w.workshop;
+  render(<PotSynthesisGrid warehouse={w} busy={false} readWallet={async()=>({coins:100})} transact={async()=>true}/>);
+  expect(screen.getByRole('alert').textContent).toContain('已停止合成與擺放操作');
+  await waitFor(()=>expect(screen.getByRole('button',{name:'合成黃階盆栽'}).hasAttribute('disabled')).toBe(true));
  });
 
 });
