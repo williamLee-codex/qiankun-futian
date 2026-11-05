@@ -54,6 +54,10 @@ describe("Qiankun bag initial render", () => {
     expect((html.match(/持有 2 株/g) ?? []).length).toBe(1);
     expect((html.match(/持有 1 株/g) ?? []).length).toBe(1);
     expect((html.match(/持有 0 株/g) ?? []).length).toBe(34);
+    expect(html).toContain("編號 pot-1・未擺放");
+    expect(html).toContain("編號 pot-2・已擺放");
+    expect(html).toContain("編號 pot-3・未擺放");
+    expect((html.match(/<li\b/g) ?? []).length).toBe(3);
   });
 
   it("defines 36 distinct species-and-grade slots", () => {
