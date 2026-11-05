@@ -111,10 +111,12 @@ export async function withFarmAuthority<T>(
     try {
       if (registered) {
         // Every awaited domain transaction has committed/rolled back at this point.
-        await pool.query(
+        const settlement = await pool.query(
           "update farm_v2_authorization_attempt set state='SETTLED',settled_at=now() where id=$1 and state='OPEN'",
           [operationId],
         );
+        if (settlement.rowCount !== 1)
+          throw new Error("FARM_LOCAL_SETTLEMENT_NOT_CONFIRMED");
         await measureFarmV2Stage("authority_end", () => callAuthority({ ...input, operationId }, "end"));
         await pool.query(
           "update farm_v2_authorization_attempt set core_settled_at=now() where id=$1",
