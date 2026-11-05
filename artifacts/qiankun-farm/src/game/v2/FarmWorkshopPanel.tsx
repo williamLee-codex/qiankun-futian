@@ -70,6 +70,45 @@ export function FarmWorkshopPanel(props: {
         </nav>
       )}
       <fieldset disabled={props.busy}>
+        {tab === "乾坤寶囊" && (
+          <section aria-label="乾坤寶囊分類物品">
+            {bagCategory === "材料" && (
+              <>
+                <p>蘊靈砂：{state.materials.蘊靈砂 ?? 0}</p>
+                <p>九霄玉髓：{state.materials.九霄玉髓 ?? 0}</p>
+              </>
+            )}
+            {bagCategory === "碎片" && <p>碎片庫存尚未接入。</p>}
+            {bagCategory === "傢俱" && (
+              <>
+                {state.decor.length === 0 && <p>目前沒有洞府陳設。</p>}
+                {state.decor.map((item) => (
+                  <article key={item.id}>
+                    {RELEASED_DECOR.find((entry) => entry.id === item.catalogId)?.name ?? "洞府陳設"}
+                    {item.slot === null ? "（倉庫）" : `（陳設位 ${item.slot}）`}
+                  </article>
+                ))}
+              </>
+            )}
+            {bagCategory === "外型" && <p>外型與稱號庫存尚未接入。</p>}
+            {bagCategory === "盆栽" && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(135px, 1fr))", gap: 8 }}>
+                {FARM_V2_LANDS.flatMap((land) =>
+                  (["黃", "玄", "地", "天", "仙", "神"] as const).map((grade) => {
+                    const owned = state.pots.filter((item) => item.species === land.id && item.grade === grade);
+                    return (
+                      <article key={`${land.id}:${grade}`}>
+                        <strong>{land.cropName}</strong>・{grade}階
+                        <div>持有 {owned.length} 株</div>
+                      </article>
+                    );
+                  }),
+                )}
+              </div>
+            )}
+            {bagCategory === "其他" && <p>靈獸飼料：{state.petFood ?? 0}</p>}
+          </section>
+        )}
         {tab === "盆栽" && <PotSynthesisGrid warehouse={props.warehouse} busy={props.busy} readWallet={props.readWallet ?? unavailableWallet} transact={props.transact} />}
         {tab === "洞府" && (
           <>
