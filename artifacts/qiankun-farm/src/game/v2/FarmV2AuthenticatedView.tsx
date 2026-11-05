@@ -8,6 +8,8 @@ import type { FarmV2PublicCave } from "./publicCave";
 import { useState } from "react";
 import { useFarmV2Scene } from "./useFarmV2Scene";
 import { CROP_DATA } from "../types";
+import { FARM_V2_LANDS } from "./canonicalLandData";
+import { RELEASED_DECOR } from "./decorCatalog";
 
 /**
  * Authenticated Farm V2 integration surface. The platform host supplies a
@@ -178,6 +180,34 @@ export function FarmV2AuthenticatedView(props: {
           aria-describedby={undefined}
         >
           <DialogTitle>{panelTab}</DialogTitle>
+          {panelTab === "福田倉庫" ? (
+            <section aria-label="福田倉庫庫存">
+              <p>以下數量來自目前伺服器回傳的農田庫存。</p>
+              <table><thead><tr><th scope="col">田別</th><th scope="col">種子</th><th scope="col">靈植</th></tr></thead>
+                <tbody>{FARM_V2_LANDS.map((land) => (
+                  <tr key={land.id}><th scope="row">{land.landName}</th>
+                    <td>{data.seedInventory[land.id] ?? 0}</td>
+                    <td>{data.cropInventory[land.id] ?? 0}</td></tr>
+                ))}</tbody>
+              </table>
+            </section>
+          ) : panelTab === "乾坤寶囊" ? (
+            <section aria-label="乾坤寶囊物品">
+              <p>顯示已接入伺服器倉庫的物品；尚未接入的分類不顯示虛構數量。</p>
+              <h3>培養材料</h3>
+              <p>蘊靈砂：{workshopState(data.warehouse).materials.蘊靈砂 ?? 0}；九霄玉髓：{workshopState(data.warehouse).materials.九霄玉髓 ?? 0}</p>
+              <h3>盆栽</h3>
+              {workshopState(data.warehouse).pots.length === 0 ? <p>目前沒有盆栽。</p> :
+                <ul>{workshopState(data.warehouse).pots.map((pot) => (
+                  <li key={pot.id}>第{pot.species}田・{pot.grade}階{pot.displayed ? "（展示中）" : ""}</li>
+                ))}</ul>}
+              <h3>洞府陳設</h3>
+              {workshopState(data.warehouse).decor.length === 0 ? <p>目前沒有陳設。</p> :
+                <ul>{workshopState(data.warehouse).decor.map((decor) => (
+                  <li key={decor.id}>{RELEASED_DECOR.find((item) => item.id === decor.catalogId)?.name ?? decor.catalogId}{decor.slot === null ? "（未擺放）" : `（位置 ${decor.slot}）`}</li>
+                ))}</ul>}
+            </section>
+          ) : (
           <FarmWorkshopPanel
             tab={panelTab}
             onTabChange={setPanelTab}
@@ -194,10 +224,11 @@ export function FarmV2AuthenticatedView(props: {
             busy={busy || loading}
             transact={workshop}
           />
+          )
         </DialogContent>
       </Dialog>
       <nav aria-label="農場操作">
-        {["盆栽", "洞府", "任務", "靈寵", "護陣", "好友"].map((tab) => (
+        {["福田倉庫", "乾坤寶囊", "盆栽", "洞府", "任務", "靈寵", "護陣", "好友"].map((tab) => (
           <button
             key={tab}
             onClick={() => {
