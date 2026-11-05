@@ -188,12 +188,12 @@ export function FarmV2AuthenticatedView(props: {
           zIndex: 1000,
           width: "clamp(54px, 6vw, 78px)",
           aspectRatio: "1",
-          border: "1px solid #8c7650",
+          padding: 0,
+          border: 0,
           borderRadius: 16,
-          background: "#10231c",
-          color: "#f7df9a",
+          background: "transparent",
           cursor: "pointer",
-          fontSize: 28,
+          filter: "drop-shadow(0 4px 8px rgba(0,0,0,.55))",
         }}
       >
         <img src="/images/farm/qiankun-bag.webp" alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
