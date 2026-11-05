@@ -394,6 +394,38 @@ describe("Farm V2 session recovery regression", () => {
     });
   });
 
+  it("uses the platform cookie session without exposing a bearer credential", async () => {
+    const cookieSession = {
+      ...session,
+      sessionToken: "cookie-session",
+      reauthenticateUrl: "https://platform.test/api/apps/qiankun-futian/launch?farmV2=1",
+    };
+    const transport = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => cookieSession })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ lands: [] }) });
+    vi.stubGlobal("fetch", transport);
+    const api = createFarmV2Api({
+      baseUrl: "https://platform.test/api/farm-backend/",
+      launchToken: "launch",
+    });
+    await api.readState();
+    expect(transport.mock.calls[0][1].headers.Authorization).toBe("Bearer launch");
+    expect(transport.mock.calls[1][1].headers.Authorization).toBeUndefined();
+    expect(transport.mock.calls[1][1].credentials).toBe("same-origin");
+  });
+
+  it("rejects a cookie-session response from a direct API connection", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...session, sessionToken: "cookie-session" }),
+    }));
+    const api = createFarmV2Api({
+      baseUrl: "https://backend.test/api/",
+      launchToken: "launch",
+    });
+    await expect(api.readState()).rejects.toThrow("INVALID_FARM_SESSION_RESPONSE");
+  });
+
   it("does not invent a platform reauthentication link for an arbitrary API origin", () => {
     const api = createFarmV2Api({
       baseUrl: "https://unrelated.test/api/",
