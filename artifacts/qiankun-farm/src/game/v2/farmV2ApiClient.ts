@@ -70,7 +70,13 @@ export function createFarmV2Api(input: {
 
   let revoked = false;
   let sessionPromise: Promise<string> | null = null;
-  let reauthenticateUrl: string | null = null;
+  // The trusted platform proxy can always offer a fresh launch flow, even if
+  // the initial session exchange fails before the server returns its URL.
+  const platformProxyPath = "/api/farm-backend/";
+  let reauthenticateUrl: string | null =
+    normalizedApiBase.pathname === platformProxyPath
+      ? new URL("/api/apps/qiankun-futian/launch?farmV2=1", normalizedApiBase.origin).toString()
+      : null;
   const pendingRequests = new Map<string, string>();
   let journalKey: string | null = null;
   function savePendingRequests() {
@@ -191,6 +197,11 @@ export function createFarmV2Api(input: {
           redirect: "error",
           signal: AbortSignal.timeout(10_000),
         });
+        if (response.status === 401) {
+          // A consumed or expired launch token must not be replayed silently.
+          // Keep the pending request ID for an explicit post-login recovery.
+          sessionPromise = null;
+        }
         const result = await decode<T>(response);
         pendingRequests.delete(operation);
         savePendingRequests();
