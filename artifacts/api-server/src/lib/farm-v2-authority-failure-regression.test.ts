@@ -156,3 +156,72 @@ it("rejects HTTP 200 without Core settled acknowledgement", async () => {
     sql.includes("core_settled_at=now()"))).toBe(false);
   expect(mocks.client.release).toHaveBeenCalledWith(true);
 });
+
+it("rejects mismatched operation ID from Core begin", async () => {
+  mocks.platformFetch.mockImplementation(async (_url: URL, init: RequestInit) => {
+    const { phase, operationId } = JSON.parse(String(init.body));
+    return phase === "begin"
+      ? Response.json({ operationId: 'incorrect-operation-id', effectivePaidCrystals: 10 })
+      : Response.json({ settled: true });
+  });
+  const run = vi.fn(async () => "should-not-run");
+  await expect(withFarmAuthority(input, run)).rejects.toThrow("INVALID_FARM_PAID_AUTHORIZATION");
+  expect(run).not.toHaveBeenCalled();
+  expect(mocks.platformFetch).toHaveBeenCalledTimes(2);
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
+
+it("rejects negative paid crystals from Core begin", async () => {
+  mocks.platformFetch.mockImplementation(async (_url: URL, init: RequestInit) => {
+    const { phase, operationId } = JSON.parse(String(init.body));
+    return phase === "begin"
+      ? Response.json({ operationId, effectivePaidCrystals: -1 })
+      : Response.json({ settled: true });
+  });
+  const run = vi.fn(async () => "should-not-run");
+  await expect(withFarmAuthority(input, run)).rejects.toThrow("INVALID_FARM_PAID_AUTHORIZATION");
+  expect(run).not.toHaveBeenCalled();
+  expect(mocks.platformFetch).toHaveBeenCalledTimes(2);
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
+
+it("rejects fractional paid crystals from Core begin", async () => {
+  mocks.platformFetch.mockImplementation(async (_url: URL, init: RequestInit) => {
+    const { phase, operationId } = JSON.parse(String(init.body));
+    return phase === "begin"
+      ? Response.json({ operationId, effectivePaidCrystals: 1.5 })
+      : Response.json({ settled: true });
+  });
+  const run = vi.fn(async () => "should-not-run");
+  await expect(withFarmAuthority(input, run)).rejects.toThrow("INVALID_FARM_PAID_AUTHORIZATION");
+  expect(run).not.toHaveBeenCalled();
+  expect(mocks.platformFetch).toHaveBeenCalledTimes(2);
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
+
+it("rejects overflow paid crystals from Core begin", async () => {
+  mocks.platformFetch.mockImplementation(async (_url: URL, init: RequestInit) => {
+    const { phase, operationId } = JSON.parse(String(init.body));
+    return phase === "begin"
+      ? Response.json({ operationId, effectivePaidCrystals: 2147483648 })
+      : Response.json({ settled: true });
+  });
+  const run = vi.fn(async () => "should-not-run");
+  await expect(withFarmAuthority(input, run)).rejects.toThrow("INVALID_FARM_PAID_AUTHORIZATION");
+  expect(run).not.toHaveBeenCalled();
+  expect(mocks.platformFetch).toHaveBeenCalledTimes(2);
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
+
+it("preserves domain failure if local settlement SQL also fails", async () => {
+  const domainError = new Error("FARM_DOMAIN_OPERATION_FAILED");
+  mocks.dbQuery.mockResolvedValueOnce({ rowCount: 1 });
+  mocks.dbQuery.mockRejectedValueOnce(new Error("FARM_LOCAL_SETTLEMENT_FAILED"));
+  await expect(withFarmAuthority(input, async () => { throw domainError; }))
+    .rejects.toBe(domainError);
+  const phases = mocks.platformFetch.mock.calls.map(([_url, init]: [URL, RequestInit]) =>
+    JSON.parse(String(init.body)).phase,
+  );
+  expect(phases).toEqual(["begin"]);
+  expect(mocks.client.release).toHaveBeenCalledWith(true);
+});
