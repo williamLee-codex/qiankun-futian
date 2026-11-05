@@ -185,7 +185,7 @@ export function FarmV2AuthenticatedView(props: {
           position: "fixed",
           top: "max(12px, env(safe-area-inset-top, 12px))",
           right: "max(12px, env(safe-area-inset-right, 12px))",
-          zIndex: 1000,
+          zIndex: 40,
           width: "clamp(54px, 6vw, 78px)",
           aspectRatio: "1",
           padding: 0,
