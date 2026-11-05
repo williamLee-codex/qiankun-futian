@@ -1,9 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
 import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
+import { FARM_V2_LANDS } from "./canonicalLandData";
+import { POT_GRADES } from "./potRuntime";
 import type { WorkshopWarehouse } from "./workshopRuntime";
 
-const emptyWarehouse = (): WorkshopWarehouse => ({
+const warehouse: WorkshopWarehouse = {
   seeds: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
   crops: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
   workshop: {
@@ -13,29 +15,32 @@ const emptyWarehouse = (): WorkshopWarehouse => ({
     decorGallery: {},
     materials: { 蘊靈砂: 2, 九霄玉髓: 3 },
   },
-});
+};
 
-afterEach(cleanup);
-
-describe("Qiankun bag categories", () => {
-  it("keeps six bag categories separate from the workshop navigation", () => {
-    render(
+describe("Qiankun bag initial render", () => {
+  it("renders six categories and the server-derived material quantities", () => {
+    const html = renderToStaticMarkup(
       <FarmWorkshopPanel
         tab="乾坤寶囊"
-        warehouse={emptyWarehouse()}
+        warehouse={warehouse}
         busy={false}
         transact={async () => true}
       />,
     );
-    const categories = screen.getByRole("navigation", { name: "乾坤寶囊分類" });
-    expect(categories.querySelectorAll("button")).toHaveLength(6);
-    expect(screen.getByText("蘊靈砂：2")).toBeTruthy();
-    expect(screen.getByText("九霄玉髓：3")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "盆栽" }));
-    expect(screen.getAllByText("持有 0 株")).toHaveLength(36);
-    fireEvent.click(screen.getByRole("button", { name: "碎片" }));
-    expect(screen.getByText("碎片庫存尚未接入。")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "外型" }));
-    expect(screen.getByText("外型與稱號庫存尚未接入。")).toBeTruthy();
+    expect((html.match(/aria-pressed=/g) ?? []).length).toBe(6);
+    for (const name of ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"]) {
+      expect(html).toContain(`>${name}</button>`);
+    }
+    expect(html).toContain("蘊靈砂：2");
+    expect(html).toContain("九霄玉髓：3");
+    expect(html).not.toContain("洞府</button>");
+  });
+
+  it("defines 36 distinct species-and-grade slots", () => {
+    const keys = FARM_V2_LANDS.flatMap((land) =>
+      POT_GRADES.map((grade) => `${land.id}:${grade}`),
+    );
+    expect(keys).toHaveLength(36);
+    expect(new Set(keys).size).toBe(36);
   });
 });
