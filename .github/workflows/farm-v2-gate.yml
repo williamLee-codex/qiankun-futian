@@ -46,4 +46,4 @@ jobs:
       - name: Build Farm V2 UI
         run: pnpm --filter @workspace/qiankun-farm run build
       - name: Verify dual warehouses and pot synthesis
-        run: pnpm exec vitest run --environment jsdom artifacts/qiankun-farm/src/game/v2/FarmWorkshopPanel.bag.test.tsx artifacts/qiankun-farm/src/game/v2/PotSynthesisGrid.test.tsx
+        run: PORT=4173 BASE_PATH=/ pnpm exec vitest run --config artifacts/qiankun-farm/vite.config.ts --environment jsdom artifacts/qiankun-farm/src/game/v2/FarmWorkshopPanel.bag.test.tsx artifacts/qiankun-farm/src/game/v2/PotSynthesisGrid.test.tsx
