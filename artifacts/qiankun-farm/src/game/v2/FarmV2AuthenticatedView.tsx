@@ -196,7 +196,7 @@ export function FarmV2AuthenticatedView(props: {
           fontSize: 28,
         }}
       >
-        <span aria-hidden="true">🎒</span>
+        <img src="/images/farm/qiankun-bag.webp" alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
       </button>
       <h2>乾坤福田</h2>
       {friendRetries}
