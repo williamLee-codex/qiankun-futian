@@ -24,6 +24,15 @@ export function BagPotInventoryGrid(props: { pots: ReturnType<typeof workshopSta
             <article key={`${land.id}:${grade}`}>
               <strong>{land.cropName}</strong>・{grade}階
               <div>持有 {owned.length} 株</div>
+              {owned.length > 0 && (
+                <ul aria-label={`${land.cropName}${grade}階盆栽明細`}>
+                  {owned.map((pot) => (
+                    <li key={pot.id}>
+                      編號 {pot.id}・{pot.displayed ? "已擺放" : "未擺放"}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </article>
           );
         }),
