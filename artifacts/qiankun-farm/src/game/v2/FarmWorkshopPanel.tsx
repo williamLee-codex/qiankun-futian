@@ -11,7 +11,7 @@ import {
 } from "./workshopRuntime";
 import { FARM_V2_MISSIONS, type MissionState } from "./missionRuntime";
 import { RELEASED_DECOR } from "./decorCatalog";
-import { FARM_V2_LANDS } from "./canonicalLandData";
+const BAG_CATEGORIES = ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"] as const;
 export function FarmWorkshopPanel(props: {
   tab?: string;
   onTabChange?: (tab: string) => void;
@@ -43,11 +43,13 @@ export function FarmWorkshopPanel(props: {
     [friendError, setFriendError] = useState("");
   const [localTab, setLocalTab] = useState("盆栽");
   const [festivalCode, setFestivalCode] = useState("");
+  const [bagCategory, setBagCategory] = useState<(typeof BAG_CATEGORIES)[number]>("材料");
   const tab = props.tab ?? localTab;
   const state = workshopState(props.warehouse), summary = workshopPublicState(props.warehouse);
+  const bagInventoryAvailable = props.warehouse.workshop !== undefined;
   return (
     <section aria-label="福田倉庫與洞府管理">
-      <nav>
+      {tab !== "乾坤寶囊" && <nav>
         {["盆栽", "洞府", "任務", "靈寵", "護陣", "好友"].map((t) => (
           <button
             key={t}
@@ -57,8 +59,33 @@ export function FarmWorkshopPanel(props: {
             {t}
           </button>
         ))}
-      </nav>
+      </nav>}
+      {tab === "乾坤寶囊" && (
+        <nav aria-label="乾坤寶囊分類" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {BAG_CATEGORIES.map((category) => (
+            <button key={category} type="button" aria-pressed={bagCategory === category} onClick={() => setBagCategory(category)}>
+              {category}
+            </button>
+          ))}
+        </nav>
+      )}
       <fieldset disabled={props.busy}>
+        {tab === "乾坤寶囊" && (
+          <section aria-label="乾坤寶囊分類物品">
+            {!bagInventoryAvailable && <p role="alert">伺服器尚未提供乾坤寶囊庫存，無法確認物品數量；已停止寶囊操作。</p>}
+            {bagInventoryAvailable && bagCategory === "材料" && (
+              <>
+                <p>蘊靈砂：{state.materials.蘊靈砂 ?? 0}</p>
+                <p>九霄玉髓：{state.materials.九霄玉髓 ?? 0}</p>
+              </>
+            )}
+            {bagInventoryAvailable && bagCategory === "碎片" && <p>碎片庫存尚未接入。</p>}
+            {bagInventoryAvailable && bagCategory === "傢俱" && <p>傢俱系統預定於下一版本開放，本版不提供傢俱操作。</p>}
+            {bagInventoryAvailable && bagCategory === "外型" && <p>外型與稱號庫存尚未接入。</p>}
+            {bagCategory === "盆栽" && <p>36 種盆栽的持有數量與合成操作統一在「盆栽合成」介面查看，不另設寶囊盆栽庫存。<button type="button" onClick={() => (props.onTabChange ?? setLocalTab)("盆栽")}>前往盆栽合成</button></p>}
+            {bagInventoryAvailable && bagCategory === "其他" && <p>靈獸飼料：{state.petFood ?? 0}</p>}
+          </section>
+        )}
         {tab === "盆栽" && <PotSynthesisGrid warehouse={props.warehouse} busy={props.busy} readWallet={props.readWallet ?? unavailableWallet} transact={props.transact} />}
         {tab === "洞府" && (
           <>
@@ -89,10 +116,8 @@ export function FarmWorkshopPanel(props: {
                       value={i + 1}
                       disabled={
                         i >= summary.unlockedSlots ||
-                        !(
-                          RELEASED_DECOR.find((c) => c.id === d.catalogId)!
-                            .allowedSlots as readonly number[]
-                        ).includes(i + 1)
+                        !RELEASED_DECOR.find((c) => c.id === d.catalogId)
+                          ?.allowedSlots.some((slot: number) => slot === i + 1)
                       }
                     >
                       陳設位 {i + 1}（靈韻 {i * 20}）

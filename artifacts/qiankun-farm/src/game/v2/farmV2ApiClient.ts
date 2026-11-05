@@ -68,8 +68,9 @@ export function createFarmV2Api(input: {
     return new URL(normalizedPath, normalizedBase).toString();
   };
 
+  const browserOrigin = (globalThis as { location?: { origin?: string } }).location?.origin;
   const browserResume = launchToken === "browser-session";
-  if (browserResume && (typeof window === "undefined" || normalizedApiBase.origin !== window.location.origin))
+  if (browserResume && (!browserOrigin || normalizedApiBase.origin !== browserOrigin))
     throw new Error("FARM_V2_SAME_ORIGIN_SESSION_REQUIRED");
   const authHeader = (token: string): Record<string, string> =>
     token === "cookie-session" ? {} : { Authorization: `Bearer ${token}` };
@@ -133,7 +134,7 @@ export function createFarmV2Api(input: {
         typeof result.userId !== "string" ||
         !result.userId ||
         typeof result.sessionToken !== "string" ||
-        !(result.sessionToken.startsWith("fvs1.") || (normalizedApiBase.origin === window.location.origin && result.sessionToken === "cookie-session")) ||
+        !(result.sessionToken.startsWith("fvs1.") || (normalizedApiBase.origin === browserOrigin && result.sessionToken === "cookie-session")) ||
         typeof result.reauthenticateUrl !== "string"
       )
         throw new Error("INVALID_FARM_SESSION_RESPONSE");

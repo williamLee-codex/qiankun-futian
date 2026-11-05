@@ -8,6 +8,7 @@ import type { FarmV2PublicCave } from "./publicCave";
 import { useState } from "react";
 import { useFarmV2Scene } from "./useFarmV2Scene";
 import { CROP_DATA } from "../types";
+import { FARM_V2_LANDS } from "./canonicalLandData";
 
 /**
  * Authenticated Farm V2 integration surface. The platform host supplies a
@@ -170,6 +171,33 @@ export function FarmV2AuthenticatedView(props: {
           setPanelOpen(true);
         }}
       />
+      <button
+        type="button"
+        className="farm-v2-bag-launcher"
+        aria-label="開啟乾坤寶囊"
+        title="乾坤寶囊"
+        disabled={busy || loading}
+        onClick={() => {
+          setPanelTab("乾坤寶囊");
+          setPanelOpen(true);
+        }}
+        style={{
+          position: "fixed",
+          top: "max(12px, env(safe-area-inset-top, 12px))",
+          right: "max(12px, env(safe-area-inset-right, 12px))",
+          zIndex: 40,
+          width: "clamp(54px, 6vw, 78px)",
+          aspectRatio: "1",
+          padding: 0,
+          border: 0,
+          borderRadius: 16,
+          background: "transparent",
+          cursor: "pointer",
+          filter: "drop-shadow(0 4px 8px rgba(0,0,0,.55))",
+        }}
+      >
+        <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+      </button>
       <h2>乾坤福田</h2>
       {friendRetries}
       <Dialog open={panelOpen} onOpenChange={setPanelOpen}>
@@ -178,6 +206,22 @@ export function FarmV2AuthenticatedView(props: {
           aria-describedby={undefined}
         >
           <DialogTitle>{panelTab}</DialogTitle>
+          {panelTab === "福田倉庫" ? (
+            <section aria-label="福田倉庫庫存">
+              <p>以下數量來自目前伺服器回傳的農田庫存。</p>
+              <table><thead><tr><th scope="col">田別</th><th scope="col">種子</th><th scope="col">靈植</th></tr></thead>
+                <tbody>{FARM_V2_LANDS.map((land) => {
+                  const plot = data.plots.find((item) => item.id === land.id - 1);
+                  return (
+                    <tr key={land.id}><th scope="row">{land.landName}</th>
+                      <td>{land.seedName}：{plot ? (data.seedInventory[plot.cropId] ?? 0) : "資料缺失"}</td>
+                      <td>{land.cropName}：{plot ? (data.cropInventory[plot.cropId] ?? 0) : "資料缺失"}</td>
+                    </tr>
+                  );
+                })}</tbody>
+              </table>
+            </section>
+          ) : (
           <FarmWorkshopPanel
             tab={panelTab}
             onTabChange={setPanelTab}
@@ -194,10 +238,11 @@ export function FarmV2AuthenticatedView(props: {
             busy={busy || loading}
             transact={workshop}
           />
+          )}
         </DialogContent>
       </Dialog>
       <nav aria-label="農場操作">
-        {["盆栽", "洞府", "任務", "靈寵", "護陣", "好友"].map((tab) => (
+        {["福田倉庫", "乾坤寶囊", "盆栽", "洞府", "任務", "靈寵", "護陣", "好友"].map((tab) => (
           <button
             key={tab}
             onClick={() => {
@@ -220,7 +265,7 @@ export function FarmV2AuthenticatedView(props: {
       ))}
       {data.chaos && (
         <button
-          disabled={busy || loading || !data.plots[5]?.unlocked}
+          disabled={busy || loading || !data.plots.find((plot) => plot.id === 5)?.unlocked}
           onClick={() => void execute("claimChaos", 6)}
         >
           領取混沌種子（待領 {data.chaos.pending}）
