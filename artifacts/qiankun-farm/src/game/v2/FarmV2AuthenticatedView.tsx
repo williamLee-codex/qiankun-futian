@@ -196,7 +196,7 @@ export function FarmV2AuthenticatedView(props: {
           filter: "drop-shadow(0 4px 8px rgba(0,0,0,.55))",
         }}
       >
-        <img src="/images/farm/qiankun-bag.webp" alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+        <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
       </button>
       <h2>乾坤福田</h2>
       {friendRetries}
