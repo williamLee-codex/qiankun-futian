@@ -117,7 +117,7 @@ export function FarmWorkshopPanel(props: {
                       disabled={
                         i >= summary.unlockedSlots ||
                         !RELEASED_DECOR.find((c) => c.id === d.catalogId)
-                          ?.allowedSlots.includes(i + 1)
+                          ?.allowedSlots.some((slot: number) => slot === i + 1)
                       }
                     >
                       陳設位 {i + 1}（靈韻 {i * 20}）
