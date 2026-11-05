@@ -66,6 +66,22 @@ describe("Qiankun bag initial render", () => {
     expect(html).toContain("未擺放：2 株");
   });
 
+  it("exposes pot display and removal controls when transactions are available", () => {
+    const pots = [
+      { id: "pot-a", species: 1 as const, grade: "黃" as const, displayed: false, acquiredAt: 1 },
+      { id: "pot-b", species: 1 as const, grade: "玄" as const, displayed: true, acquiredAt: 2 },
+    ];
+    const html = renderToStaticMarkup(
+      <BagPotInventoryGrid pots={pots} busy={false} transact={async () => true} />,
+    );
+    expect(html).toContain("擺放／替換");
+    expect(html).toContain("取下");
+    const busyHtml = renderToStaticMarkup(
+      <BagPotInventoryGrid pots={pots} busy={true} transact={async () => true} />,
+    );
+    expect((busyHtml.match(/<button[^>]*disabled/g) ?? []).length).toBe(2);
+  });
+
   it("defines 36 distinct species-and-grade slots", () => {
     const keys = FARM_V2_LANDS.flatMap((land) =>
       POT_GRADES.map((grade) => `${land.id}:${grade}`),
