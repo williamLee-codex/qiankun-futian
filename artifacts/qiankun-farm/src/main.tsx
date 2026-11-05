@@ -61,14 +61,14 @@ if (launchToken && apiBaseUrl) {
             : "目前缺少農場 API 連線設定，暫時無法載入農田。"}
         </p>
         <a
-          href="/api/apps/qiankun-futian/launch?farmV2=1"
+          href="https://yuceluopan.com/api/apps/qiankun-futian/launch?farmV2=1"
           style={{
             display: "inline-block", marginTop: 24, padding: "12px 20px",
             color: "#fff", background: "#244a3b", border: "1px solid #cfb36b",
             borderRadius: 8, textDecoration: "underline", fontWeight: 600,
           }}
         >
-          重新進入農田
+          前往御策羅盤啟動農田
         </a>
       </section>
     </main>,
