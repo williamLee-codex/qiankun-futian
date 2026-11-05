@@ -273,3 +273,66 @@ it("friend lost response keeps the original target/body/key for explicit recover
   expect(new Set(keys).size).toBe(1);
   expect(api.pendingFriends()).toEqual([]);
 });
+
+
+describe("Farm V2 session recovery regression", () => {
+  it("offers the trusted platform launch link before a first successful exchange", async () => {
+    const transport = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: "FARM_SESSION_NOT_ACTIVE" }),
+    });
+    vi.stubGlobal("fetch", transport);
+    const api = createFarmV2Api({
+      baseUrl: "https://platform.test/api/farm-backend/",
+      launchToken: "expired-launch",
+    });
+    expect(api.getReauthenticationUrl()).toBe(
+      "https://platform.test/api/apps/qiankun-futian/launch?farmV2=1",
+    );
+    await expect(api.readState()).rejects.toMatchObject({
+      status: 401,
+      code: "FARM_SESSION_NOT_ACTIVE",
+    });
+    expect(api.getReauthenticationUrl()).toBe(
+      "https://platform.test/api/apps/qiankun-futian/launch?farmV2=1",
+    );
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not invent a platform reauthentication link for an arbitrary API origin", () => {
+    const api = createFarmV2Api({
+      baseUrl: "https://unrelated.test/api/",
+      launchToken: "launch",
+    });
+    expect(api.getReauthenticationUrl()).toBeNull();
+  });
+
+  it("invalidates the cached session after a 401 without retrying a mutation", async () => {
+    const transport = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => session })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => ({ error: "FARM_SESSION_NOT_ACTIVE" }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => ({ error: "FARM_SESSION_NOT_ACTIVE" }),
+      });
+    vi.stubGlobal("fetch", transport);
+    vi.stubGlobal("crypto", { randomUUID: () => "expired-request-1" });
+    const api = createFarmV2Api({
+      baseUrl: "https://platform.test/api/farm-backend/",
+      launchToken: "launch",
+    });
+    await expect(api.sow(1)).rejects.toMatchObject({ status: 401 });
+    expect(transport).toHaveBeenCalledTimes(2);
+    await expect(api.readState()).rejects.toMatchObject({ status: 401 });
+    expect(transport.mock.calls[2][0]).toBe(
+      "https://platform.test/api/farm-backend/farm/v2/session",
+    );
+    expect(api.getReauthenticationUrl()).toBe(session.reauthenticateUrl);
+  });
+});
