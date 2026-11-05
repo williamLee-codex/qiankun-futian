@@ -43,6 +43,19 @@ describe("Qiankun bag initial render", () => {
     expect(html).toContain('aria-label="盆栽庫存格位"');
   });
 
+  it("counts matching pots without mixing land or grade", () => {
+    const pots = [
+      { id: "pot-1", species: 1 as const, grade: "黃" as const, displayed: false, acquiredAt: 1 },
+      { id: "pot-2", species: 1 as const, grade: "黃" as const, displayed: true, acquiredAt: 2 },
+      { id: "pot-3", species: 6 as const, grade: "神" as const, displayed: false, acquiredAt: 3 },
+    ];
+    const html = renderToStaticMarkup(<BagPotInventoryGrid pots={pots} />);
+    expect((html.match(/<article\b/g) ?? []).length).toBe(36);
+    expect((html.match(/持有 2 株/g) ?? []).length).toBe(1);
+    expect((html.match(/持有 1 株/g) ?? []).length).toBe(1);
+    expect((html.match(/持有 0 株/g) ?? []).length).toBe(34);
+  });
+
   it("defines 36 distinct species-and-grade slots", () => {
     const keys = FARM_V2_LANDS.flatMap((land) =>
       POT_GRADES.map((grade) => `${land.id}:${grade}`),
