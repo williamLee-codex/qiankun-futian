@@ -14,7 +14,7 @@ import { RELEASED_DECOR } from "./decorCatalog";
 import { FARM_V2_LANDS } from "./canonicalLandData";
 import { POT_GRADES } from "./potRuntime";
 const BAG_CATEGORIES = ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"] as const;
-export function BagPotInventoryGrid(props: { pots: ReturnType<typeof workshopState>["pots"] }) {
+export function BagPotInventoryGrid(props: { pots: ReturnType<typeof workshopState>["pots"]; busy?: boolean; transact?: (command: WorkshopCommand) => Promise<boolean> }) {
   return (
     <section aria-label="盆栽庫存總覽">
       <p>盆栽總數：{props.pots.length} 株・已擺放：{props.pots.filter((pot) => pot.displayed).length} 株・未擺放：{props.pots.filter((pot) => !pot.displayed).length} 株</p>
@@ -31,6 +31,11 @@ export function BagPotInventoryGrid(props: { pots: ReturnType<typeof workshopSta
                   {owned.map((pot) => (
                     <li key={pot.id}>
                       編號 {pot.id}・{pot.displayed ? "已擺放" : "未擺放"}
+                      {props.transact && (
+                        <button type="button" disabled={props.busy} onClick={() => void props.transact!(pot.displayed ? { kind: "removePot", species: pot.species } : { kind: "displayPot", potId: pot.id })}>
+                          {pot.displayed ? "取下" : "擺放／替換"}
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -122,7 +127,7 @@ export function FarmWorkshopPanel(props: {
               </>
             )}
             {bagCategory === "外型" && <p>外型與稱號庫存尚未接入。</p>}
-            {bagCategory === "盆栽" && <BagPotInventoryGrid pots={state.pots} />}
+            {bagCategory === "盆栽" && <BagPotInventoryGrid pots={state.pots} busy={props.busy} transact={props.transact} />}
             {bagCategory === "其他" && <p>靈獸飼料：{state.petFood ?? 0}</p>}
           </section>
         )}
