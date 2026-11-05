@@ -12,6 +12,7 @@ import {
 import { FARM_V2_MISSIONS, type MissionState } from "./missionRuntime";
 import { RELEASED_DECOR } from "./decorCatalog";
 import { FARM_V2_LANDS } from "./canonicalLandData";
+const BAG_CATEGORIES = ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"] as const;
 export function FarmWorkshopPanel(props: {
   tab?: string;
   onTabChange?: (tab: string) => void;
@@ -43,6 +44,7 @@ export function FarmWorkshopPanel(props: {
     [friendError, setFriendError] = useState("");
   const [localTab, setLocalTab] = useState("盆栽");
   const [festivalCode, setFestivalCode] = useState("");
+  const [bagCategory, setBagCategory] = useState<(typeof BAG_CATEGORIES)[number]>("材料");
   const tab = props.tab ?? localTab;
   const state = workshopState(props.warehouse), summary = workshopPublicState(props.warehouse);
   return (
@@ -58,6 +60,15 @@ export function FarmWorkshopPanel(props: {
           </button>
         ))}
       </nav>
+      {tab === "乾坤寶囊" && (
+        <nav aria-label="乾坤寶囊分類" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {BAG_CATEGORIES.map((category) => (
+            <button key={category} type="button" aria-pressed={bagCategory === category} onClick={() => setBagCategory(category)}>
+              {category}
+            </button>
+          ))}
+        </nav>
+      )}
       <fieldset disabled={props.busy}>
         {tab === "盆栽" && <PotSynthesisGrid warehouse={props.warehouse} busy={props.busy} readWallet={props.readWallet ?? unavailableWallet} transact={props.transact} />}
         {tab === "洞府" && (
