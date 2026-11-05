@@ -39,9 +39,11 @@ jobs:
         run: pnpm --filter @workspace/api-server run typecheck
       - name: Build API server
         run: pnpm --filter @workspace/api-server run build
+      - name: Install isolated UI test dependencies
+        run: pnpm --filter @workspace/qiankun-farm add -D @testing-library/react jsdom --ignore-scripts
       - name: Typecheck Farm V2 UI
         run: pnpm --filter @workspace/qiankun-farm run typecheck
       - name: Build Farm V2 UI
         run: pnpm --filter @workspace/qiankun-farm run build
       - name: Verify dual warehouses and pot synthesis
-        run: pnpm exec vitest run artifacts/qiankun-farm/src/game/v2/FarmWorkshopPanel.bag.test.tsx artifacts/qiankun-farm/src/game/v2/PotSynthesisGrid.test.tsx
+        run: pnpm exec vitest run --environment jsdom artifacts/qiankun-farm/src/game/v2/FarmWorkshopPanel.bag.test.tsx artifacts/qiankun-farm/src/game/v2/PotSynthesisGrid.test.tsx
