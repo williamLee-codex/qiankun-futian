@@ -191,26 +191,6 @@ export function FarmV2AuthenticatedView(props: {
                 ))}</tbody>
               </table>
             </section>
-          ) : panelTab === "乾坤寶囊" ? (
-            <section aria-label="乾坤寶囊物品">
-              <p>顯示已接入伺服器倉庫的物品；尚未接入的分類不顯示虛構數量。</p>
-              <h3>種子與靈植</h3>
-              <p>六田種子與收成集中於「福田倉庫」，不在此重複計算。</p>
-              <h3>培養材料</h3>
-              <p>蘊靈砂：{workshopState(data.warehouse).materials.蘊靈砂 ?? 0}；九霄玉髓：{workshopState(data.warehouse).materials.九霄玉髓 ?? 0}</p>
-              <h3>盆栽</h3>
-              {workshopState(data.warehouse).pots.length === 0 ? <p>目前沒有盆栽。</p> :
-                <ul>{workshopState(data.warehouse).pots.map((pot) => (
-                  <li key={pot.id}>第{pot.species}田・{pot.grade}階{pot.displayed ? "（展示中）" : ""}</li>
-                ))}</ul>}
-              <h3>洞府陳設</h3>
-              {workshopState(data.warehouse).decor.length === 0 ? <p>目前沒有陳設。</p> :
-                <ul>{workshopState(data.warehouse).decor.map((decor) => (
-                  <li key={decor.id}>{RELEASED_DECOR.find((item) => item.id === decor.catalogId)?.name ?? decor.catalogId}{decor.slot === null ? "（未擺放）" : `（位置 ${decor.slot}）`}</li>
-                ))}</ul>}
-              <h3>其他物品</h3>
-              <p>尚未接入伺服器的特殊物品、稱號與外觀，不列入可用庫存。</p>
-            </section>
           ) : (
           <FarmWorkshopPanel
             tab={panelTab}
