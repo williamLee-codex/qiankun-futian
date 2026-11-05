@@ -2,7 +2,7 @@ import { PotSynthesisGrid } from "./PotSynthesisGrid";
 const unavailableWallet = async (): Promise<{ coins: number }> => { throw new Error("WALLET_UNAVAILABLE"); };
 import { FORMATION_NAMES } from "./formationSourcesRuntime";
 import { nextFarmMonthReset } from "./timeRuntime";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   workshopState,
   workshopPublicState,
@@ -11,67 +11,7 @@ import {
 } from "./workshopRuntime";
 import { FARM_V2_MISSIONS, type MissionState } from "./missionRuntime";
 import { RELEASED_DECOR } from "./decorCatalog";
-import { FARM_V2_LANDS } from "./canonicalLandData";
-import { POT_GRADES } from "./potRuntime";
 const BAG_CATEGORIES = ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"] as const;
-export function BagPotInventoryGrid(props: { pots: ReturnType<typeof workshopState>["pots"]; busy?: boolean; transact?: (command: WorkshopCommand) => Promise<boolean> }) {
-  const operationInFlight = useRef(false);
-  const [pendingPotId, setPendingPotId] = useState<string | null>(null);
-  const [operationStatus, setOperationStatus] = useState("");
-  async function changePlacement(pot: ReturnType<typeof workshopState>["pots"][number]) {
-    if (!props.transact || props.busy || operationInFlight.current) return;
-    operationInFlight.current = true;
-    setPendingPotId(pot.id);
-    setOperationStatus("正在等待伺服器確認盆栽操作…");
-    try {
-      const confirmed = await props.transact(pot.displayed
-        ? { kind: "removePot", species: pot.species }
-        : { kind: "displayPot", potId: pot.id });
-      setOperationStatus(confirmed
-        ? "伺服器已確認盆栽操作，請以更新後的庫存為準。"
-        : "盆栽操作尚未確認，請先更新庫存，勿重複送出。");
-    } catch {
-      setOperationStatus("盆栽操作發生錯誤，請先更新庫存並查核結果。");
-    } finally {
-      operationInFlight.current = false;
-      setPendingPotId(null);
-    }
-  }
-  return (
-    <section aria-label="盆栽庫存總覽">
-      <p>盆栽總數：{props.pots.length} 株・已擺放：{props.pots.filter((pot) => pot.displayed).length} 株・未擺放：{props.pots.filter((pot) => !pot.displayed).length} 株</p>
-      {operationStatus && <p role="status" aria-live="polite">{operationStatus}</p>
-      <div aria-label="盆栽庫存格位" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(135px, 1fr))", gap: 8 }}>
-      {FARM_V2_LANDS.flatMap((land) =>
-        POT_GRADES.map((grade) => {
-          const owned = props.pots.filter((item) => item.species === land.id && item.grade === grade);
-          return (
-            <article key={`${land.id}:${grade}`}>
-              <strong>{land.cropName}</strong>・{grade}階
-              <div>持有 {owned.length} 株</div>
-              {owned.length > 0 && (
-                <ul aria-label={`${land.cropName}${grade}階盆栽明細`}>
-                  {owned.map((pot) => (
-                    <li key={pot.id}>
-                      編號 {pot.id}・{pot.displayed ? "已擺放" : "未擺放"}
-                      {props.transact && (
-                        <button type="button" disabled={props.busy || pendingPotId !== null} onClick={() => void changePlacement(pot)}>
-                          {pot.displayed ? "取下" : "擺放／替換"}
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </article>
-          );
-        }),
-      )}
-      </div>
-    </section>
-  );
-}
-
 export function FarmWorkshopPanel(props: {
   tab?: string;
   onTabChange?: (tab: string) => void;
@@ -142,7 +82,7 @@ export function FarmWorkshopPanel(props: {
             {bagInventoryAvailable && bagCategory === "碎片" && <p>碎片庫存尚未接入。</p>}
             {bagInventoryAvailable && bagCategory === "傢俱" && <p>傢俱系統預定於下一版本開放，本版不提供傢俱操作。</p>}
             {bagInventoryAvailable && bagCategory === "外型" && <p>外型與稱號庫存尚未接入。</p>}
-            {bagInventoryAvailable && bagCategory === "盆栽" && <BagPotInventoryGrid pots={state.pots} busy={props.busy} transact={props.transact} />}
+            {bagCategory === "盆栽" && <p>36 種盆栽的持有數量與合成操作統一在「盆栽合成」介面查看，不另設寶囊盆栽庫存。<button type="button" onClick={() => (props.onTabChange ?? setLocalTab)("盆栽")}>前往盆栽合成</button></p>}
             {bagInventoryAvailable && bagCategory === "其他" && <p>靈獸飼料：{state.petFood ?? 0}</p>}
           </section>
         )}
