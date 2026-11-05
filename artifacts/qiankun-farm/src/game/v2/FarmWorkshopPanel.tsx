@@ -50,7 +50,7 @@ export function FarmWorkshopPanel(props: {
   const state = workshopState(props.warehouse), summary = workshopPublicState(props.warehouse);
   return (
     <section aria-label="福田倉庫與洞府管理">
-      <nav>
+      {tab !== "乾坤寶囊" && <nav>
         {["盆栽", "洞府", "任務", "靈寵", "護陣", "好友"].map((t) => (
           <button
             key={t}
@@ -60,7 +60,7 @@ export function FarmWorkshopPanel(props: {
             {t}
           </button>
         ))}
-      </nav>
+      </nav>}
       {tab === "乾坤寶囊" && (
         <nav aria-label="乾坤寶囊分類" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {BAG_CATEGORIES.map((category) => (
