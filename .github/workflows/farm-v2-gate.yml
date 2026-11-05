@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - codex/farm-v2-canonical-runtime
+      - codex/farm-two-bags-isolated-20261105
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
@@ -38,3 +39,9 @@ jobs:
         run: pnpm --filter @workspace/api-server run typecheck
       - name: Build API server
         run: pnpm --filter @workspace/api-server run build
+      - name: Typecheck Farm V2 UI
+        run: pnpm --filter @workspace/qiankun-farm run typecheck
+      - name: Build Farm V2 UI
+        run: pnpm --filter @workspace/qiankun-farm run build
+      - name: Verify dual warehouses and pot synthesis
+        run: pnpm exec vitest run artifacts/qiankun-farm/src/game/v2/FarmWorkshopPanel.bag.test.tsx artifacts/qiankun-farm/src/game/v2/PotSynthesisGrid.test.tsx
