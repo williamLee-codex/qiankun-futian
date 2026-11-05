@@ -106,6 +106,7 @@ export function FarmWorkshopPanel(props: {
   const [bagCategory, setBagCategory] = useState<(typeof BAG_CATEGORIES)[number]>("材料");
   const tab = props.tab ?? localTab;
   const state = workshopState(props.warehouse), summary = workshopPublicState(props.warehouse);
+  const bagInventoryAvailable = props.warehouse.workshop !== undefined;
   return (
     <section aria-label="福田倉庫與洞府管理">
       {tab !== "乾坤寶囊" && <nav>
@@ -131,17 +132,18 @@ export function FarmWorkshopPanel(props: {
       <fieldset disabled={props.busy}>
         {tab === "乾坤寶囊" && (
           <section aria-label="乾坤寶囊分類物品">
-            {bagCategory === "材料" && (
+            {!bagInventoryAvailable && <p role="alert">伺服器尚未提供乾坤寶囊庫存，無法確認物品數量；已停止寶囊操作。</p>}
+            {bagInventoryAvailable && bagCategory === "材料" && (
               <>
                 <p>蘊靈砂：{state.materials.蘊靈砂 ?? 0}</p>
                 <p>九霄玉髓：{state.materials.九霄玉髓 ?? 0}</p>
               </>
             )}
-            {bagCategory === "碎片" && <p>碎片庫存尚未接入。</p>}
-            {bagCategory === "傢俱" && <p>傢俱系統預定於下一版本開放，本版不提供傢俱操作。</p>}
-            {bagCategory === "外型" && <p>外型與稱號庫存尚未接入。</p>}
-            {bagCategory === "盆栽" && <BagPotInventoryGrid pots={state.pots} busy={props.busy} transact={props.transact} />}
-            {bagCategory === "其他" && <p>靈獸飼料：{state.petFood ?? 0}</p>}
+            {bagInventoryAvailable && bagCategory === "碎片" && <p>碎片庫存尚未接入。</p>}
+            {bagInventoryAvailable && bagCategory === "傢俱" && <p>傢俱系統預定於下一版本開放，本版不提供傢俱操作。</p>}
+            {bagInventoryAvailable && bagCategory === "外型" && <p>外型與稱號庫存尚未接入。</p>}
+            {bagInventoryAvailable && bagCategory === "盆栽" && <BagPotInventoryGrid pots={state.pots} busy={props.busy} transact={props.transact} />}
+            {bagInventoryAvailable && bagCategory === "其他" && <p>靈獸飼料：{state.petFood ?? 0}</p>}
           </section>
         )}
         {tab === "盆栽" && <PotSynthesisGrid warehouse={props.warehouse} busy={props.busy} readWallet={props.readWallet ?? unavailableWallet} transact={props.transact} />}
