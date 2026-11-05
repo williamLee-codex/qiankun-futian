@@ -40,7 +40,7 @@ export function PotSynthesisGrid(props: {
     try { planWorkshopMutation(props.warehouse, command, "preview-only", Date.now()); }
     catch { recipeValid = false; }
   }
-  const ready = recipeValid && coins !== null && coins >= cost && !props.busy && stage !== "working" && stage !== "failed";
+  const ready = recipeValid && coins !== null && coins >= cost && !props.busy && stage === "recipe";
   async function reloadWallet() {
     setCoins(null); setWalletError(false);
     try { const wallet = await props.readWallet(); if (!Number.isSafeInteger(wallet.coins) || wallet.coins < 0) throw Error(); setCoins(wallet.coins); }
