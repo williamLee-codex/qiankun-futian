@@ -164,6 +164,10 @@ export function createFarmV2Api(input: {
       return result.sessionToken;
     })().catch((error) => {
       sessionPromise = null;
+      // A rejected launch is terminal for this client instance. The caller
+      // must obtain a fresh platform launch token, not replay this one.
+      if (error instanceof FarmV2ApiError && error.status === 401)
+        revoked = true;
       throw error;
     });
     return sessionPromise;
@@ -198,8 +202,9 @@ export function createFarmV2Api(input: {
           signal: AbortSignal.timeout(10_000),
         });
         if (response.status === 401) {
-          // A consumed or expired launch token must not be replayed silently.
-          // Keep the pending request ID for an explicit post-login recovery.
+          // Never replay an expired session or its consumed launch token.
+          // Preserve pending request IDs for an explicit post-login recovery.
+          revoked = true;
           sessionPromise = null;
         }
         const result = await decode<T>(response);
