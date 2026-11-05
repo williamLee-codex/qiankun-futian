@@ -356,6 +356,44 @@ describe("Farm V2 session recovery regression", () => {
     expect([...values.values()].join("")).not.toContain("fresh-launch");
   });
 
+  it("ignores an unrelated host in a proxy recovery response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({
+        error: "FARM_SESSION_NOT_ACTIVE",
+        reauthenticateUrl: "https://unrelated.test/recovery",
+      }),
+    }));
+    const api = createFarmV2Api({
+      baseUrl: "https://platform.test/api/farm-backend/",
+      launchToken: "launch",
+    });
+    await expect(api.readState()).rejects.toMatchObject({ status: 401 });
+    expect(api.getReauthenticationUrl()).toBe(
+      "https://platform.test/api/apps/qiankun-futian/launch?farmV2=1",
+    );
+  });
+
+  it("preserves a 401 response when its recovery URL is invalid", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({
+        error: "FARM_SESSION_NOT_ACTIVE",
+        reauthenticateUrl: "invalid-relative-url",
+      }),
+    }));
+    const api = createFarmV2Api({
+      baseUrl: "https://platform.test/api/farm-backend/",
+      launchToken: "launch",
+    });
+    await expect(api.readState()).rejects.toMatchObject({
+      status: 401,
+      code: "FARM_SESSION_NOT_ACTIVE",
+    });
+  });
+
   it("does not invent a platform reauthentication link for an arbitrary API origin", () => {
     const api = createFarmV2Api({
       baseUrl: "https://unrelated.test/api/",
