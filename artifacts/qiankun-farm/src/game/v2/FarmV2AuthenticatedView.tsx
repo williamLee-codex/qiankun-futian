@@ -9,7 +9,6 @@ import { useState } from "react";
 import { useFarmV2Scene } from "./useFarmV2Scene";
 import { CROP_DATA } from "../types";
 import { FARM_V2_LANDS } from "./canonicalLandData";
-import { RELEASED_DECOR } from "./decorCatalog";
 
 /**
  * Authenticated Farm V2 integration surface. The platform host supplies a
