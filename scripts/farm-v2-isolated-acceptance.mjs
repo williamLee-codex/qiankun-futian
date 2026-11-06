@@ -11,7 +11,10 @@ assert.ok(api && launchToken, 'FARM_TEST_API_URL and FARM_TEST_LAUNCH_TOKEN requ
 const base = new URL(api);
 assert.equal(base.protocol, 'https:', 'HTTPS required');
 assert.ok(!['www.yuceluopan.com','yuceluopan.com','qiankun-farm-v2-api.vercel.app'].includes(base.hostname), 'Production host forbidden');
-assert.ok(base.hostname.endsWith('.vercel.app') && /(?:test|preview|git-|qiankun-farm-v2-)/.test(base.hostname), 'Isolated Vercel host required');
+assert.equal(base.hostname, 'qiankun-farm-v2-k5e0oe9uj-williamlee-codexs-projects.vercel.app', 'Only the verified isolated Farm API preview is allowed');
+assert.equal(base.pathname, '/', 'API URL must not contain a path');
+assert.equal(base.search, '', 'API URL must not contain query parameters');
+assert.equal(base.hash, '', 'API URL must not contain a fragment');
 const headers = { authorization: `Bearer ${launchToken}`, 'content-type':'application/json' };
 async function check(path, method='GET', body) {
  const res=await fetch(new URL(path,base),{method,headers:{...headers,'x-request-id':randomUUID()},body:body?JSON.stringify(body):undefined,redirect:'error',signal:AbortSignal.timeout(15000)});
