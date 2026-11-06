@@ -139,7 +139,16 @@ export async function withFarmAuthority<T>(
           "update farm_v2_authorization_attempt set state='SETTLED',settled_at=now() where id=$1 and state='OPEN'",
           [operationId],
         );
-        await measureFarmV2Stage("authority_end", () => callAuthority({ ...input, operationId }, "end"), operationId);
+        await measureFarmV2Stage("authority_end", async () => {
+          // Core end is idempotent by operationId. Retry once for a lost response
+          // or a transient Core failure; never retry a revoked session.
+          try {
+            await callAuthority({ ...input, operationId }, "end");
+          } catch (error) {
+            if (error instanceof Error && error.message === "FARM_SESSION_NOT_ACTIVE") throw error;
+            await callAuthority({ ...input, operationId }, "end");
+          }
+        }, operationId);
         await pool.query(
           "update farm_v2_authorization_attempt set core_settled_at=now() where id=$1",
           [operationId],
