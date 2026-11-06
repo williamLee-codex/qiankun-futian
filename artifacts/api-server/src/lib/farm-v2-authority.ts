@@ -1,7 +1,7 @@
 import { measureFarmV2Stage } from "./farm-v2-stage-timing";
 import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 import { randomUUID } from "node:crypto";
-import { createDatabaseConnection, pool } from "@workspace/db";
+import { createDatabaseConnection } from "@workspace/db";
 import { farmV2PlatformConnection } from "./farm-v2-platform";
 import { farmAuthorityContext } from "./farm-v2-authority-context";
 export const { pool: farmAuthorityPool } = createDatabaseConnection({
@@ -115,7 +115,7 @@ export async function withFarmAuthority<T>(
     await measureFarmV2Stage("authority_lock", () => client.query("select pg_advisory_lock(hashtextextended($1,0))", [
       farmAuthorityLockKey(input.userId),
     ]), operationId);
-    await measureFarmV2Stage("authority_register", () => pool.query(
+    await measureFarmV2Stage("authority_register", () => client.query(
       "insert into farm_v2_authorization_attempt(id,user_id,request_id,action,state) values($1,$2,$3,$4,'OPEN')",
       [operationId, input.userId, input.requestId, input.action],
     ), operationId);
@@ -135,7 +135,7 @@ export async function withFarmAuthority<T>(
     try {
       if (registered) {
         // Every awaited domain transaction has committed/rolled back at this point.
-        await pool.query(
+        await client.query(
           "update farm_v2_authorization_attempt set state='SETTLED',settled_at=now() where id=$1 and state='OPEN'",
           [operationId],
         );
