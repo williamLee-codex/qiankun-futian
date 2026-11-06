@@ -149,7 +149,7 @@ export async function withFarmAuthority<T>(
             await callAuthority({ ...input, operationId }, "end");
           }
         }, operationId);
-        await pool.query(
+        await client.query(
           "update farm_v2_authorization_attempt set core_settled_at=now() where id=$1",
           [operationId],
         );
