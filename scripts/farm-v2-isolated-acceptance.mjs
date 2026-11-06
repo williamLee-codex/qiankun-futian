@@ -1,6 +1,6 @@
 // Isolated Farm V2 end-to-end acceptance. No production defaults, no stored credentials.
 // Usage: FARM_TEST_API_URL=https://<isolated-api> FARM_TEST_LAUNCH_TOKEN=<one-time-token>
-//        FARM_TEST_LAND_ID=<isolated-land-id> FARM_TEST_MUTATE=1 node scripts/farm-v2-isolated-acceptance.mjs
+//        FARM_TEST_LAND_ID=<isolated-land-id> FARM_TEST_MUTATE=1 FARM_TEST_ACTION=sow|harvest node scripts/farm-v2-isolated-acceptance.mjs
 // Never run mutation against a production hostname.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -11,7 +11,7 @@ assert.ok(api && launchToken, 'FARM_TEST_API_URL and FARM_TEST_LAUNCH_TOKEN requ
 const base = new URL(api);
 assert.equal(base.protocol, 'https:', 'HTTPS required');
 assert.ok(!['www.yuceluopan.com','yuceluopan.com','qiankun-farm-v2-api.vercel.app'].includes(base.hostname), 'Production host forbidden');
-assert.ok(/(?:test|preview|git-|qiankun-farm-v2-)/.test(base.hostname), 'Isolated host required');
+assert.ok(base.hostname.endsWith('.vercel.app') && /(?:test|preview|git-|qiankun-farm-v2-)/.test(base.hostname), 'Isolated Vercel host required');
 const headers = { authorization: `Bearer ${launchToken}`, 'content-type':'application/json' };
 async function check(path, method='GET', body) {
  const res=await fetch(new URL(path,base),{method,headers:{...headers,'x-request-id':randomUUID()},body:body?JSON.stringify(body):undefined,redirect:'error',signal:AbortSignal.timeout(15000)});
@@ -33,8 +33,10 @@ console.log('PASS authenticated state read');
 if(process.env.FARM_TEST_MUTATE==='1'){
  assert.ok(process.env.FARM_TEST_LAND_ID,'FARM_TEST_LAND_ID required for isolated mutations');
  const landId=encodeURIComponent(process.env.FARM_TEST_LAND_ID);
- // Game rules determine whether the isolated land is eligible for sow/harvest.
- for(const action of ['sow','harvest']){
+ // Harvest is not immediately available after sowing; run the two operations in separate windows.
+ const action=process.env.FARM_TEST_ACTION;
+ assert.ok(['sow','harvest'].includes(action),'FARM_TEST_ACTION must be sow or harvest');
+ {
   const result=await check(`/api/farm/v2/lands/${landId}/${action}`,'POST',{});
   assert.ok(result && typeof result==='object',`${action} response`);
   console.log(`PASS isolated ${action}`);
