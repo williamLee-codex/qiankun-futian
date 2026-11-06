@@ -7,7 +7,7 @@ import vm from 'node:vm';
 const ts = createRequire(import.meta.url)('typescript');
 const source = readFileSync(new URL('./farm-v2-authority.ts', import.meta.url), 'utf8');
 function runScenario(options = {}) {
-  const { primary, cleanup, beginStatus, transportFailure, lockFailure, registerFailure } = options;
+  const { primary, cleanup, beginStatus, transportFailure, lockFailure, registerFailure, connectFailure } = options;
   const hasPrimary = Object.hasOwn(options, 'primary');
   const events = [];
   const logs = [];
@@ -28,7 +28,7 @@ function runScenario(options = {}) {
         ? { operationId: data.operationId, effectivePaidCrystals: 0 } : { settled: true } };
     }},
     'node:crypto': { randomUUID: () => 'b3e51e88-8c8c-4f44-a64b-3a8175b6aa10' },
-    '@workspace/db': { createDatabaseConnection: () => ({ pool: { connect: async () => client } }) },
+    '@workspace/db': { createDatabaseConnection: () => ({ pool: { connect: async () => { if (connectFailure) throw connectFailure; return client; } } }) },
     './farm-v2-platform': { farmV2PlatformConnection: () => ({ base: 'https://example.invalid', secret: 'mock' }) },
     './farm-v2-authority-context': { farmAuthorityContext: { run: (_context, fn) => fn() } },
   };
@@ -129,4 +129,11 @@ test('SQLSTATE 53300 at authority lock never starts Core or registers a transact
   const { events, invoke } = runScenario({ lockFailure: failure });
   await assert.rejects(invoke(), e => e === failure && e.code === '53300');
   assert.deepEqual(events, ['lock', ['release', true]]);
+});
+
+test('SQLSTATE 53300 at pool connection never acquires lock or calls Core', async () => {
+  const failure = Object.assign(Error('remaining connection slots are reserved'), { code: '53300' });
+  const { events, invoke } = runScenario({ connectFailure: failure });
+  await assert.rejects(invoke(), e => e === failure && e.code === '53300');
+  assert.deepEqual(events, []);
 });
