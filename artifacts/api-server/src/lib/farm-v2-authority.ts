@@ -155,7 +155,7 @@ export async function withFarmAuthority<T>(
         );
       }
     } catch (cleanupFailure) {
-      if (!originalFailure) throw cleanupFailure;
+      // Record cleanup failures even when no domain error preceded them.
       // Log only a correlation ID and safe SQLSTATE; never log the token or error message.
       try {
         const sqlstate = cleanupFailure && typeof cleanupFailure === "object" && "code" in cleanupFailure
@@ -167,6 +167,7 @@ export async function withFarmAuthority<T>(
           ...(sqlstate ? { sqlstate } : {}),
         }));
       } catch { /* Logging must never replace the primary failure. */ }
+      if (!originalFailure) throw cleanupFailure;
     } finally {
       // Destroy rather than pooling a connection that might retain a session lock.
       client.release(true);
