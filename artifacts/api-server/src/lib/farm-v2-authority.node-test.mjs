@@ -123,3 +123,10 @@ test('Core transport failure retains original exception and emits sanitized phas
   }]);
   assert.equal(JSON.stringify(logs).includes('private upstream'), false);
 });
+
+test('SQLSTATE 53300 at authority lock never starts Core or registers a transaction', async () => {
+  const failure = Object.assign(Error('database connection capacity exceeded'), { code: '53300' });
+  const { events, invoke } = runScenario({ lockFailure: failure });
+  await assert.rejects(invoke(), e => e === failure && e.code === '53300');
+  assert.deepEqual(events, ['lock', ['release', true]]);
+});
