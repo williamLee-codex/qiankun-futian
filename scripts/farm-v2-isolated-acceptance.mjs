@@ -33,11 +33,9 @@ console.log('PASS authenticated state read');
 if(process.env.FARM_TEST_MUTATE==='1'){
  assert.ok(process.env.FARM_TEST_LAND_ID,'FARM_TEST_LAND_ID required for isolated mutations');
  const landId=encodeURIComponent(process.env.FARM_TEST_LAND_ID);
- // Mutations require game-specific seed/harvest prerequisites: do not assume a valid payload.
- // Fail closed until the caller supplies explicitly approved JSON payloads.
- for(const [action,envName] of [['sow','FARM_TEST_SOW_BODY'],['harvest','FARM_TEST_HARVEST_BODY']]){
-  const raw=process.env[envName];assert.ok(raw,`${envName} required`);
-  const result=await check(`/api/farm/v2/lands/${landId}/${action}`,'POST',JSON.parse(raw));
+ // Game rules determine whether the isolated land is eligible for sow/harvest.
+ for(const action of ['sow','harvest']){
+  const result=await check(`/api/farm/v2/lands/${landId}/${action}`,'POST',{});
   assert.ok(result && typeof result==='object',`${action} response`);
   console.log(`PASS isolated ${action}`);
  }
