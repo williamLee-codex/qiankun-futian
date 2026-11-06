@@ -1,6 +1,5 @@
 import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 import { randomUUID } from "node:crypto";
-import { pool } from "@workspace/db";
 import { farmAuthorityPool, farmAuthorityLockKey } from "./farm-v2-authority";
 import { farmAuthorityContext } from "./farm-v2-authority-context";
 import { farmV2PlatformConnection } from "./farm-v2-platform";
@@ -84,7 +83,7 @@ export async function withFarmFriendAuthority<T>(
       await client.query("select pg_advisory_lock(hashtextextended($1,0))", [
         farmAuthorityLockKey(p.userId),
       ]);
-    await pool.query(
+    await client.query(
       "INSERT INTO farm_v2_authorization_attempt(id,user_id,request_id,action,state) VALUES($1,$2,$5,$6,'OPEN'),($3,$4,$5,$6,'OPEN')",
       [
         operationId,
@@ -110,12 +109,12 @@ export async function withFarmFriendAuthority<T>(
   } finally {
     try {
       if (registered) {
-        await pool.query(
+        await client.query(
           "UPDATE farm_v2_authorization_attempt SET state='SETTLED',settled_at=now() WHERE id=ANY($1::uuid[]) AND state='OPEN'",
           [participants.map((p) => p.operationId)],
         );
         await call("end");
-        await pool.query(
+        await client.query(
           "UPDATE farm_v2_authorization_attempt SET core_settled_at=now() WHERE id=ANY($1::uuid[])",
           [participants.map((p) => p.operationId)],
         );
