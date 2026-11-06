@@ -11,13 +11,14 @@ function runScenario(options = {}) {
   const hasPrimary = Object.hasOwn(options, 'primary');
   const events = [];
   const logs = [];
-  const client = { on() {}, query: async () => { events.push('lock'); if (lockFailure) throw lockFailure; }, release: x => events.push(['release', x]) };
-  const pool = { query: async sql => {
-    if (sql.startsWith('insert')) { events.push('register'); if (registerFailure) throw registerFailure; }
+  const client = { on() {}, query: async sql => {
+    if (sql.includes('pg_advisory_lock')) { events.push('lock'); if (lockFailure) throw lockFailure; }
+    else if (sql.startsWith('insert')) { events.push('register'); if (registerFailure) throw registerFailure; }
     else if (sql.includes("state='SETTLED'")) { events.push('settle'); if (cleanup) throw cleanup; }
-    else events.push('core-settled');
+    else if (sql.includes('core_settled_at')) events.push('core-settled');
+    else throw Error('Unexpected SQL in dedicated authority client');
     return {};
-  }};
+  }, release: x => events.push(['release', x]) };
   const mocks = {
     './farm-v2-stage-timing': { measureFarmV2Stage: (_stage, fn) => fn() },
     './farm-v2-platform-fetch': { farmV2PlatformFetch: async (_url, init) => {
@@ -27,7 +28,7 @@ function runScenario(options = {}) {
         ? { operationId: data.operationId, effectivePaidCrystals: 0 } : { settled: true } };
     }},
     'node:crypto': { randomUUID: () => 'b3e51e88-8c8c-4f44-a64b-3a8175b6aa10' },
-    '@workspace/db': { pool, createDatabaseConnection: () => ({ pool: { connect: async () => client } }) },
+    '@workspace/db': { createDatabaseConnection: () => ({ pool: { connect: async () => client } }) },
     './farm-v2-platform': { farmV2PlatformConnection: () => ({ base: 'https://example.invalid', secret: 'mock' }) },
     './farm-v2-authority-context': { farmAuthorityContext: { run: (_context, fn) => fn() } },
   };
