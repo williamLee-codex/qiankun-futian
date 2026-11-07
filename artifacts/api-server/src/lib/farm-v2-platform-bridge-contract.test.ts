@@ -43,3 +43,33 @@ it("fails closed when neither shared secret is configured", () => {
   vi.stubEnv("FARM_V2_BRIDGE_SHARED_SECRET", "");
   expect(() => farmV2PlatformConnection()).toThrow("FARM_SESSION_NOT_CONFIGURED");
 });
+
+it("exchanges a launch token with the production bridge header and validates session response", async () => {
+  vi.stubEnv("PLATFORM_BASE_URL", "https://platform.example");
+  vi.stubEnv("REPLIT_APP_SHARED_SECRET", "legacy-only");
+  vi.stubEnv("FARM_V2_BRIDGE_SHARED_SECRET", "bridge-only");
+  const sessionToken = "fvs1." + "A".repeat(43);
+  fetchMock.mockImplementationOnce(async (url: URL, init: RequestInit) => {
+    expect(url.pathname).toBe("/api/replit/farm-v2/session");
+    expect(new Headers(init.headers).get("x-farm-v2-shared-secret")).toBe("bridge-only");
+    expect(JSON.parse(String(init.body))).toEqual({ launchToken: "launch-token", action: "exchange" });
+    return Response.json({
+      sessionToken, userId: "user-1", appId: "qiankun-futian",
+      expiresAt: "2026-11-08T00:00:00.000Z",
+    });
+  });
+  await expect(requestFarmV2PlatformSession("launch-token", "exchange")).resolves.toEqual({
+    sessionToken, userId: "user-1", expiresAt: "2026-11-08T00:00:00.000Z",
+    reauthenticateUrl: "https://platform.example/api/apps/qiankun-futian/launch?farmV2=1",
+  });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+it("rejects unauthorized session exchange without retrying against the legacy header", async () => {
+  vi.stubEnv("PLATFORM_BASE_URL", "https://platform.example");
+  vi.stubEnv("REPLIT_APP_SHARED_SECRET", "legacy-only");
+  vi.stubEnv("FARM_V2_BRIDGE_SHARED_SECRET", "bridge-only");
+  fetchMock.mockResolvedValueOnce(Response.json({ error: "unauthorized" }, { status: 401 }));
+  await expect(requestFarmV2PlatformSession("invalid-token", "exchange")).rejects.toThrow("FARM_SESSION_NOT_ACTIVE");
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
