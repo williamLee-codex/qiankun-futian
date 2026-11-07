@@ -1,6 +1,7 @@
 import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 export function farmV2PlatformConnection() {
   const baseUrl = process.env.PLATFORM_BASE_URL;
+  const bridgeSecret = process.env.FARM_V2_BRIDGE_SHARED_SECRET;
   const secret = process.env.REPLIT_APP_SHARED_SECRET;
   if (!baseUrl || !secret) throw new Error("FARM_SESSION_NOT_CONFIGURED");
   const base = new URL(baseUrl);
@@ -15,21 +16,21 @@ export function farmV2PlatformConnection() {
     base.hash
   )
     throw new Error("INVALID_FARM_PLATFORM_BASE_URL");
-  return { base, secret };
+  return { base, secret, sessionSecret: bridgeSecret || secret, sessionSecretHeader: bridgeSecret ? "x-farm-v2-shared-secret" : "x-replit-shared-secret" };
 }
 
 export async function requestFarmV2PlatformSession(
   launchToken: string,
   action: "exchange" | "revoke",
 ) {
-  const { base, secret } = farmV2PlatformConnection();
+  const { base, sessionSecret, sessionSecretHeader } = farmV2PlatformConnection();
   const response = await farmV2PlatformFetch(new URL("/api/replit/farm-v2/session", base), {
     method: "POST",
     redirect: "error",
     cache: "no-store",
     headers: {
       "content-type": "application/json",
-      "x-replit-shared-secret": secret,
+      [sessionSecretHeader]: sessionSecret!,
     },
     body: JSON.stringify({ launchToken, action }),
     signal: AbortSignal.timeout(5000),
