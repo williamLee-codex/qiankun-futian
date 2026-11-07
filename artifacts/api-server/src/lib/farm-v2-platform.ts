@@ -23,7 +23,7 @@ export async function requestFarmV2PlatformSession(
   launchToken: string,
   action: "exchange" | "revoke",
 ) {
-  const { base, secret } = farmV2PlatformConnection();
+  const { base, sessionSecret, sessionSecretHeader } = farmV2PlatformConnection();
   const response = await farmV2PlatformFetch(new URL("/api/replit/farm-v2/session", base), {
     method: "POST",
     redirect: "error",
