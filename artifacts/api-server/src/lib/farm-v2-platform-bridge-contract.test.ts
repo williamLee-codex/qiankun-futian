@@ -24,6 +24,7 @@ it("uses the explicit bridge header and secret for the deployed production Sessi
   vi.stubEnv("PLATFORM_BASE_URL", "https://platform.example");
   vi.stubEnv("REPLIT_APP_SHARED_SECRET", "legacy-only");
   vi.stubEnv("FARM_V2_BRIDGE_SHARED_SECRET", "bridge-only");
+  expect(farmV2PlatformConnection().secret).toBe("legacy-only");
   const fetchMock = vi.fn(async (_url: URL, init: RequestInit) => {
     expect(new Headers(init.headers).get("x-farm-v2-shared-secret")).toBe("bridge-only");
     expect(new Headers(init.headers).has("x-replit-shared-secret")).toBe(false);
