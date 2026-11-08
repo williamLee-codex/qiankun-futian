@@ -9,7 +9,7 @@ import {
   type WorkshopWarehouse,
   type WorkshopCommand,
 } from "./workshopRuntime";
-import { FARM_V2_MISSIONS, type MissionState } from "./missionRuntime";
+import { FARM_V2_MISSIONS, rollMissionPeriods, type MissionState } from "./missionRuntime";
 import { RELEASED_DECOR } from "./decorCatalog";
 const BAG_CATEGORIES = ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"] as const;
 export function FarmWorkshopPanel(props: {
@@ -47,6 +47,9 @@ export function FarmWorkshopPanel(props: {
   const tab = props.tab ?? localTab;
   const state = workshopState(props.warehouse), summary = workshopPublicState(props.warehouse);
   const bagInventoryAvailable = props.warehouse.workshop !== undefined;
+  // A server snapshot may belong to the previous 05:00 period. Never offer
+  // expired rewards while the server correctly rejects their claim.
+  const missions = props.missions ? rollMissionPeriods(props.missions, Date.now()) : undefined;
   return (
     <section aria-label="福田倉庫與洞府管理">
       {tab !== "乾坤寶囊" && <nav>
@@ -170,13 +173,13 @@ export function FarmWorkshopPanel(props: {
                     } as Record<string, string>
                   )[m.id]
                 }
-                ・{props.missions?.progress[m.id]?.progress ?? 0}/{m.target}・
+                ・{missions?.progress[m.id]?.progress ?? 0}/{m.target}・
                 {m.reward.coins}金幣＋{m.reward.materialId}
                 {m.reward.materialQuantity}
                 <button
                   disabled={
-                    !props.missions?.progress[m.id]?.completed ||
-                    props.missions.progress[m.id]?.claimed
+                    !missions?.progress[m.id]?.completed ||
+                    missions.progress[m.id]?.claimed
                   }
                   onClick={() =>
                     void props.transact({
@@ -185,7 +188,7 @@ export function FarmWorkshopPanel(props: {
                     })
                   }
                 >
-                  {props.missions?.progress[m.id]?.claimed ? "已領取" : "領取"}
+                  {missions?.progress[m.id]?.claimed ? "已領取" : "領取"}
                 </button>
               </article>
             ))}
