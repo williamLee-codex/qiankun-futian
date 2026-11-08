@@ -1,0 +1,1 @@
+PASS workshop browser fixture emits JavaScript and CSS without import.meta warnings

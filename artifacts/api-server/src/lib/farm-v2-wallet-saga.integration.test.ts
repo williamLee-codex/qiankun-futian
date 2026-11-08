@@ -1299,8 +1299,10 @@ describe.skipIf(!enabled)(
             ),
             loader: "tsx",
           },
+          define: { "import.meta.env.BASE_URL": JSON.stringify("/") },
           bundle: true,
           write: false,
+          outfile: "/tmp/farm-v2-workshop-app.js",
           platform: "browser",
           jsx: "automatic",
         });
@@ -1310,11 +1312,14 @@ describe.skipIf(!enabled)(
           res
             .type("html")
             .send(
-              '<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:sans-serif;max-width:720px;margin:auto;padding:12px}button,select{min-height:44px;margin:4px}article{padding:8px;overflow-wrap:anywhere}fieldset{min-width:0}</style><div id="root"></div><script src="/app.js"></script>',
+              '<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/app.css"><style>body{font-family:sans-serif;max-width:720px;margin:auto;padding:12px}button,select{min-height:44px;margin:4px}article{padding:8px;overflow-wrap:anywhere}fieldset{min-width:0}</style><div id="root"></div><script src="/app.js"></script>',
             ),
         );
         app.get("/app.js", (_req, res) =>
-          res.type("js").send(bundle.outputFiles[0].text),
+          res.type("js").send(bundle.outputFiles.find(f => f.path.endsWith(".js"))!.text),
+        );
+        app.get("/app.css", (_req, res) =>
+          res.type("css").send(bundle.outputFiles.find(f => f.path.endsWith(".css"))!.text),
         );
         app.get("/state", async (_req, res) => {
           const row = (
