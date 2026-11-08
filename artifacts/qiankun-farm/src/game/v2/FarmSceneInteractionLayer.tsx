@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { SCENE_LAYOUTS, type SceneRegion } from "./sceneInteractionRuntime";
 import { FARM_V2_LANDS } from "./canonicalLandData";
-import { DECOR_CATALOG } from "./decorCatalog";
 import { FORMATION_NAMES } from "./formationSourcesRuntime";
 import type { Plot } from "../types";
 import "./farmSceneInteraction.css";
@@ -27,6 +26,22 @@ export function FarmSceneInteractionLayer(props: {
     [interior, setInterior] = useState(false),
     [clock, setClock] = useState(Date.now());
   const maturityRead = useRef("");
+  const caveEntry = useRef<HTMLButtonElement>(null);
+  const caveExit = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!interior) return;
+    caveExit.current?.focus();
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !document.querySelector('[role="dialog"]')) {
+        setInterior(false);
+      }
+    };
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("keydown", escape);
+      caveEntry.current?.focus({ preventScroll: true });
+    };
+  }, [interior]);
   useEffect(() => {
     const q = window.matchMedia("(min-width:768px)");
     const update = () => setDesktop(q.matches);
@@ -75,7 +90,7 @@ export function FarmSceneInteractionLayer(props: {
   const section = (name: string) => props.onSection?.(name);
   return (
     <section
-      className={"farm-v2-interaction " + (desktop ? "desktop" : "mobile")}
+      className={"farm-v2-interaction " + (desktop ? "desktop" : "mobile") + (interior ? " cave-open" : "")}
       aria-label={props.ownerLabel + "場景互動層"}
       data-layout={desktop ? "desktop" : "mobile"}
     >
@@ -84,14 +99,23 @@ export function FarmSceneInteractionLayer(props: {
           {props.ownerLabel}
           {interior ? "・洞府" : "・農場"}
         </strong>
-        <span>點選農田查看操作</span>
+        <span>{interior ? "洞府內景" : "點選農田查看操作"}</span>
+        {interior && (
+          <button ref={caveExit} className="farm-v2-cave-return" onClick={() => setInterior(false)}>
+            返回農場
+          </button>
+        )}
         {props.onReturnHome && (
           <button onClick={props.onReturnHome}>返回我的福田</button>
         )}
       </header>
+      <div className={interior ? "farm-v2-cave-viewport" : "farm-v2-exterior-viewport"}>
       <div
         className={"farm-v2-canvas " + (interior ? "interior" : "exterior")}
-        style={{ aspectRatio: layout.aspectRatio }}
+        style={interior ? {
+          aspectRatio: desktop ? "1672 / 941" : "941 / 1672",
+          width: `min(100cqw, calc(100cqh * ${desktop ? 1672 / 941 : 941 / 1672}))`,
+        } : { aspectRatio: layout.aspectRatio }}
       >
         {!interior && (
           <img
@@ -105,35 +129,20 @@ export function FarmSceneInteractionLayer(props: {
         )}
         {interior ? (
           <>
-            <button className="farm-v2-exit" onClick={() => setInterior(false)}>
-              離開洞府・回到{props.ownerLabel}農場
-            </button>
-            <div className="farm-v2-meditation">洞府主角・打坐</div>
-            {Array.from({ length: 6 }, (_, i) => {
-              const decor = props.state.decor.find((d) => d.slot === i + 1);
-              return (
-                <button
-                  key={i}
-                  className="farm-v2-decor"
-                  style={{
-                    left: (desktop ? [5, 38, 71] : [5, 38, 71])[i % 3] + "%",
-                    top: (desktop ? (i < 3 ? 23 : 70) : i < 3 ? 20 : 70) + "%",
-                    width: "24%",
-                    height: desktop ? "17%" : "13%",
-                  }}
-                  disabled={props.readOnly || props.busy}
-                  onClick={() => section("洞府")}
-                >
-                  {decor
-                    ? DECOR_CATALOG.find((d) => d.id === decor.catalogId)?.name
-                    : "陳設互動位 " + (i + 1)}
-                </button>
-              );
-            })}
+            <img
+              className="farm-v2-scene-original"
+              src={`${import.meta.env.BASE_URL ?? "/"}images/farm/cave-scene-${desktop ? "desktop" : "mobile"}.webp`}
+              alt="洞府內景：中央打坐台、左右各三座展示台，後方石門與尋寶區預留位置"
+              width={desktop ? 1672 : 941}
+              height={desktop ? 941 : 1672}
+              draggable={false}
+            />
+
           </>
         ) : (
           <>
             <button
+              ref={caveEntry}
               className="farm-v2-cave"
               style={position(layout.cave)}
               onClick={() => setInterior(true)}
@@ -165,11 +174,9 @@ export function FarmSceneInteractionLayer(props: {
                     disabled={props.busy}
                     onClick={() => props.onLandSelect?.(land.id)}
                   >
-                    <strong>{land.landName}</strong>
-                    <span>
-                      {!p.unlocked
-                        ? "未解鎖"
-                        : p.state === "ready"
+                    <span className="farm-v2-land-caption"><strong>{land.landName}{!p.unlocked && <span aria-hidden="true"> 🔒</span>}</strong>
+                    {p.unlocked && <span>
+                      {p.state === "ready"
                           ? "成熟・" + p.plantCount + "株"
                           : p.state === "growing"
                             ? "生長中・" +
@@ -181,7 +188,7 @@ export function FarmSceneInteractionLayer(props: {
                               ) +
                               "分"
                             : "待播種"}
-                    </span>
+                    </span>}</span>
                   </button>
                   {props.readOnly &&
                     props.onFriendAction &&
@@ -210,30 +217,24 @@ export function FarmSceneInteractionLayer(props: {
                 </div>
               );
             })}
+            {/* Six visible display positions flank the cave platform. Each opens synthesis. */}
             {FARM_V2_LANDS.map((land, i) => {
-              const pot = props.state.pots.find((p) => p.species === land.id);
-              return (
-                <button
-                  className="farm-v2-pot"
-                  aria-label={
-                    pot
-                      ? `${land.cropName} ${pot.grade}品盆栽`
-                      : `${land.cropName}展示位`
-                  }
-                  title={
-                    pot
-                      ? `${land.cropName} ${pot.grade}品`
-                      : `${land.cropName}展示位`
-                  }
-                  key={land.id}
-                  style={position(layout.pots[i])}
-                  disabled={props.readOnly || props.busy}
-                  onClick={() => section("盆栽")}
-                >
-                  <span className="farm-v2-hotspot-label">{land.cropName}</span>
-                </button>
-              );
+              const pot = props.state.pots.find(p => p.species === land.id);
+              const level = pot ? ["黃", "玄", "地", "天", "仙", "神"].indexOf(pot.grade) + 1 : 0;
+              return <button key={land.id} className={"farm-v2-platform-pot" + (i === 5 ? " farm-v2-platform-pot-front" : "")}
+                style={position(layout.pots[i])}
+                aria-label={`${land.cropName}展示位，${pot ? pot.grade + "階盆栽" : "空位"}，開啟盆栽合成`}
+                title={`${land.cropName} · ${pot ? pot.grade + "階" : "空位"}`}
+                disabled={props.busy || props.readOnly}
+                onClick={() => section("盆栽")}>
+                {pot && level > 0 ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/plants/${land.id}-${level}.webp`} alt="" /> : <span aria-hidden="true">♧</span>}
+                <small>{pot ? land.cropName : "展示位 " + (i + 1)}</small>
+              </button>;
             })}
+            <button className="farm-v2-pot-entry" aria-label="盆栽合成" style={position(layout.potEntry)}
+              disabled={props.busy || props.readOnly} onClick={() => section("盆栽")}>
+              <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/pot-synthesis-sign.webp`} alt="" draggable={false}/>
+            </button>
             {["尋星犬", "辟邪狻猊", "噬時諦聽", "乾坤麒麟"].map((pet, i) => {
               const active =
                 props.state.pets?.activePetId === pet &&
@@ -249,12 +250,9 @@ export function FarmSceneInteractionLayer(props: {
                 >
                   <span className="farm-v2-hotspot-label">
                     {pet}
-                    <br />
-                    {active
-                      ? "活動中"
-                      : props.state.pets?.owned.includes(pet)
-                        ? "休息中"
-                        : "未取得"}
+                    {!props.state.pets?.owned.includes(pet) && !active
+                      ? <span aria-hidden="true"> 🔒</span>
+                      : <><br />{active ? "活動中" : "休息中"}</>}
                   </span>
                 </button>
               );
@@ -262,6 +260,8 @@ export function FarmSceneInteractionLayer(props: {
           </>
         )}
       </div>
+      </div>
     </section>
   );
 }
+

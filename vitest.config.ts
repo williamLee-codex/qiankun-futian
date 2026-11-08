@@ -1,9 +1,12 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  esbuild: { jsx: "automatic" },
   test: {
     environment: "node",
     maxWorkers: 4,
-    exclude: ["**/node_modules/**", "scripts/**/*.mjs", "**/dist/**"],
+    // Node's test runner owns the .mjs suites; running them in Vitest executes
+    // their side effects but cannot collect their tests.
+    exclude: ["**/node_modules/**", "**/*.mjs", "**/dist/**"],
   },
 });

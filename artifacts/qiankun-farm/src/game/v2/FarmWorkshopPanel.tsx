@@ -1,3 +1,5 @@
+import { PotSynthesisGrid } from "./PotSynthesisGrid";
+const unavailableWallet = async (): Promise<{ coins: number }> => { throw new Error("WALLET_UNAVAILABLE"); };
 import { FORMATION_NAMES } from "./formationSourcesRuntime";
 import { nextFarmMonthReset } from "./timeRuntime";
 import { useState } from "react";
@@ -7,15 +9,9 @@ import {
   type WorkshopWarehouse,
   type WorkshopCommand,
 } from "./workshopRuntime";
-import {
-  POT_GRADES,
-  POT_GRADE_COSTS,
-  POT_FIRST_UNLOCK_REWARDS,
-  type PotGrade,
-} from "./potRuntime";
 import { FARM_V2_MISSIONS, type MissionState } from "./missionRuntime";
 import { RELEASED_DECOR } from "./decorCatalog";
-import { FARM_V2_LANDS } from "./canonicalLandData";
+const BAG_CATEGORIES = ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"] as const;
 export function FarmWorkshopPanel(props: {
   tab?: string;
   onTabChange?: (tab: string) => void;
@@ -27,6 +23,7 @@ export function FarmWorkshopPanel(props: {
     decor: unknown[];
     activeFormation: string | null;
   }>;
+  readWallet?: () => Promise<{ coins: number }>;
   warehouse: WorkshopWarehouse;
   missions?: MissionState;
   pets?: {
@@ -46,29 +43,13 @@ export function FarmWorkshopPanel(props: {
     [friendError, setFriendError] = useState("");
   const [localTab, setLocalTab] = useState("盆栽");
   const [festivalCode, setFestivalCode] = useState("");
+  const [bagCategory, setBagCategory] = useState<(typeof BAG_CATEGORIES)[number]>("材料");
   const tab = props.tab ?? localTab;
-  const [species, setSpecies] = useState(1),
-    [grade, setGrade] = useState<PotGrade>("黃"),
-    [useDisplayed, setUseDisplayed] = useState(false);
-  const state = workshopState(props.warehouse),
-    summary = workshopPublicState(props.warehouse),
-    index = POT_GRADES.indexOf(grade);
-  const craft = () => {
-    const source =
-        index === 0
-          ? "3株作物"
-          : `${species === 6 ? 2 : 3}株同種${POT_GRADES[index - 1]}品盆栽`,
-      material = index < 3 ? "蘊靈砂" : "九霄玉髓";
-    if (
-      window.confirm(
-        `合成${grade}品：消耗${source}、${POT_GRADE_COSTS[grade].coins}金幣、${material}${[1, 1, 4, 2, 4, 10][index]}。${useDisplayed ? "使用並替換展示盆栽。" : ""}首次圖鑑獎勵${POT_FIRST_UNLOCK_REWARDS[grade]}金幣。`,
-      )
-    )
-      void props.transact({ kind: "synthesize", species, grade, useDisplayed });
-  };
+  const state = workshopState(props.warehouse), summary = workshopPublicState(props.warehouse);
+  const bagInventoryAvailable = props.warehouse.workshop !== undefined;
   return (
     <section aria-label="福田倉庫與洞府管理">
-      <nav>
+      {tab !== "乾坤寶囊" && <nav>
         {["盆栽", "洞府", "任務", "靈寵", "護陣", "好友"].map((t) => (
           <button
             key={t}
@@ -78,92 +59,34 @@ export function FarmWorkshopPanel(props: {
             {t}
           </button>
         ))}
-      </nav>
+      </nav>}
+      {tab === "乾坤寶囊" && (
+        <nav aria-label="乾坤寶囊分類" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {BAG_CATEGORIES.map((category) => (
+            <button key={category} type="button" aria-pressed={bagCategory === category} onClick={() => setBagCategory(category)}>
+              {category}
+            </button>
+          ))}
+        </nav>
+      )}
       <fieldset disabled={props.busy}>
-        {tab === "盆栽" && (
-          <>
-            <h3>盆栽合成與展示</h3>
-            <p>
-              蘊靈砂 {state.materials.蘊靈砂}・九霄玉髓{" "}
-              {state.materials.九霄玉髓}
-            </p>
-            <label>
-              物種
-              <select
-                value={species}
-                onChange={(e) => setSpecies(Number(e.target.value))}
-              >
-                {FARM_V2_LANDS.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.cropName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              產出品階
-              <select
-                value={grade}
-                onChange={(e) => {
-                  setGrade(e.target.value as PotGrade);
-                  setUseDisplayed(false);
-                }}
-              >
-                {POT_GRADES.map((g) => (
-                  <option key={g}>{g}</option>
-                ))}
-              </select>
-            </label>
-            {index > 0 && (
-              <label>
-                <input
-                  type="checkbox"
-                  checked={useDisplayed}
-                  onChange={(e) => setUseDisplayed(e.target.checked)}
-                />
-                使用展示中同品階盆栽
-              </label>
+        {tab === "乾坤寶囊" && (
+          <section aria-label="乾坤寶囊分類物品">
+            {!bagInventoryAvailable && <p role="alert">伺服器尚未提供乾坤寶囊庫存，無法確認物品數量；已停止寶囊操作。</p>}
+            {bagInventoryAvailable && bagCategory === "材料" && (
+              <>
+                <p>蘊靈砂：{state.materials.蘊靈砂 ?? 0}</p>
+                <p>九霄玉髓：{state.materials.九霄玉髓 ?? 0}</p>
+              </>
             )}
-            <button onClick={craft}>確認合成一株</button>
-            <p>
-              圖鑑 {Object.keys(state.potGallery).length}/36・展示靈韻{" "}
-              {summary.lingyun}・好友容量 {summary.friendCapacity}
-            </p>
-            <details>
-              <summary>盆栽圖鑑（六物種・六品階）</summary>
-              {FARM_V2_LANDS.map((land) => (
-                <article key={land.id}>
-                  {land.cropName}
-                  {POT_GRADES.map((g) => (
-                    <p key={g}>
-                      {g}品・
-                      {state.potGallery[`${land.id}:${g}`] === undefined
-                        ? "尚未取得"
-                        : `首次取得 ${new Date(state.potGallery[`${land.id}:${g}`]).toLocaleDateString("zh-TW")}`}
-                    </p>
-                  ))}
-                </article>
-              ))}
-            </details>
-            {state.pots.map((p) => (
-              <article key={p.id}>
-                {FARM_V2_LANDS[p.species - 1].cropName}・{p.grade}品・
-                {p.displayed ? "展示中" : "倉庫"}
-                <button
-                  onClick={() =>
-                    void props.transact(
-                      p.displayed
-                        ? { kind: "removePot", species: p.species }
-                        : { kind: "displayPot", potId: p.id },
-                    )
-                  }
-                >
-                  {p.displayed ? "取下" : "展示／替換"}
-                </button>
-              </article>
-            ))}
-          </>
+            {bagInventoryAvailable && bagCategory === "碎片" && <p>碎片庫存尚未接入。</p>}
+            {bagInventoryAvailable && bagCategory === "傢俱" && <p>傢俱系統預定於下一版本開放，本版不提供傢俱操作。</p>}
+            {bagInventoryAvailable && bagCategory === "外型" && <p>外型與稱號庫存尚未接入。</p>}
+            {bagCategory === "盆栽" && <p>36 種盆栽的持有數量與合成操作統一在「盆栽合成」介面查看，不另設寶囊盆栽庫存。<button type="button" onClick={() => (props.onTabChange ?? setLocalTab)("盆栽")}>前往盆栽合成</button></p>}
+            {bagInventoryAvailable && bagCategory === "其他" && <p>靈獸飼料：{state.petFood ?? 0}</p>}
+          </section>
         )}
+        {tab === "盆栽" && <PotSynthesisGrid warehouse={props.warehouse} busy={props.busy} readWallet={props.readWallet ?? unavailableWallet} transact={props.transact} />}
         {tab === "洞府" && (
           <>
             <h3>洞府陳設管理</h3>
@@ -193,10 +116,8 @@ export function FarmWorkshopPanel(props: {
                       value={i + 1}
                       disabled={
                         i >= summary.unlockedSlots ||
-                        !(
-                          RELEASED_DECOR.find((c) => c.id === d.catalogId)!
-                            .allowedSlots as readonly number[]
-                        ).includes(i + 1)
+                        !RELEASED_DECOR.find((c) => c.id === d.catalogId)
+                          ?.allowedSlots.some((slot: number) => slot === i + 1)
                       }
                     >
                       陳設位 {i + 1}（靈韻 {i * 20}）
@@ -454,3 +375,4 @@ export function FarmWorkshopPanel(props: {
     </section>
   );
 }
+

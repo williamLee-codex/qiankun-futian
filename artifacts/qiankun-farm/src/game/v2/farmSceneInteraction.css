@@ -1,7 +1,17 @@
 .farm-v2-authenticated-view {
+  font-family: system-ui, "Noto Sans TC", sans-serif;
   color: #f0e8d6;
   background: #17271e;
   padding-bottom: 16px;
+}
+
+/* The V2 scene is taller than the viewport; the legacy fixed-canvas body
+   lock must not prevent reaching its lower fields and navigation. */
+html:has(.farm-v2-authenticated-view),
+body:has(.farm-v2-authenticated-view) {
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .farm-v2-authenticated-view > nav {
   display: flex;
@@ -193,3 +203,129 @@
     animation: none;
   }
 }
+
+/* Artwork supplies the exterior controls' visual shapes. Hit regions stay
+   transparent even on hover; keyboard users retain a visible focus outline. */
+.farm-v2-canvas.exterior button,
+.farm-v2-canvas.exterior button:hover,
+.farm-v2-canvas.exterior button:focus-visible {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  animation: none;
+}
+
+/* The cave uses its own viewport; artwork and hit regions share one exact
+   aspect-ratio box, including when a device rotates or letterboxes. */
+.farm-v2-interaction.cave-open {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  margin: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  font-family: system-ui, "Noto Sans TC", sans-serif;
+}
+.cave-open > header { flex: none; padding: 8px 12px; gap: 8px; }
+.cave-open > header span { display: none; }
+.farm-v2-cave-return {
+  margin-left: auto;
+  min-height: 44px;
+  padding: 8px 14px;
+  color: #fff5db;
+  background: #263c32;
+  border: 1px solid #bda66a;
+  border-radius: 8px;
+}
+.farm-v2-cave-viewport {
+  flex: 1;
+  min-height: 0;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #101a17;
+}
+.farm-v2-cave-viewport > .farm-v2-canvas { flex: none; }
+.farm-v2-canvas.interior .farm-v2-decor,
+.farm-v2-canvas.interior .farm-v2-decor:hover {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  text-shadow: 0 1px 3px #000, 0 0 5px #000;
+  font-weight: 600;
+}
+.farm-v2-canvas.interior .farm-v2-decor:hover:not(:focus-visible) { outline: none; }
+.farm-v2-canvas.interior .farm-v2-decor:focus-visible { outline: 2px solid #e5c879; }
+html:has(.farm-v2-interaction.cave-open),
+body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
+.farm-v2-authenticated-view:has(.cave-open) > :not(.farm-v2-interaction) { visibility: hidden; }
+.farm-v2-canvas.exterior button:hover:not(:focus-visible) {
+  outline: none;
+}
+.farm-v2-canvas.exterior button:focus-visible {
+  outline: 2px solid #e5c879;
+  outline-offset: 2px;
+}
+
+
+
+/* Cave-side display slots remain visible even before the first pot is owned. */
+.farm-v2-canvas.exterior .farm-v2-platform-pot{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:0;padding:0;gap:0;overflow:visible;z-index:2}
+.farm-v2-platform-pot img{display:block;width:100%;height:75%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 1px 2px #000)}
+.farm-v2-platform-pot>span{display:flex;align-items:center;justify-content:center;width:65%;height:65%;border:1px dashed #f3dda9;border-radius:50%;color:#ffe7a4;font-size:clamp(13px,2vw,24px);text-shadow:0 1px 3px #000}
+.farm-v2-platform-pot small{font:600 clamp(9px,.85vw,12px)/1.2 system-ui,sans-serif;white-space:nowrap;color:#fff2d0;text-shadow:0 1px 3px #000,0 0 4px #000}
+.farm-v2-canvas.exterior .farm-v2-pot-entry{position:absolute;min-width:0;min-height:32px;font-family:system-ui,sans-serif;font-weight:700;color:#ffe6a3;text-shadow:0 1px 3px #000,0 0 4px #000;z-index:3}
+
+/* The synthesis entry is a small wooden sign beside the platform. */
+.farm-v2-canvas.exterior button.farm-v2-pot-entry,
+.farm-v2-canvas.exterior button.farm-v2-pot-entry:hover{
+  background:repeating-linear-gradient(3deg,#704623 0px,#81512b 4px,#6a4120 8px);
+  border:2px solid #c49a58;border-radius:5px;box-shadow:0 3px 5px #0008,inset 0 0 0 2px #3b2418;
+  transform:rotate(-6deg);overflow:visible;color:#fff0bb;
+}
+.farm-v2-pot-entry::after{content:"";position:absolute;width:10%;height:45%;left:45%;top:100%;background:linear-gradient(90deg,#513019,#976439,#513019);border:1px solid #3b2418;z-index:-1}
+.farm-v2-platform-pot img{height:85%}
+.farm-v2-platform-pot small{font-weight:700}
+@media(min-width:768px){
+ .farm-v2-authenticated-view{font-size:17px;font-weight:650}
+ .farm-v2-authenticated-view>nav button,.farm-v2-authenticated-view>button{font-size:17px;font-weight:700}
+ .farm-v2-interaction.desktop header{font-size:20px;font-weight:750}
+ .farm-v2-interaction.desktop header span{font-size:15px;font-weight:650}
+ .farm-v2-interaction.desktop .farm-v2-canvas button{font-family:system-ui,"Noto Sans TC",sans-serif;font-size:18px;font-weight:700}
+ .farm-v2-interaction.desktop .farm-v2-land strong{font-size:20px;font-weight:800}
+ .farm-v2-interaction.desktop .farm-v2-land span{font-size:16px;font-weight:700}
+ .farm-v2-interaction.desktop .farm-v2-platform-pot small{font-size:14px;font-weight:750}
+ .farm-v2-interaction.desktop .farm-v2-platform-pot>span{font-size:32px}
+ .farm-v2-interaction.desktop .farm-v2-pet{overflow:visible}
+ .farm-v2-interaction.desktop .farm-v2-pet .farm-v2-hotspot-label{position:absolute;top:100%;left:50%;transform:translateX(-50%);width:max-content;text-align:center;font-size:16px;line-height:1.3;font-weight:800;color:#ffe18d;text-shadow:0 2px 3px #16130d,0 0 5px #16130d}
+ .farm-v2-operation-dialog{font-family:system-ui,"Noto Sans TC",sans-serif;font-size:16px;font-weight:650}
+ .farm-v2-operation-dialog button,.farm-v2-operation-dialog select,.farm-v2-operation-dialog input{font-weight:700}
+ .farm-v2-operation-dialog .pot-grid-heading,.farm-v2-operation-dialog .pot-grade-heading{font-size:13px;font-weight:800}
+ .farm-v2-operation-dialog .pot-grid-cell small{font-size:12px;font-weight:700}
+ .farm-v2-operation-dialog .pot-recipe p,.farm-v2-operation-dialog .pot-requirements li{font-size:14px;font-weight:650}
+ .farm-v2-operation-dialog .pot-recipe small{font-size:12px;font-weight:600}
+ .farm-v2-operation-dialog .pot-effects>strong{font-size:14px;font-weight:800}
+}
+
+/* Use the approved illustrated sign, anchored on the stone platform. */
+.farm-v2-canvas.exterior button.farm-v2-pot-entry,
+.farm-v2-canvas.exterior button.farm-v2-pot-entry:hover,
+.farm-v2-canvas.exterior button.farm-v2-pot-entry:focus-visible{background:transparent;border:0;border-radius:0;box-shadow:none;transform:none;min-height:0;padding:0}
+.farm-v2-pot-entry::after{display:none}
+.farm-v2-pot-entry img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 2px 2px #0006)}
+.farm-v2-canvas .farm-v2-land>button:first-child{position:relative}
+.farm-v2-land-caption{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;pointer-events:none}
+@media(min-width:768px){
+.farm-v2-interaction.desktop .farm-v2-land-caption{position:absolute;left:0;bottom:-14px}
+.farm-v2-interaction.desktop .farm-v2-platform-pot small{font-size:12px}
+}
+
+/* Sixth display pot stands in front of the synthesis sign. */
+.farm-v2-canvas.exterior .farm-v2-platform-pot-front{z-index:4}

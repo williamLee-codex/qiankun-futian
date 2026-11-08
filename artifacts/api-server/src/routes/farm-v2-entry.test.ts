@@ -7,6 +7,8 @@ const { initialize, session, authority } = vi.hoisted(() => ({
   session: vi.fn(),
   authority: vi.fn(),
 }));
+// Entry-gate tests must never construct a real database pool.
+vi.mock("@workspace/db", () => ({ pool: { query: vi.fn(), connect: vi.fn() } }));
 vi.mock("../lib/farm-v2-init", () => ({
   ensureFarmV2PlayerInitialized: initialize,
 }));

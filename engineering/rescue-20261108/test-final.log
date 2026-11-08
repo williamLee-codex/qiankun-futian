@@ -1,0 +1,60 @@
+$ vitest run && pnpm run test:node
+
+ RUN  v4.1.9 /workspace/scratch/144c97612380/farm
+
+
+ Test Files  53 passed | 3 skipped (56)
+      Tests  217 passed | 52 skipped (269)
+   Start at  22:12:06
+   Duration  10.91s (transform 3.47s, setup 0ms, import 9.34s, tests 3.67s, environment 3.00s)
+
+$ node --experimental-transform-types --test artifacts/api-server/src/lib/farm-v2-authority.node-test.mjs artifacts/api-server/src/lib/farm-v2-authorized-json.node-test.mjs artifacts/api-server/src/lib/farm-v2-stage-timing.test.mjs artifacts/qiankun-farm/src/game/v2/farmV2ApiClient.node-test.mjs test/isolation-check.test.mjs
+✔ primary failure survives a simultaneous cleanup failure (227.597755ms)
+✔ cleanup-only failure propagates (33.033693ms)
+✔ success waits for Core settlement and destroys the lock session (15.4514ms)
+✔ null primary rejection is not masked by cleanup error (19.265937ms)
+✔ simultaneous cleanup failure emits only sanitized diagnostic metadata (10.453773ms)
+✔ Core begin HTTP 503 preserves authority error while recording cleanup failure (8.157147ms)
+✔ Core begin HTTP 401 maps to session inactive and still closes authority barrier (18.580267ms)
+✔ advisory lock failure does not register or call Core and releases client (16.054377ms)
+✔ registration failure does not call Core and releases client (26.055996ms)
+✔ Core transport failure retains original exception and emits sanitized phase-only metadata (13.104495ms)
+✔ SQLSTATE 53300 at authority lock never starts Core or registers a transaction (13.930791ms)
+✔ SQLSTATE 53300 at pool connection never acquires lock or calls Core (10.559013ms)
+(node:520) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ does not publish JSON until authority cleanup completes (1.697659ms)
+✔ cleanup failure never publishes a buffered success (0.952991ms)
+✔ route errors reach error middleware only after cleanup (0.319988ms)
+✔ an operation rejection restores the response writer (0.967966ms)
+(node:521) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ preserves the operation result and records bounded numeric timing (2.195003ms)
+✔ preserves failures and does not log exception details or credentials (0.671903ms)
+✔ invalid stage labels cannot leak arbitrary input into logs (0.225711ms)
+✔ a failing logging sink cannot turn a committed operation into an error (0.146545ms)
+✔ decorated domain calls preserve arguments, return identity and call count (0.265616ms)
+✔ authority_register stage reports success and preserves a successful write (0.209363ms)
+✔ authority_register stage reports failure without masking or logging the database error (0.3022ms)
+✔ correlates concurrent authorization stages without logging request identity (0.58441ms)
+✔ records only validated SQLSTATE and preserves exact error identity (0.506132ms)
+(node:522) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ reopen restores session without resending launch credential (10.049496ms)
+✔ cookie authentication retains original mutation ID after uncertain result (7.390857ms)
+✔ browser resume refuses cross-origin API (1.053021ms)
+FARM_ISOLATED_CONNECTION_CHECK_FAILED UNKNOWN
+✔ reject production before acquiring credentials (3.376117ms)
+✔ reject open entry before acquiring credentials (0.323498ms)
+✔ reject wrong database before acquiring credentials (2.841098ms)
+✔ reject transaction mode before acquiring credentials (0.256903ms)
+✔ reject write methods (0.348964ms)
+✔ driver failures never expose secrets (8.432182ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1206.802337

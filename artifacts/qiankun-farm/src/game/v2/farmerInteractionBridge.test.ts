@@ -9,12 +9,14 @@ import {
 describe('Farm V2 farmer interaction bridge', () => {
   it('does not treat entitlement alone as active automation', () => {
     const farmer = reconcileFarmerEntitlement(createFarmerState(), 999);
+    farmer.enabledByLand = { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false };
     expect(isFarmerActiveOnAnyLand(farmer)).toBe(false);
     expect(isFarmerActiveOnLand(farmer, 2)).toBe(false);
   });
 
   it('blocks only a land whose farmer switch is enabled', () => {
     let farmer = reconcileFarmerEntitlement(createFarmerState(), 999);
+    farmer.enabledByLand = { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false };
     farmer = setFarmerLandEnabled(farmer, 2, true);
     expect(targetFarmerBlocksLandInteraction(farmer, 2)).toBe(true);
     expect(targetFarmerBlocksLandInteraction(farmer, 3)).toBe(false);

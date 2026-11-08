@@ -1,6 +1,7 @@
 import type { WorkshopCommand, WorkshopWarehouse } from "./workshopRuntime";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFarmV2Api } from "./farmV2ApiClient";
+import { resolveFarmV2MutationSnapshot } from "./farmV2MutationSnapshot";
 import { mapServerLands, mapServerWarehouse } from "./farmV2SceneAdapter";
 import type { Plot, CropInventory } from "../types";
 
@@ -60,7 +61,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   const mutationInFlight = useRef(false);
   const readSequence = useRef(0);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (mutationResult?: unknown) => {
     const sequence = ++readSequence.current;
     if (!launchToken) {
       setData(null);
@@ -70,7 +71,10 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     }
     setLoading(true);
     try {
-      const snapshot = (await api!.readState()) as unknown as Snapshot;
+      const snapshot = await resolveFarmV2MutationSnapshot<Snapshot>(
+        mutationResult,
+        () => api!.readState(),
+      );
       const nextData = {
         warehouse: snapshot.player.warehouseState as WorkshopWarehouse,
         missions: snapshot.player.missionState,
@@ -125,20 +129,21 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       setBusy(true);
       try {
         if (!api) throw new Error("FARM_V2_LAUNCH_TOKEN_REQUIRED");
+        let result: unknown;
         if (operation === "claimChaos") await api.claimChaosSeeds();
         else if (operation === "configureFarmer")
           await api.configureFarmer(landId, quantity === 1);
-        else if (operation === "sow") await api.sow(landId);
-        else if (operation === "harvest") await api.harvest(landId);
+        else if (operation === "sow") result = await api.sow(landId);
+        else if (operation === "harvest") result = await api.harvest(landId);
         else {
           if (!Number.isSafeInteger(quantity) || (quantity ?? 0) <= 0)
             throw new Error("INVALID_QUANTITY");
           if (operation === "purchaseSeeds")
-            await api.purchaseSeeds(landId, quantity!);
-          else await api.exchangeCrops(landId, quantity!);
+            result = await api.purchaseSeeds(landId, quantity!);
+          else result = await api.exchangeCrops(landId, quantity!);
         }
-        // Always re-read committed server state, including inventory and access.
-        return await refresh();
+        // Use the server's post-commit state; older responses require a read.
+        return await refresh(result);
       } catch (cause) {
         // A failed mutation must not leave the previously loaded state looking current.
         setData(null);
@@ -218,7 +223,12 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     },
     [api, refresh],
   );
+  const readWallet = useCallback(() => {
+    if (!api) throw new Error("AUTH_REQUIRED");
+    return api.readWallet();
+  }, [api]);
   return {
+    readWallet,
     friendAction,
     pendingFriends,
     readFriends: () => {
@@ -241,3 +251,5 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     reauthenticateUrl,
   };
 }
+
+

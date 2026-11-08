@@ -1,0 +1,9 @@
+
+ RUN  v4.1.9 /workspace/scratch/144c97612380/agent-current
+
+
+ Test Files  93 passed (93)
+      Tests  510 passed (510)
+   Start at  22:10:56
+   Duration  43.86s (transform 3.54s, setup 0ms, import 7.91s, tests 2.08s, environment 125.89s)
+

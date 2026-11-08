@@ -1,0 +1,50 @@
+$ pnpm run typecheck && pnpm -r --if-present run build
+$ pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --filter "./scripts" --if-present run typecheck
+$ tsc --build
+Scope: 4 of 9 workspace projects
+artifacts/api-server typecheck$ tsc -p tsconfig.json --noEmit
+artifacts/mockup-sandbox typecheck$ tsc -p tsconfig.json --noEmit
+artifacts/qiankun-farm typecheck$ tsc -p tsconfig.json --noEmit
+scripts typecheck$ tsc -p tsconfig.json --noEmit
+scripts typecheck: Done
+artifacts/api-server typecheck: Done
+artifacts/qiankun-farm typecheck: Done
+artifacts/mockup-sandbox typecheck: Done
+Scope: 8 of 9 workspace projects
+artifacts/mockup-sandbox build$ vite build
+artifacts/qiankun-farm build$ vite build --config vite.config.ts
+artifacts/api-server build$ node ./build.mjs
+artifacts/qiankun-farm build: vite v7.3.5 building client environment for production...
+artifacts/mockup-sandbox build: vite v7.3.5 building client environment for production...
+artifacts/qiankun-farm build: transforming...
+artifacts/mockup-sandbox build: transforming...
+artifacts/api-server build:   dist/index.mjs                       2.4mb ⚠️
+artifacts/api-server build:   dist/serverless.mjs                  2.4mb ⚠️
+artifacts/api-server build:   dist/pino-worker.mjs               153.4kb
+artifacts/api-server build:   dist/pino-file.mjs                 142.1kb
+artifacts/api-server build:   dist/pino-pretty.mjs               114.6kb
+artifacts/api-server build:   dist/thread-stream-worker.mjs        7.3kb
+artifacts/api-server build:   dist/index.mjs.map                   4.0mb
+artifacts/api-server build:   dist/serverless.mjs.map              4.0mb
+artifacts/api-server build:   dist/pino-worker.mjs.map           256.9kb
+artifacts/api-server build:   dist/pino-file.mjs.map             229.1kb
+artifacts/api-server build:   dist/pino-pretty.mjs.map           204.0kb
+artifacts/api-server build:   dist/thread-stream-worker.mjs.map   12.0kb
+artifacts/api-server build: ⚡ Done in 1343ms
+artifacts/api-server build: Done
+artifacts/mockup-sandbox build: ✓ 30 modules transformed.
+artifacts/mockup-sandbox build: rendering chunks...
+artifacts/mockup-sandbox build: computing gzip size...
+artifacts/mockup-sandbox build: dist/index.html                   4.42 kB │ gzip:  1.23 kB
+artifacts/mockup-sandbox build: dist/assets/index-D3zZPnxY.css   88.21 kB │ gzip: 14.76 kB
+artifacts/mockup-sandbox build: dist/assets/index-D4Ieq8L0.js   187.72 kB │ gzip: 59.51 kB
+artifacts/mockup-sandbox build: ✓ built in 3.99s
+artifacts/mockup-sandbox build: Done
+artifacts/qiankun-farm build: ✓ 1749 modules transformed.
+artifacts/qiankun-farm build: rendering chunks...
+artifacts/qiankun-farm build: computing gzip size...
+artifacts/qiankun-farm build: dist/public/index.html                   1.78 kB │ gzip:  0.78 kB
+artifacts/qiankun-farm build: dist/public/assets/index-BoEEwq8F.css  108.81 kB │ gzip: 19.51 kB
+artifacts/qiankun-farm build: dist/public/assets/index-fNQTPJUi.js   254.54 kB │ gzip: 80.81 kB
+artifacts/qiankun-farm build: ✓ built in 5.65s
+artifacts/qiankun-farm build: Done
