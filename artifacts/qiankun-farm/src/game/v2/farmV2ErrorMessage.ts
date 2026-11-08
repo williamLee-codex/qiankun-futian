@@ -6,6 +6,10 @@ export function farmV2ErrorMessage(code: string): string {
     )
   )
     return "登入已失效或未獲授權，請重新登入後查核原操作。";
+  if (code === "MISSION_NOT_COMPLETE")
+    return "任務尚未完成或已跨過重置時間，請更新農田確認當期進度；保留原請求紀錄。";
+  if (code === "MISSION_ALREADY_CLAIMED")
+    return "此任務獎勵已領取，請更新農田確認狀態；保留原請求紀錄。";
   if (/ENTRY_DISABLED/.test(code))
     return "農場 V2 尚未開放，請返回原農場入口。";
   if (/COMPENSATED/.test(code))
