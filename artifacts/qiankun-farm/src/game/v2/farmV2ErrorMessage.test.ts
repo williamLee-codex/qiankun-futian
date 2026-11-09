@@ -20,3 +20,14 @@ test("confirmed compensation is distinct and unknown internal errors are not exp
   expect(message("FARM_MUTATION_COMPENSATED")).toContain("已補償");
   expect(message("private server detail")).not.toContain("private");
 });
+
+test("expired mission instructs refresh while retaining the request", () => {
+  expect(message("MISSION_NOT_COMPLETE")).toContain("重置");
+  expect(message("MISSION_NOT_COMPLETE")).toContain("更新農田");
+  expect(message("MISSION_NOT_COMPLETE")).toContain("保留原請求");
+});
+test("already claimed mission explains its state without discarding the request", () => {
+  expect(message("MISSION_ALREADY_CLAIMED")).toContain("已領取");
+  expect(message("MISSION_ALREADY_CLAIMED")).toContain("保留原請求");
+});
+
