@@ -77,6 +77,15 @@ export async function runFarmV2IdempotentMutation<T>(input: {
     if (existing) {
       if (existing.action !== input.action)
         throw new Error("REQUEST_ID_ACTION_MISMATCH");
+      if (
+        existing.transactionState === "PENDING" &&
+        existing.response === null &&
+        existing.walletTransaction === null &&
+        existing.walletAmount === null &&
+        existing.action.startsWith("WORKSHOP:") &&
+        (existing.failureCode === "MISSION_NOT_COMPLETE" ||
+          existing.failureCode === "MISSION_ALREADY_CLAIMED")
+      ) throw new Error(existing.failureCode);
       if (existing.transactionState === "COMPENSATED")
         throw new Error("FARM_MUTATION_COMPENSATED");
       if (existing.transactionState === "COMPENSATING")

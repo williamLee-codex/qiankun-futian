@@ -9,6 +9,8 @@ import {
 } from "vitest";
 import { readFileSync } from "node:fs";
 
+const httpFetch = globalThis.fetch;
+
 const enabled = Boolean(
   process.env.FARM_V2_TEST_DATABASE_URL &&
   process.env.FARM_V2_PLATFORM_CHECKOUT,
@@ -1013,6 +1015,22 @@ describe.skipIf(!enabled)(
       await expect(
         mutateFarmV2Workshop({ ...input, requestId: "expired" }),
       ).rejects.toThrow("MISSION_NOT_COMPLETE");
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET mission_state=$2 WHERE user_id=$1",
+        [userId, missions],
+      );
+      await expect(
+        mutateFarmV2Workshop({ ...input, requestId: "expired" }),
+      ).rejects.toThrow("MISSION_NOT_COMPLETE");
+      expect((await storage.pool.query(
+        "select failure_code, wallet_transaction, wallet_amount from farm_v2_mutation where request_id=$1",
+        ["expired"],
+      )).rows).toEqual([{
+        failure_code: "MISSION_NOT_COMPLETE",
+        wallet_transaction: null,
+        wallet_amount: null,
+      }]);
+      expect((await storage.pool.query("select coin_balance from core_wallets")).rows[0].coin_balance).toBe(102);
     });
     it("PET-FOOD-001/PET-REFEED-001: Core food purchase and feeding settle atomically with replay protection", async () => {
       await workshopFixture();
@@ -1299,8 +1317,10 @@ describe.skipIf(!enabled)(
             ),
             loader: "tsx",
           },
+          define: { "import.meta.env.BASE_URL": JSON.stringify("/") },
           bundle: true,
           write: false,
+          outfile: "/tmp/farm-v2-workshop-app.js",
           platform: "browser",
           jsx: "automatic",
         });
@@ -1310,11 +1330,14 @@ describe.skipIf(!enabled)(
           res
             .type("html")
             .send(
-              '<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:sans-serif;max-width:720px;margin:auto;padding:12px}button,select{min-height:44px;margin:4px}article{padding:8px;overflow-wrap:anywhere}fieldset{min-width:0}</style><div id="root"></div><script src="/app.js"></script>',
+              '<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/app.css"><style>body{font-family:sans-serif;max-width:720px;margin:auto;padding:12px}button,select{min-height:44px;margin:4px}article{padding:8px;overflow-wrap:anywhere}fieldset{min-width:0}</style><div id="root"></div><script src="/app.js"></script>',
             ),
         );
         app.get("/app.js", (_req, res) =>
-          res.type("js").send(bundle.outputFiles[0].text),
+          res.type("js").send(bundle.outputFiles.find(f => f.path.endsWith(".js"))!.text),
+        );
+        app.get("/app.css", (_req, res) =>
+          res.type("css").send(bundle.outputFiles.find(f => f.path.endsWith(".css"))!.text),
         );
         app.get("/state", async (_req, res) => {
           const row = (
@@ -2167,19 +2190,63 @@ describe.skipIf(!enabled)(
       landId: 1,
       packs: 2,
     });
-    it("first purchase and simultaneous retries charge once and add seeds once", async () => {
-      const results = await Promise.allSettled([
-        purchase(seedInput()),
-        purchase(seedInput()),
-        purchase(seedInput()),
-      ]).then((results) =>
-        results.map((result) => {
+    it("HTTP seed purchase and simultaneous retries charge and grant once", async () => {
+      await storage.pool.query("delete from farm_v2_player_state where user_id=$1", [userId]);
+      const { ensureFarmV2PlayerInitialized } = await import("./farm-v2-init");
+      await ensureFarmV2PlayerInitialized({ userId });
+      vi.stubEnv("FARM_V2_ENTRY_ENABLED", "1");
+      const coreFetch = globalThis.fetch;
+      vi.stubGlobal("fetch", (url: Parameters<typeof fetch>[0], init?: RequestInit) => {
+        if (String(url) === "https://platform.test/api/replit/launch/validate") {
+          return Promise.resolve(Response.json({ userId, appId: "qiankun-futian" }));
+        }
+        return coreFetch(url, init);
+      });
+      const { default: app } = await import("../app");
+      const server = app.listen(0, "127.0.0.1");
+      let results: Awaited<ReturnType<typeof purchase>>[];
+      try {
+        await new Promise<void>((resolve, reject) => {
+          server.once("listening", resolve);
+          server.once("error", reject);
+        });
+        const address = server.address();
+        if (!address || typeof address === "string") throw new Error("HTTP fixture unavailable");
+        const send = async () => {
+          const response = await httpFetch(
+            `http://127.0.0.1:${address.port}/api/farm/v2/seeds/1/purchase`,
+            {
+              method: "POST",
+              headers: {
+                authorization: "Bearer test-launch",
+                "content-type": "application/json",
+                "x-request-id": "seed-1",
+              },
+              body: JSON.stringify({ packs: 2 }),
+            },
+          );
+          const body = await response.json();
+          expect(response.status, JSON.stringify(body)).toBe(200);
+          return body as Awaited<ReturnType<typeof purchase>>;
+        };
+        results = (await Promise.allSettled([send(), send(), send()])).map((result) => {
           if (result.status === "rejected") throw result.reason;
           return result.value;
-        }),
-      );
+        });
+      } finally {
+        server.closeAllConnections();
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+        vi.stubGlobal("fetch", coreFetch);
+        vi.stubEnv("FARM_V2_ENTRY_ENABLED", undefined);
+      }
       expect(results[0].warehouse.seeds[1]).toBe(40);
       expect(results[1]).toEqual(results[0]);
+      expect(results[2]).toEqual(results[0]);
+      const persisted = await storage.pool.query(
+        "select warehouse_state->'seeds'->>'1' as seeds from farm_v2_player_state where user_id=$1",
+        [userId],
+      );
+      expect(persisted.rows[0].seeds).toBe("40");
       expect(
         (await storage.pool.query("select coin_balance from core_wallets"))
           .rows[0].coin_balance,

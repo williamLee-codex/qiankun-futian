@@ -68,6 +68,12 @@ export function createFarmV2Api(input: {
     return new URL(normalizedPath, normalizedBase).toString();
   };
 
+  const browserOrigin = (globalThis as { location?: { origin?: string } }).location?.origin;
+  const browserResume = launchToken === "browser-session";
+  if (browserResume && (!browserOrigin || normalizedApiBase.origin !== browserOrigin))
+    throw new Error("FARM_V2_SAME_ORIGIN_SESSION_REQUIRED");
+  const authHeader = (token: string): Record<string, string> =>
+    token === "cookie-session" ? {} : { Authorization: `Bearer ${token}` };
   let revoked = false;
   let sessionPromise: Promise<string> | null = null;
   let reauthenticateUrl: string | null = null;
@@ -112,11 +118,12 @@ export function createFarmV2Api(input: {
     if (revoked) throw new FarmV2ApiError(401, "FARM_SESSION_NOT_ACTIVE");
     sessionPromise ??= (async () => {
       const response = await fetch(endpoint("farm/v2/session"), {
-        method: "POST",
-        headers: { Authorization: `Bearer ${launchToken}` },
+        method: browserResume ? "GET" : "POST",
+        headers: browserResume ? {} : { Authorization: `Bearer ${launchToken}` },
+        credentials: "same-origin",
         cache: "no-store",
         redirect: "error",
-        signal: AbortSignal.timeout(10_000),
+        signal: AbortSignal.timeout(60_000),
       });
       const result = await decode<{
         userId: string;
@@ -127,7 +134,7 @@ export function createFarmV2Api(input: {
         typeof result.userId !== "string" ||
         !result.userId ||
         typeof result.sessionToken !== "string" ||
-        !result.sessionToken.startsWith("fvs1.") ||
+        !(result.sessionToken.startsWith("fvs1.") || (normalizedApiBase.origin === browserOrigin && result.sessionToken === "cookie-session")) ||
         typeof result.reauthenticateUrl !== "string"
       )
         throw new Error("INVALID_FARM_SESSION_RESPONSE");
@@ -168,7 +175,9 @@ export function createFarmV2Api(input: {
     body?: unknown,
   ): Promise<T> {
     const token = await session();
-    const operation = JSON.stringify([path, body]);
+    // Response negotiation must not change durable operation identity: a
+    // pending purchase from the older client must keep its original key.
+    const operation = JSON.stringify([path.replace(/\?snapshot=1$/, ""), body]);
     const requestId =
       method === "POST"
         ? (pendingRequests.get(operation) ?? crypto.randomUUID())
@@ -180,7 +189,7 @@ export function createFarmV2Api(input: {
         const response = await fetch(endpoint(path), {
           method,
           headers: {
-            Authorization: `Bearer ${token}`,
+            ...authHeader(token),
             ...(requestId ? { "x-request-id": requestId } : {}),
             ...(body !== undefined
               ? { "content-type": "application/json" }
@@ -189,7 +198,8 @@ export function createFarmV2Api(input: {
           ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
           cache: "no-store",
           redirect: "error",
-          signal: AbortSignal.timeout(10_000),
+          // Backend acknowledgement 50s < host proxy 55s < browser 60s.
+          signal: AbortSignal.timeout(60_000),
         });
         const result = await decode<T>(response);
         pendingRequests.delete(operation);
@@ -208,7 +218,10 @@ export function createFarmV2Api(input: {
           ![401, 403].includes(error.status) &&
           // A 409 may describe an unresolved primary or compensation, rather
           // than a rejected operation. Preserve its identity until confirmed.
-          (error.status !== 409 || error.code === "FARM_MUTATION_COMPENSATED")
+          (error.status !== 409 ||
+            error.code === "FARM_MUTATION_COMPENSATED" ||
+            error.code === "MISSION_NOT_COMPLETE" ||
+            error.code === "MISSION_ALREADY_CLAIMED")
         ) {
           pendingRequests.delete(operation);
           savePendingRequests();
@@ -228,7 +241,7 @@ export function createFarmV2Api(input: {
         await fetch(endpoint("farm/v2/session"), {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
+            ...authHeader(token),
             "content-type": "application/json",
           },
           body: JSON.stringify({ action: "revoke" }),
@@ -283,16 +296,21 @@ export function createFarmV2Api(input: {
         "POST",
         { kind, landId },
       ),
+    readWallet: () => request<{ coins: number }>("farm/v2/wallet", "GET"),
     readState: () => request<FarmV2State>("farm/v2/state", "GET"),
     sow: (landId: number) =>
-      request<FarmV2MutationResult>(`farm/v2/lands/${landId}/sow`, "POST"),
+      request<FarmV2MutationResult>(`farm/v2/lands/${landId}/sow?snapshot=1`, "POST"),
     harvest: (landId: number) =>
-      request<FarmV2MutationResult>(`farm/v2/lands/${landId}/harvest`, "POST"),
+      request<FarmV2MutationResult>(`farm/v2/lands/${landId}/harvest?snapshot=1`, "POST"),
     purchaseSeeds: (landId: number, packs: number) =>
-      request<unknown>(`farm/v2/seeds/${landId}/purchase`, "POST", { packs }),
+      request<unknown>(`farm/v2/seeds/${landId}/purchase?snapshot=1`, "POST", { packs }),
     exchangeCrops: (landId: number, cropQuantity: number) =>
-      request<unknown>(`farm/v2/crops/${landId}/exchange`, "POST", {
+      request<unknown>(`farm/v2/crops/${landId}/exchange?snapshot=1`, "POST", {
         cropQuantity,
       }),
   };
 }
+
+
+
+

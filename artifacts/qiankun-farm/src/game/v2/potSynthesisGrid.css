@@ -1,0 +1,65 @@
+.farm-v2-operation-dialog:has(.pot-synthesis){width:min(1280px,calc(100vw - 24px));padding:20px;font-family:system-ui,"Noto Sans TC",sans-serif}.pot-synthesis{font-family:system-ui,"Noto Sans TC",sans-serif}.pot-synthesis>header{display:flex;justify-content:space-between;gap:16px;align-items:center;margin:8px 0 16px}.pot-synthesis h3{font-size:24px;font-weight:700}.pot-synthesis p{font-size:14px;line-height:1.7}.pot-synthesis-layout{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:20px}.pot-grid-scroll{overflow:auto;min-width:0}.pot-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;min-width:560px}.pot-grid-heading{text-align:center;font-size:13px;padding:4px}.pot-grid button.pot-grid-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;margin:0;padding:4px;background:#14251f;border:1px solid;border-radius:9px;cursor:pointer;position:relative;gap:1px}.pot-grid-cell img{object-fit:contain;width:100%;height:clamp(50px,8.5vh,82px)}.pot-grid-cell span{font-size:12px;white-space:nowrap}.pot-grid-cell small{font-size:11px;color:#c9d3c6}.pot-grid-cell.selected{outline:2px solid #ffe8a3;outline-offset:1px;background:#344535!important}.pot-grid-cell:focus-visible{outline:3px solid #fff;outline-offset:1px}.pot-recipe{border:1px solid #7e8661;border-radius:14px;padding:16px;background:linear-gradient(145deg,#263a2c,#14261f);display:flex;flex-direction:column;align-items:center;gap:9px}.pot-result-image{object-fit:contain;width:128px;height:170px;filter:drop-shadow(0 0 12px #dac47b33)}.pot-recipe h4{font-size:19px;font-weight:700}.pot-recipe h5{align-self:flex-start;font-weight:600}.pot-requirements{width:100%;list-style:none;display:flex;flex-direction:column;gap:8px;margin:0;padding:0}.pot-requirements li{display:flex;justify-content:space-between;gap:8px;padding:8px;border-radius:6px;background:#0003;font-size:14px}.pot-requirements .missing{color:#ffc0b5}.pot-requirements .enough{color:#c4e9b6}.pot-display-choice{display:flex;align-items:flex-start;gap:8px;font-size:13px}.pot-display-choice input{margin-top:4px}.pot-recipe .pot-craft-button{width:100%;font-weight:700;background:#b69a51;color:#11221b;border-color:#f0d98e}.pot-recipe small{font-size:11px;color:#c7d2c3}.pot-owned-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #fff2}.pot-synthesis>details{margin-top:14px}.pot-recipe.working .pot-result-image{animation:pot-convergence 1.2s ease-in-out infinite}@keyframes pot-convergence{50%{transform:scale(1.06);filter:drop-shadow(0 0 25px #f1d581)}}@media(max-width:760px){.pot-synthesis-layout{grid-template-columns:1fr}.pot-synthesis>header{align-items:flex-start;flex-direction:column;gap:4px}.pot-grid{min-width:560px}.pot-grid-cell img{height:76px}.pot-recipe{margin-top:4px}.pot-synthesis h3{font-size:21px}}@media(prefers-reduced-motion:reduce){.pot-recipe.working .pot-result-image{animation:none}}
+
+
+/* Explicit thumbnail dimensions avoid intrinsic-image/percentage-height cycles.
+   Overflow stays scrollable at small window heights and browser zoom. */
+@media(min-width:761px){
+.farm-v2-operation-dialog:has(.pot-synthesis){width:min(1280px,calc(100vw - 16px));height:auto;max-height:calc(100dvh - 16px);padding:12px;display:block;overflow:auto;overscroll-behavior:contain;font-size:14px;line-height:1.35;scrollbar-gutter:stable}
+.farm-v2-operation-dialog:has(.pot-synthesis)>h2{font-size:18px;line-height:24px;margin:0 0 4px}
+.farm-v2-operation-dialog:has(.pot-synthesis)>section{display:block;min-height:0}
+.farm-v2-operation-dialog:has(.pot-synthesis) nav{gap:4px;margin-bottom:6px}
+.farm-v2-operation-dialog:has(.pot-synthesis) nav button{font:inherit;min-height:32px;padding:4px 12px;margin:0}
+.farm-v2-operation-dialog:has(.pot-synthesis) fieldset{display:block;min-width:0;border:0;margin:0;padding:0}
+.farm-v2-operation-dialog .pot-synthesis{--pot-row:clamp(50px,calc((100dvh - 235px)/6),86px);display:block;min-width:0}
+.farm-v2-operation-dialog .pot-synthesis>header{margin:0 0 6px;gap:12px}
+.farm-v2-operation-dialog .pot-synthesis h3{font-size:20px;line-height:26px;margin:0}
+.farm-v2-operation-dialog .pot-synthesis p{font-size:13px;line-height:1.4;margin:0}
+.farm-v2-operation-dialog .pot-synthesis-layout{display:grid;height:auto;align-items:start;gap:12px;grid-template-columns:minmax(0,1fr) 280px}
+.farm-v2-operation-dialog .pot-grid-scroll{height:auto;overflow:auto;min-width:0}
+.farm-v2-operation-dialog .pot-grid{height:auto;min-width:0;grid-template-rows:18px repeat(6,var(--pot-row));gap:3px}
+.farm-v2-operation-dialog .pot-grid-heading{font-size:12px;line-height:18px;padding:0}
+.farm-v2-operation-dialog .pot-grid button.pot-grid-cell{height:var(--pot-row);min-height:0;max-height:var(--pot-row);padding:2px;margin:0;gap:0;overflow:hidden}
+.farm-v2-operation-dialog .pot-grid-cell img{flex:none;min-height:0;max-height:calc(var(--pot-row) - 34px);width:100%;height:calc(var(--pot-row) - 34px);object-fit:contain}
+.farm-v2-operation-dialog .pot-grid-cell span{font-size:12px;line-height:16px;flex:none}
+.farm-v2-operation-dialog .pot-grid-cell small{font-size:11px;line-height:14px;flex:none}
+.farm-v2-operation-dialog .pot-recipe{height:auto;overflow:visible;padding:10px;gap:6px}
+.farm-v2-operation-dialog .pot-result-image{width:160px;height:clamp(80px,17dvh,160px);max-height:none;flex:none}
+.farm-v2-operation-dialog .pot-recipe h4{font-size:16px;line-height:22px;margin:0}
+.farm-v2-operation-dialog .pot-recipe h5{font-size:14px;line-height:20px;margin:0}
+.farm-v2-operation-dialog .pot-requirements{gap:4px}
+.farm-v2-operation-dialog .pot-requirements li{font-size:13px;line-height:18px;padding:5px}
+.farm-v2-operation-dialog .pot-recipe button{font:inherit;min-height:36px;padding:5px 8px;margin:0;flex:none}
+.farm-v2-operation-dialog .pot-synthesis>details{margin:6px 0 0;font-size:13px;line-height:20px}
+}
+
+.pot-effects{width:100%;padding:6px 8px;border:1px solid #a9b67b55;border-radius:7px;background:#b8cf8c0c}
+.pot-effects>strong{font-size:13px;line-height:18px;color:#eedca7}
+.pot-effects>small{display:block;line-height:1.35}
+
+/* Grades run vertically; the selected illustration and recipe sit side by side. */
+.pot-grid{grid-template-columns:36px repeat(6,minmax(0,1fr))}
+.pot-grade-heading{display:flex;align-items:center;justify-content:center;font-size:12px;color:#eedca7}
+.pot-recipe-info{display:flex;flex-direction:column;gap:6px;width:100%;min-width:0}
+@media(min-width:761px){
+.farm-v2-operation-dialog .pot-synthesis{--pot-row:clamp(44px,calc((100dvh - 215px)/7),76px)}
+.farm-v2-operation-dialog .pot-synthesis-layout{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px}
+.farm-v2-operation-dialog .pot-grid{grid-template-columns:30px repeat(6,minmax(0,1fr));grid-template-rows:20px repeat(7,var(--pot-row))}
+.farm-v2-operation-dialog .pot-grid-heading{font-size:11px;white-space:nowrap}
+.farm-v2-operation-dialog .pot-grid-cell img{height:calc(var(--pot-row) - 20px);max-height:calc(var(--pot-row) - 20px)}
+.farm-v2-operation-dialog .pot-recipe{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);align-items:center;gap:10px;padding:10px}
+.farm-v2-operation-dialog .pot-result-image{width:100%;height:clamp(220px,58dvh,480px);object-fit:contain;max-width:100%}
+.farm-v2-operation-dialog .pot-effects{padding:5px 6px}
+.farm-v2-operation-dialog .pot-recipe-info{gap:5px}
+.farm-v2-operation-dialog .pot-recipe-info>small{line-height:1.25}
+}
+@media(max-width:760px){
+.pot-grid{min-width:510px}
+.pot-recipe-info{gap:8px}
+}
+
+/* Both columns share the catalogue's heading, seven rows and seven gaps. */
+@media(min-width:761px){
+.farm-v2-operation-dialog .pot-recipe{box-sizing:border-box;height:calc(41px + var(--pot-row) * 7);min-height:0;align-items:stretch}
+.farm-v2-operation-dialog .pot-result-image{height:100%;min-height:0;max-height:100%;align-self:stretch}
+.farm-v2-operation-dialog .pot-recipe-info{max-height:100%;min-height:0;overflow:auto;justify-content:safe center}
+}

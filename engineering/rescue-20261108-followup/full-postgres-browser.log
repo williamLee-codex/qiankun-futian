@@ -1,0 +1,78 @@
+$ vitest run && pnpm run test:node
+
+ RUN  v4.1.9 /workspace/scratch/144c97612380/farm
+
+▲ [WARNING] "import.meta" is not available with the "iife" output format and will be empty [empty-import-meta]
+
+    artifacts/qiankun-farm/src/game/v2/PotSynthesisGrid.tsx:11:38:
+      11 │ ...or = (s: Selection) => `${import.meta.env.BASE_URL ?? "/"}image...
+         ╵                              ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+✘ [ERROR] Cannot import "artifacts/qiankun-farm/src/game/v2/potSynthesisGrid.css" into a JavaScript file without an output path configured
+
+    artifacts/qiankun-farm/src/game/v2/PotSynthesisGrid.tsx:5:7:
+      5 │ import "./potSynthesisGrid.css";
+        ╵        ~~~~~~~~~~~~~~~~~~~~~~~~
+
+ ❯ artifacts/api-server/src/lib/farm-v2-wallet-saga.integration.test.ts (47 tests | 2 failed) 17971ms
+     × desktop/mobile workshop clicks settle real isolated PostgreSQL assets (test identity only) 1015ms
+     × approved scene: desktop/mobile real API sow, harvest, hotspots and bounded dialogs 1188ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  artifacts/api-server/src/lib/farm-v2-wallet-saga.integration.test.ts > durable Farm/Core transaction integration on isolated PostgreSQL > desktop/mobile workshop clicks settle real isolated PostgreSQL assets (test identity only)
+Error: Build failed with 1 error:
+artifacts/qiankun-farm/src/game/v2/PotSynthesisGrid.tsx:5:7: ERROR: Cannot import "artifacts/qiankun-farm/src/game/v2/potSynthesisGrid.css" into a JavaScript file without an output path configured
+ ❯ failureErrorWithLog node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:1467:15
+ ❯ node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:926:25
+ ❯ node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:878:52
+ ❯ buildResponseToResult node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:924:7
+ ❯ node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:951:16
+ ❯ responseCallbacks.<computed> node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:603:9
+ ❯ handleIncomingPacket node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:658:12
+ ❯ Socket.readFromStdout node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:581:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  artifacts/api-server/src/lib/farm-v2-wallet-saga.integration.test.ts > durable Farm/Core transaction integration on isolated PostgreSQL > approved scene: desktop/mobile real API sow, harvest, hotspots and bounded dialogs
+Error: browserType.launch: Target page, context or browser has been closed
+Browser logs:
+
+<launching> /usr/bin/chromium --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --no-sandbox --user-data-dir=/tmp/playwright_chromiumdev_profile-1NVI8U --remote-debugging-pipe --no-startup-window
+<launched> pid=487
+[pid=487][err] /usr/bin/chromium: 9: [: 5222477824: unexpected operator
+[pid=487][err] [487:487:1108/222654.534840:FATAL:chrome/browser/process_singleton_posix.cc:297] Check failed: . socket() failed: Operation not permitted (1)
+[pid=487][err] [1108/222654.535865:ERROR:third_party/crashpad/crashpad/util/linux/scoped_ptrace_attach.cc:27] ptrace: Operation not permitted (1)
+Call log:
+[2m  - <launching> /usr/bin/chromium --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --no-sandbox --user-data-dir=/tmp/playwright_chromiumdev_profile-1NVI8U --remote-debugging-pipe --no-startup-window[22m
+[2m  - <launched> pid=487[22m
+[2m  - [pid=487][err] /usr/bin/chromium: 9: [: 5222477824: unexpected operator[22m
+[2m  - [pid=487][err] [487:487:1108/222654.534840:FATAL:chrome/browser/process_singleton_posix.cc:297] Check failed: . socket() failed: Operation not permitted (1)[22m
+[2m  - [pid=487][err] [1108/222654.535865:ERROR:third_party/crashpad/crashpad/util/linux/scoped_ptrace_attach.cc:27] ptrace: Operation not permitted (1)[22m
+[2m  - [pid=487] <gracefully close start>[22m
+[2m  - [pid=487] <kill>[22m
+[2m  - [pid=487] <will force kill>[22m
+[2m  - [pid=487] <process did exit: exitCode=null, signal=SIGABRT>[22m
+[2m  - [pid=487] starting temporary directories cleanup[22m
+[2m  - [pid=487] finished temporary directories cleanup[22m
+[2m  - [pid=487] <gracefully close end>[22m
+
+ ❯ artifacts/api-server/src/lib/farm-v2-wallet-saga.integration.test.ts:1560:40
+    1558|         );
+    1559|         const port = (server.address() as import("node:net").AddressIn…
+    1560|         const browser = await chromium.launch({
+       |                                        ^
+    1561|           executablePath: "/usr/bin/chromium",
+    1562|           headless: true,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 54 passed | 1 skipped (56)
+      Tests  2 failed | 266 passed | 1 skipped (269)
+   Start at  22:26:38
+   Duration  31.67s (transform 2.50s, setup 0ms, import 7.68s, tests 56.02s, environment 1.67s)
+
+[ELIFECYCLE] Test failed. See above for more details.
