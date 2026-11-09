@@ -17,6 +17,7 @@ router.get("/healthz/ready", async (_req, res) => {
     process.env.PLATFORM_BASE_URL && process.env.REPLIT_APP_SHARED_SECRET,
   );
   if (!configured) {
+    console.warn("FARM_READINESS_CONFIGURATION_MISSING");
     res.status(503).json({ status: "not_ready" });
     return;
   }
@@ -41,10 +42,21 @@ router.get("/healthz/ready", async (_req, res) => {
       AND NOT has_table_privilege(current_user,to_regclass('public.core_wallet_ledger'),'INSERT,UPDATE,DELETE')
       AS ready`);
     const ready = result.rows[0]?.ready === true;
+    if (!ready) console.warn("FARM_READINESS_DATABASE_REQUIREMENTS_FAILED");
     res
       .status(ready ? 200 : 503)
       .json({ status: ready ? "ready" : "not_ready" });
-  } catch {
+  } catch (error) {
+    const code = (error as { code?: unknown } | null)?.code;
+    const category =
+      code === "SELF_SIGNED_CERT_IN_CHAIN" ||
+      code === "UNABLE_TO_VERIFY_LEAF_SIGNATURE" ||
+      code === "UNABLE_TO_GET_ISSUER_CERT_LOCALLY"
+        ? "tls_verification"
+        : code === "28P01" || code === "28000"
+          ? "authentication"
+          : "other";
+    console.warn("FARM_READINESS_DATABASE_QUERY_FAILED", { category });
     res.status(503).json({ status: "not_ready" });
   }
 });
