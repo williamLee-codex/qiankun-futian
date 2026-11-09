@@ -47,16 +47,30 @@ router.get("/healthz/ready", async (_req, res) => {
       .status(ready ? 200 : 503)
       .json({ status: ready ? "ready" : "not_ready" });
   } catch (error) {
-    const code = (error as { code?: unknown } | null)?.code;
-    const category =
-      code === "SELF_SIGNED_CERT_IN_CHAIN" ||
-      code === "UNABLE_TO_VERIFY_LEAF_SIGNATURE" ||
-      code === "UNABLE_TO_GET_ISSUER_CERT_LOCALLY"
-        ? "tls_verification"
-        : code === "28P01" || code === "28000"
-          ? "authentication"
-          : "other";
-    console.warn("FARM_READINESS_DATABASE_QUERY_FAILED", { category });
+    const knownCodes = new Set([
+      "SELF_SIGNED_CERT_IN_CHAIN", "DEPTH_ZERO_SELF_SIGNED_CERT",
+      "UNABLE_TO_VERIFY_LEAF_SIGNATURE", "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+      "CERT_HAS_EXPIRED", "ERR_TLS_CERT_ALTNAME_INVALID",
+      "ENETUNREACH", "EHOSTUNREACH", "ECONNREFUSED", "ECONNRESET",
+      "ETIMEDOUT", "ENOTFOUND", "EAI_AGAIN", "ENOENT",
+      "28P01", "28000", "08001", "08006", "42501", "42P01", "42883",
+      "57014", "53300", "57P03", "3D000", "42704", "22023", "08P01",
+    ]);
+    const codes = new Set<string>();
+    const pending: unknown[] = [error];
+    for (let inspected = 0; pending.length > 0 && inspected < 12; inspected++) {
+      const item = pending.shift();
+      if (!item || typeof item !== "object") continue;
+      const detail = item as { code?: unknown; cause?: unknown; errors?: unknown };
+      if (typeof detail.code === "string" && knownCodes.has(detail.code))
+        codes.add(detail.code);
+      if (detail.cause) pending.push(detail.cause);
+      if (Array.isArray(detail.errors)) pending.push(...detail.errors.slice(0, 6));
+    }
+    console.warn("FARM_READINESS_DATABASE_QUERY_FAILED", {
+      codes: [...codes],
+      timedOut: error instanceof Error && /^timeout exceeded when trying to connect$/i.test(error.message),
+    });
     res.status(503).json({ status: "not_ready" });
   }
 });
