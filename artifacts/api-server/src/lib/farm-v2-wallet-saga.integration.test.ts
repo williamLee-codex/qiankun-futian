@@ -1015,6 +1015,22 @@ describe.skipIf(!enabled)(
       await expect(
         mutateFarmV2Workshop({ ...input, requestId: "expired" }),
       ).rejects.toThrow("MISSION_NOT_COMPLETE");
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET mission_state=$2 WHERE user_id=$1",
+        [userId, missions],
+      );
+      await expect(
+        mutateFarmV2Workshop({ ...input, requestId: "expired" }),
+      ).rejects.toThrow("MISSION_NOT_COMPLETE");
+      expect((await storage.pool.query(
+        "select failure_code, wallet_transaction, wallet_amount from farm_v2_mutation where request_id=$1",
+        ["expired"],
+      )).rows).toEqual([{
+        failure_code: "MISSION_NOT_COMPLETE",
+        wallet_transaction: null,
+        wallet_amount: null,
+      }]);
+      expect((await storage.pool.query("select coin_balance from core_wallets")).rows[0].coin_balance).toBe(102);
     });
     it("PET-FOOD-001/PET-REFEED-001: Core food purchase and feeding settle atomically with replay protection", async () => {
       await workshopFixture();

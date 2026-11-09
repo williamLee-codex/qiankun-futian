@@ -18,7 +18,7 @@ import { decodeFarmPetState, encodeFarmPetState } from "./farm-v2-json-codecs";
 import { farmAuthorityContext } from "./farm-v2-authority-context";
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { farmV2PlayerStateTable, farmV2MutationTable } from "@workspace/db";
 import {
   planWorkshopMutation,
@@ -197,11 +197,33 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
           ...snapshots,
         };
       } else if (input.command.kind === "claimMission") {
-        const claimed = claimMissionReward(
-          player.missionState as MissionState,
-          input.command.missionId,
-          now,
-        );
+        let claimed: ReturnType<typeof claimMissionReward>;
+        try {
+          claimed = claimMissionReward(
+            player.missionState as MissionState,
+            input.command.missionId,
+            now,
+          );
+        } catch (error) {
+          if (!(error instanceof Error) ||
+              !["MISSION_NOT_COMPLETE", "MISSION_ALREADY_CLAIMED"].includes(error.message)) {
+            throw error;
+          }
+          // Preserve the definitive pre-wallet rejection outside the transaction
+          // that will roll back. A request with a wallet plan requires recovery.
+          const rejected = await journalDb.update(farmV2MutationTable)
+            .set({ failureCode: error.message, updatedAt: new Date() })
+            .where(and(
+              where,
+              eq(farmV2MutationTable.transactionState, "PENDING"),
+              isNull(farmV2MutationTable.walletTransaction),
+              isNull(farmV2MutationTable.walletAmount),
+              isNull(farmV2MutationTable.response),
+            ))
+            .returning({ requestId: farmV2MutationTable.requestId });
+          if (rejected.length !== 1) throw new Error("MUTATION_RECOVERY_REQUIRED");
+          throw error;
+        }
         const state = structuredClone(workshopState(before));
         state.materials[claimed.reward.materialId] +=
           claimed.reward.materialQuantity;

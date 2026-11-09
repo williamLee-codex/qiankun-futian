@@ -223,6 +223,24 @@ describe("Farm V2 API contract", () => {
     },
   );
 
+  it.each(["MISSION_NOT_COMPLETE", "MISSION_ALREADY_CLAIMED"])(
+    "removes a definitively rejected mission from retryable requests: %s",
+    async (code) => {
+      vi.stubGlobal("fetch", fetchWithSession({
+        ok: false,
+        status: 409,
+        json: async () => ({ error: code }),
+      }));
+      const api = createFarmV2Api({
+        baseUrl: "https://example.test/api",
+        launchToken: "token",
+      });
+      await expect(api.workshop({ kind: "claimMission", missionId: "MISSION_D01" }))
+        .rejects.toMatchObject({ code });
+      expect(api.pendingWorkshop()).toEqual([]);
+    },
+  );
+
   it("retains only non-secret pending request IDs across a platform re-login", async () => {
     const values = new Map<string, string>();
     vi.stubGlobal("sessionStorage", {
