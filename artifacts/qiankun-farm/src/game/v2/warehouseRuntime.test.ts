@@ -24,6 +24,7 @@ describe('Farm V2 canonical economy runtime', () => {
       wallet: { coins: 100, crystals: 100 },
       landId: 6,
       packs: 1,
+      unlocked: true,
     })).toThrow('SEED_NOT_PURCHASABLE');
   });
 
@@ -40,12 +41,20 @@ describe('Farm V2 canonical economy runtime', () => {
     ]);
   });
 
-  it('allows seed purchase before its land is unlocked', () => {
+  it('requires the land to be unlocked before buying seed packs', () => {
+    expect(() => buySeedPacks({
+      warehouse: createEmptyFarmWarehouse(),
+      wallet: { coins: 3, crystals: 0 },
+      landId: 5,
+      packs: 2,
+      unlocked: false,
+    })).toThrow('FARM_SEED_LAND_LOCKED');
     const result = buySeedPacks({
       warehouse: createEmptyFarmWarehouse(),
       wallet: { coins: 3, crystals: 0 },
       landId: 5,
       packs: 2,
+      unlocked: true,
     });
     expect(result.seedsAdded).toBe(6);
     expect(result.wallet.coins).toBe(1);

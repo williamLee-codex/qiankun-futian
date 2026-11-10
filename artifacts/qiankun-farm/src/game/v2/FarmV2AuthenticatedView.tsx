@@ -413,7 +413,7 @@ export function FarmV2AuthenticatedView(props: {
               const canHarvest = plot.unlocked && plot.state === "ready";
               const exchangeUnit = CROP_DATA[plot.cropId].sellQty;
               const canExchange = plot.unlocked && crops >= exchangeUnit;
-              const canPurchase = plot.id < 5;
+              const canPurchase = plot.unlocked && plot.id < 5;
               return (
                 <article key={plot.id}>
                   <h3>{plot.name}</h3>

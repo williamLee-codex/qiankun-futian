@@ -26,10 +26,12 @@ export function buySeedPacks(input: {
   wallet: Wallet;
   landId: FarmLandId;
   packs: number;
+  unlocked: boolean;
 }): { warehouse: FarmWarehouse; wallet: Wallet; seedsAdded: number } {
   if (!Number.isInteger(input.packs) || input.packs <= 0) throw new Error('INVALID_PACK_COUNT');
   const pack = getSeedPack(input.landId);
   if (!pack.purchasable) throw new Error('SEED_NOT_PURCHASABLE');
+  if (!input.unlocked) throw new Error('FARM_SEED_LAND_LOCKED');
 
   const cost = pack.price * input.packs;
   if (input.wallet[pack.currency] < cost) throw new Error('INSUFFICIENT_CURRENCY');

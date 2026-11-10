@@ -1,5 +1,6 @@
 /** Presentation only: do not reinterpret an uncertain transaction as failed. */
 export function farmV2ErrorMessage(code: string): string {
+  if (code === "FARM_SEED_LAND_LOCKED") return "請先解鎖這塊田，再購買種子。";
   if (
     /AUTH_REQUIRED|UNAUTHORIZED|NOT_AUTHORIZED|FORBIDDEN|SESSION|LAUNCH_TOKEN|LOGIN|TOKEN_EXPIRED/.test(
       code,

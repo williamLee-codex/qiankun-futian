@@ -1,5 +1,5 @@
-import { eq } from "drizzle-orm";
-import { farmV2PlayerStateTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
+import { farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
 import { getSeedPack } from "../../../qiankun-farm/src/game/v2/canonicalEconomyData";
 import type { FarmLandId } from "../../../qiankun-farm/src/game/v2/canonicalLandData";
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
@@ -87,6 +87,12 @@ export async function purchaseFarmV2SeedPacks(input: {
             .for("update")
             .limit(1);
           if (!player) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
+
+          const [land] = await tx.select({ unlocked: farmV2LandTable.accessActive })
+            .from(farmV2LandTable)
+            .where(and(eq(farmV2LandTable.userId, input.userId), eq(farmV2LandTable.landId, landId)))
+            .limit(1);
+          if (!land?.unlocked) throw new Error("FARM_SEED_LAND_LOCKED");
 
           const cost = pack.price * input.packs;
           await applyFarmV2WalletStep({
