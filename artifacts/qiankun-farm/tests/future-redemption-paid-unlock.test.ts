@@ -62,3 +62,33 @@ test("thresholds unlock only qualified paid fields", () => {
     }
   }
 });
+
+
+import { createFarmPetState, reconcileMilestonePets } from "../src/game/v2/petRuntime";
+import { createFarmerState, reconcileFarmerEntitlement } from "../src/game/v2/farmerRuntime";
+
+test("recharge milestones grant both pets and farmer at exact thresholds", () => {
+  for (const amount of [0, 449, 450, 798, 799, 998, 999, 4000]) {
+    const pets = reconcileMilestonePets({
+      state: createFarmPetState(),
+      effectivePaidCrystals: amount,
+      now: 1000,
+    });
+    const farmer = reconcileFarmerEntitlement(createFarmerState(), amount);
+    assert.equal(pets.owned.has("噬時諦聽"), amount >= 450, `450 threshold at ${amount}`);
+    assert.equal(pets.owned.has("乾坤麒麟"), amount >= 799, `799 threshold at ${amount}`);
+    assert.equal(farmer.entitled, amount >= 999, `999 threshold at ${amount}`);
+  }
+});
+
+test("repeated paid qualification does not duplicate pets or reset farmer settings", () => {
+  const initialPets = createFarmPetState();
+  const first = reconcileMilestonePets({ state: initialPets, effectivePaidCrystals: 4000, now: 1000 });
+  const second = reconcileMilestonePets({ state: first, effectivePaidCrystals: 4000, now: 1000 });
+  assert.equal(second.owned.size, first.owned.size);
+  const initialFarmer = createFarmerState();
+  initialFarmer.enabledByLand[2] = false;
+  const farmer = reconcileFarmerEntitlement(initialFarmer, 4000);
+  assert.equal(farmer.entitled, true);
+  assert.equal(farmer.enabledByLand[2], false);
+});
