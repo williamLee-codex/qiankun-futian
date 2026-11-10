@@ -106,9 +106,10 @@ export async function withFarmAuthority<T>(
   // Internal per-operation correlation ID; no user, token or request ID in logs.
   const operationId = randomUUID();
   const client = await measureFarmV2Stage("authority_connect", () => farmAuthorityPool.connect(), operationId);
-  client.on("error", () => {
-    /* Core barrier remains until local fencing/settlement. */
-  });
+  let connectionFailed = false;
+  const markConnectionFailed = () => { connectionFailed = true; };
+  client.on("error", markConnectionFailed);
+  let reusable = false;
   let registered = false;
   let originalFailure = false;
   try {
@@ -153,6 +154,16 @@ export async function withFarmAuthority<T>(
           "update farm_v2_authorization_attempt set core_settled_at=now() where id=$1",
           [operationId],
         );
+        if (!originalFailure && !connectionFailed) {
+          // A failed unlock must retire the client without changing the settled result.
+          try {
+            const unlocked = await client.query<{ unlocked: boolean }>(
+              "select pg_advisory_unlock(hashtextextended($1,0)) as unlocked",
+              [farmAuthorityLockKey(input.userId)],
+            );
+            reusable = unlocked.rows[0]?.unlocked === true;
+          } catch { /* Releasing a destroyed connection clears its session locks. */ }
+        }
       }
     } catch (cleanupFailure) {
       // Record cleanup failures even when no domain error preceded them.
@@ -169,8 +180,8 @@ export async function withFarmAuthority<T>(
       } catch { /* Logging must never replace the primary failure. */ }
       if (!originalFailure) throw cleanupFailure;
     } finally {
-      // Destroy rather than pooling a connection that might retain a session lock.
-      client.release(true);
+      client.removeListener("error", markConnectionFailed);
+      client.release(!reusable || connectionFailed);
     }
   }
 }

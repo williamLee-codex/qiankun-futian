@@ -7,15 +7,20 @@ import vm from 'node:vm';
 const ts = createRequire(import.meta.url)('typescript');
 const source = readFileSync(new URL('./farm-v2-authority.ts', import.meta.url), 'utf8');
 function runScenario(options = {}) {
-  const { primary, cleanup, beginStatus, transportFailure, lockFailure, registerFailure, connectFailure } = options;
+  const { primary, cleanup, beginStatus, transportFailure, lockFailure, registerFailure, connectFailure, unlockFailure } = options;
   const hasPrimary = Object.hasOwn(options, 'primary');
   const events = [];
   const logs = [];
-  const client = { on() {}, query: async sql => {
+  const client = { on() {}, removeListener() {}, query: async sql => {
     if (sql.includes('pg_advisory_lock')) { events.push('lock'); if (lockFailure) throw lockFailure; }
     else if (sql.startsWith('insert')) { events.push('register'); if (registerFailure) throw registerFailure; }
     else if (sql.includes("state='SETTLED'")) { events.push('settle'); if (cleanup) throw cleanup; }
     else if (sql.includes('core_settled_at')) events.push('core-settled');
+    else if (sql.includes('pg_advisory_unlock')) {
+      events.push('unlock');
+      if (unlockFailure) throw unlockFailure;
+      return { rows: [{ unlocked: true }] };
+    }
     else throw Error('Unexpected SQL in dedicated authority client');
     return {};
   }, release: x => events.push(['release', x]) };
@@ -59,7 +64,7 @@ test('cleanup-only failure propagates', async () => {
 test('success waits for Core settlement and destroys the lock session', async () => {
   const { events, invoke } = runScenario();
   assert.deepEqual(await invoke(), { ok: true });
-  assert.deepEqual(events, ['lock','register','begin','domain','settle','end','core-settled',['release',true]]);
+  assert.deepEqual(events, ['lock','register','begin','domain','settle','end','core-settled','unlock',['release',false]]);
 });
 test('null primary rejection is not masked by cleanup error', async () => {
   const { events, invoke } = runScenario({ primary: null, cleanup: Error('cleanup') });
@@ -136,4 +141,10 @@ test('SQLSTATE 53300 at pool connection never acquires lock or calls Core', asyn
   const { events, invoke } = runScenario({ connectFailure: failure });
   await assert.rejects(invoke(), e => e === failure && e.code === '53300');
   assert.deepEqual(events, []);
+});
+
+test('failed unlock destroys the client and preserves the settled response', async () => {
+  const { events, invoke } = runScenario({ unlockFailure: Error('unlock failed') });
+  assert.equal((await invoke()).ok, true);
+  assert.deepEqual(events.slice(-2), ['unlock', ['release', true]]);
 });
