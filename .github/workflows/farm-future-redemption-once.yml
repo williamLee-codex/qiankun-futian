@@ -1,0 +1,29 @@
+name: Farm future redemption entitlement regression (one-shot)
+on:
+  push:
+    branches:
+      - test/farm-future-redemption-unlock-20261110
+    paths:
+      - .github/workflows/farm-future-redemption-once.yml
+permissions:
+  contents: read
+concurrency:
+  group: farm-future-redemption-once
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify paid-land, pets, farmer and refund regression only
+        run: pnpm exec vitest run artifacts/qiankun-farm/tests/future-redemption-paid-unlock.test.ts
