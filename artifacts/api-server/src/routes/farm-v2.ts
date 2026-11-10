@@ -1,3 +1,4 @@
+import { farmAuthorityContext } from "../lib/farm-v2-authority-context";
 import { runFarmV2AuthorizedJson } from "../lib/farm-v2-authorized-json";
 import { timeFarmV2Function } from "../lib/farm-v2-stage-timing";
 import { completeFarmV2Mutation } from "../lib/farm-v2-mutation-snapshot";
@@ -32,6 +33,20 @@ const reconcileFarmV2PaidAccessFromCore = timeFarmV2Function("paid_access", rawr
 const settleFarmV2Farmer = timeFarmV2Function("snapshot_settle", rawsettleFarmV2Farmer);
 const ensureFarmV2PlayerInitialized = timeFarmV2Function("snapshot_read", rawensureFarmV2PlayerInitialized);
 const router: IRouter = Router();
+const paidRefreshRequestId = "farm-v2:core-paid-refresh:v1";
+
+async function hasRecentPaidQualification(userId: string) {
+  const result = await pool.query(
+    `select 1 from farm_v2_mutation
+      where user_id=$1 and request_id=$2
+        and action='paid-access:core-authoritative'
+        and transaction_state='COMPLETED' and response is not null
+        and updated_at between now() - interval '6 hours' and now()`,
+    [userId, paidRefreshRequestId],
+  );
+  return result.rows.length === 1;
+}
+
 async function mutationResponse<T extends object>(
   includeSnapshot: boolean, userId: string, result: T,
 ) {
@@ -57,7 +72,7 @@ router.use("/farm/v2", (req, res, next) => {
   res.status(503).json({ error: "FARM_V2_ENTRY_DISABLED" });
 });
 const authorizedRoute =
-  (handler: RequestHandler): RequestHandler =>
+  (handler: RequestHandler, useRecentQualification = false): RequestHandler =>
   async (req, res, next) => {
     try {
       const requestId =
@@ -65,6 +80,11 @@ const authorizedRoute =
         (req.method === "GET" ? randomUUID() : "");
       if (!/^[A-Za-z0-9._:-]{1,120}$/.test(requestId))
         throw new Error("REQUEST_ID_REQUIRED");
+      if (useRecentQualification &&
+          await hasRecentPaidQualification(String(res.locals.authenticatedUserId))) {
+        await handler(req, res, next);
+        return;
+      }
       await runFarmV2AuthorizedJson(res, next, async (deferredNext) => {
       await withFarmAuthority(
         {
@@ -272,13 +292,13 @@ router.post(
         res.status(401).json({ error: "AUTH_REQUIRED" });
         return;
       }
-      // Refresh paid land access before accepting a gameplay mutation.
-      // Core outage fails closed instead of trusting cached unlocks.
-      await reconcileFarmV2PaidAccessFromCore({
-        userId,
-        launchToken,
-        requestId: "farm-v2:core-paid-refresh:v1",
-      });
+      if (farmAuthorityContext.getStore()) {
+        await reconcileFarmV2PaidAccessFromCore({
+          userId,
+          launchToken,
+          requestId: paidRefreshRequestId,
+        });
+      }
       const result = await sowFarmV2Land({
         requestId,
         userId,
@@ -289,7 +309,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }),
+  }, true),
 );
 
 router.post(
@@ -346,11 +366,13 @@ router.post(
         res.status(400).json({ error: "REQUEST_ID_REQUIRED" });
         return;
       }
-      await reconcileFarmV2PaidAccessFromCore({
-        userId,
-        launchToken,
-        requestId: "farm-v2:core-paid-refresh:v1",
-      });
+      if (!await hasRecentPaidQualification(userId)) {
+        await reconcileFarmV2PaidAccessFromCore({
+          userId,
+          launchToken,
+          requestId: paidRefreshRequestId,
+        });
+      }
       const result = await purchaseFarmV2SeedPacks({
         userId,
         launchToken,

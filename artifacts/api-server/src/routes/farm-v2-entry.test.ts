@@ -184,3 +184,33 @@ it("platform closure overrides the farm flag for a previously issued direct laun
   expect(initialize).not.toHaveBeenCalled();
   expect(authority).not.toHaveBeenCalled();
 });
+
+it.each([true, false])("sow uses recent paid qualification when available (%s)", async (recent) => {
+  const { pool } = await import("@workspace/db");
+  const { sowFarmV2Land } = await import("../lib/farm-v2-sow");
+  const { reconcileFarmV2PaidAccessFromCore } = await import("../lib/farm-v2-paid-access");
+  const { farmAuthorityContext } = await import("../lib/farm-v2-authority-context");
+  const userId = "00000000-0000-0000-0000-000000000001";
+  vi.stubEnv("FARM_V2_ENTRY_ENABLED", "1");
+  vi.stubEnv("PLATFORM_BASE_URL", "https://platform.test");
+  vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test-only");
+  const originalFetch = globalThis.fetch;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) =>
+    String(input).startsWith("https://platform.test")
+      ? Response.json({ userId, appId: "qiankun-futian" })
+      : originalFetch(input, init),
+  );
+  vi.mocked(pool.query).mockResolvedValueOnce({ rows: recent ? [{}] : [] } as never);
+  vi.mocked(sowFarmV2Land).mockResolvedValueOnce({} as never);
+  authority.mockImplementationOnce(async (_input, run) =>
+    farmAuthorityContext.run({ userId, operationId: "test", qualification: 600 }, run),
+  );
+  const response = await fetch(`${base}/api/farm/v2/lands/4/sow`, {
+    method: "POST",
+    headers: { authorization: "Bearer credential", "x-request-id": "sow-test" },
+  });
+  expect(response.status).toBe(200);
+  expect(authority).toHaveBeenCalledTimes(recent ? 0 : 1);
+  expect(reconcileFarmV2PaidAccessFromCore).toHaveBeenCalledTimes(recent ? 0 : 1);
+  expect(sowFarmV2Land).toHaveBeenCalledWith({ userId, requestId: "sow-test", landId: 4 });
+});
