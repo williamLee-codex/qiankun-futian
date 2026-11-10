@@ -2422,6 +2422,33 @@ describe.skipIf(!enabled)(
         ).rows[0].warehouse_state.seeds["1"],
       ).toBe(40);
     });
+    it("uses the dedicated bridge for both phases of a Farm session operation", async () => {
+      const { withFarmAuthority } = await import("./farm-v2-authority");
+      const previousFetch = globalThis.fetch;
+      const previousSecret = process.env.FARM_V2_BRIDGE_SHARED_SECRET;
+      const phases: string[] = [];
+      process.env.FARM_V2_BRIDGE_SHARED_SECRET = "dedicated-fixture";
+      vi.stubGlobal("fetch", (url: Parameters<typeof fetch>[0], init?: RequestInit) => {
+        if (String(url).endsWith("/farm-v2/authorization")) {
+          const headers = new Headers(init?.headers);
+          expect(headers.get("x-farm-v2-shared-secret")).toBe("dedicated-fixture");
+          expect(headers.has("x-replit-shared-secret")).toBe(false);
+          phases.push(JSON.parse(String(init?.body)).phase);
+        }
+        return previousFetch(url, init);
+      });
+      try {
+        await withFarmAuthority(
+          { ...seedInput(), launchToken: "fvs1." + "a".repeat(43), action: "GET:/farm/v2/state" },
+          async () => undefined,
+        );
+        expect(phases).toEqual(["begin", "end"]);
+      } finally {
+        vi.stubGlobal("fetch", previousFetch);
+        if (previousSecret === undefined) delete process.env.FARM_V2_BRIDGE_SHARED_SECRET;
+        else process.env.FARM_V2_BRIDGE_SHARED_SECRET = previousSecret;
+      }
+    });
     it("holds the Core refund barrier across the Farm commit and reads refunded qualification on the next operation", async () => {
       const { withFarmAuthority } = await import("./farm-v2-authority");
       const { farmAuthorityContext } =
