@@ -92,3 +92,39 @@ test("repeated paid qualification does not duplicate pets or reset farmer settin
   assert.equal(farmer.entitled, true);
   assert.equal(farmer.enabledByLand[2], false);
 });
+
+
+test("qualification suspension and restoration preserve historical field unlock without regranting chaos seed", () => {
+  const first = reconcilePaidLandAccess({
+    access: createInitialFarmAccess(), effectivePaidCrystals: 999, now: 1000,
+  });
+  const suspended = reconcilePaidLandAccess({
+    access: first.access, effectivePaidCrystals: 0, now: 2000,
+  });
+  const restored = reconcilePaidLandAccess({
+    access: suspended.access, effectivePaidCrystals: 999, now: 3000,
+  });
+  for (const field of [4, 5, 6] as const) {
+    assert.equal(suspended.access.accessActive.has(field), false);
+    assert.equal(suspended.access.historicallyUnlocked.has(field), true);
+    assert.equal(restored.access.accessActive.has(field), true);
+    assert.equal(restored.access.firstUnlockedAt[field], 1000);
+  }
+  assert.equal(first.chaosSeedsGranted, 1);
+  assert.equal(suspended.chaosSeedsGranted, 0);
+  assert.equal(restored.chaosSeedsGranted, 0);
+
+  const petsBefore = reconcileMilestonePets({
+    state: createFarmPetState(), effectivePaidCrystals: 999, now: 1000,
+  });
+  const petsSuspended = reconcileMilestonePets({
+    state: petsBefore, effectivePaidCrystals: 0, now: 2000,
+  });
+  const petsRestored = reconcileMilestonePets({
+    state: petsSuspended, effectivePaidCrystals: 999, now: 3000,
+  });
+  assert.equal(petsSuspended.owned.has("乾坤麒麟"), false);
+  assert.equal(petsRestored.owned.has("乾坤麒麟"), true);
+  assert.equal(reconcileFarmerEntitlement(createFarmerState(), 0).entitled, false);
+  assert.equal(reconcileFarmerEntitlement(createFarmerState(), 999).entitled, true);
+});
