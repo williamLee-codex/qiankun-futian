@@ -1,3 +1,4 @@
+import { farmV2OperationBridgeHeaders } from "./farm-v2-platform";
 import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 import { farmAuthorityContext } from "./farm-v2-authority-context";
 type FarmWalletCurrency = "coin" | "crystal";
@@ -103,7 +104,7 @@ export async function mutateFarmV2Wallet(
       redirect: "error",
       headers: {
         "content-type": "application/json",
-        "x-replit-shared-secret": sharedSecret,
+        ...farmV2OperationBridgeHeaders(input.launchToken, sharedSecret),
         "x-request-id": input.requestId,
       },
       body: JSON.stringify({

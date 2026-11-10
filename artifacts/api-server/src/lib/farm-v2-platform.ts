@@ -19,6 +19,14 @@ export function farmV2PlatformConnection() {
   return { base, secret, sessionSecret: bridgeSecret || secret, sessionSecretHeader: bridgeSecret ? "x-farm-v2-shared-secret" : "x-replit-shared-secret" };
 }
 
+export function farmV2OperationBridgeHeaders(token: string, legacySecret: string): Record<string, string> {
+  const dedicatedSecret = process.env.FARM_V2_BRIDGE_SHARED_SECRET;
+  if (dedicatedSecret && /^fvs1\.[A-Za-z0-9_-]{43}$/.test(token)) {
+    return { "x-farm-v2-shared-secret": dedicatedSecret };
+  }
+  return { "x-replit-shared-secret": legacySecret };
+}
+
 export async function requestFarmV2PlatformSession(
   launchToken: string,
   action: "exchange" | "revoke",

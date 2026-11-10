@@ -18,7 +18,7 @@ function publicPets(value: unknown, qualification: number, now: number) {
 }
 import { eq } from "drizzle-orm";
 import { db, farmV2PlayerStateTable, farmV2LandTable } from "@workspace/db";
-import { farmV2PlatformConnection } from "./farm-v2-platform";
+import { farmV2OperationBridgeHeaders, farmV2PlatformConnection } from "./farm-v2-platform";
 import {
   workshopPublicState,
   settleWorkshopTimedRights,
@@ -30,7 +30,7 @@ async function readAuthority(launchToken: string, targetId?: string) {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-replit-shared-secret": secret,
+      ...farmV2OperationBridgeHeaders(launchToken, secret),
     },
     body: JSON.stringify({ launchToken, ...(targetId ? { targetId } : {}) }),
     redirect: "error",

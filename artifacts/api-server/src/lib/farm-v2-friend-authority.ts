@@ -2,7 +2,7 @@ import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 import { randomUUID } from "node:crypto";
 import { farmAuthorityPool, farmAuthorityLockKey } from "./farm-v2-authority";
 import { farmAuthorityContext } from "./farm-v2-authority-context";
-import { farmV2PlatformConnection } from "./farm-v2-platform";
+import { farmV2OperationBridgeHeaders, farmV2PlatformConnection } from "./farm-v2-platform";
 export async function withFarmFriendAuthority<T>(
   input: {
     userId: string;
@@ -36,7 +36,7 @@ export async function withFarmFriendAuthority<T>(
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "x-replit-shared-secret": secret,
+          ...farmV2OperationBridgeHeaders(input.launchToken, secret),
         },
         body: JSON.stringify({
           ...input,

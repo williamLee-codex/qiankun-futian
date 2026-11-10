@@ -1,3 +1,4 @@
+import { farmV2OperationBridgeHeaders } from "./farm-v2-platform";
 import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 import { farmAuthorityContext } from "./farm-v2-authority-context";
 /**
@@ -28,7 +29,7 @@ export async function fetchFarmV2CorePaidQualification(launchToken: string): Pro
     redirect: "error",
     headers: {
       "content-type": "application/json",
-      "x-replit-shared-secret": sharedSecret,
+      ...farmV2OperationBridgeHeaders(launchToken, sharedSecret),
       "cache-control": "no-store",
     },
     body: JSON.stringify({ launchToken }),

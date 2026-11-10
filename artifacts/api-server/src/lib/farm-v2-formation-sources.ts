@@ -1,6 +1,6 @@
 import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 import { timingSafeEqual } from "node:crypto";
-import { farmV2PlatformConnection } from "./farm-v2-platform";
+import { farmV2OperationBridgeHeaders, farmV2PlatformConnection } from "./farm-v2-platform";
 import type {
   FestivalDefinition,
   AchievementFormation,
@@ -45,7 +45,7 @@ export async function readTrustedFormationGrants(launchToken: string) {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-replit-shared-secret": secret,
+        ...farmV2OperationBridgeHeaders(launchToken, secret),
       },
       body: JSON.stringify({ launchToken }),
       redirect: "error",
