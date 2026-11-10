@@ -33,11 +33,12 @@ export async function requireFarmV2LaunchIdentity(
       res.status(503).json({ error: "LAUNCH_VALIDATE_NOT_CONFIGURED" });
       return;
     }
-    farmV2PlatformConnection();
+    const connection = farmV2PlatformConnection();
+    const isFarmSession = /^fvs1\.[A-Za-z0-9_-]{43}$/.test(launchToken);
 
     const response = await farmV2PlatformFetch(
       new URL(
-        /^fvs1\.[A-Za-z0-9_-]{43}$/.test(launchToken)
+        isFarmSession
           ? "/api/replit/farm-v2/identity"
           : "/api/replit/launch/validate",
         platformBaseUrl,
@@ -47,7 +48,8 @@ export async function requireFarmV2LaunchIdentity(
         redirect: "error",
         headers: {
           "content-type": "application/json",
-          "x-replit-shared-secret": sharedSecret,
+          [isFarmSession ? connection.sessionSecretHeader : "x-replit-shared-secret"]:
+            isFarmSession ? connection.sessionSecret : sharedSecret,
         },
         body: JSON.stringify({ launchToken, farmV2: true }),
         signal: AbortSignal.timeout(5_000),
