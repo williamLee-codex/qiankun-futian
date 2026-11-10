@@ -6,6 +6,7 @@ export interface ServerLand {
   lifecycle: string;
   accessActive: boolean;
   plantedQuantity: number;
+  plantedAt?: string | number | null;
   maturesAt: string | number | null;
 }
 
@@ -29,6 +30,7 @@ export function mapServerLands(lands: ServerLand[]): Plot[] {
     if (!Number.isSafeInteger(land.plantedQuantity) || land.plantedQuantity < 0 || land.plantedQuantity > plot.maxSeeds) throw new Error('INVALID_PLANTED_QUANTITY');
     if (!['LOCKED', 'EMPTY', 'GROWING', 'MATURE'].includes(land.lifecycle)) throw new Error('INVALID_LAND_LIFECYCLE');
     if ((land.lifecycle === 'GROWING' || land.lifecycle === 'MATURE') && maturity === null) throw new Error('MISSING_MATURITY');
+    const plantedAt = typeof land.plantedAt === "number" ? land.plantedAt : Date.parse(land.plantedAt ?? "");
     const ready = land.lifecycle === 'MATURE' ||
       (land.lifecycle === 'GROWING' && maturity !== null && maturity <= Date.now());
     return {
@@ -37,6 +39,7 @@ export function mapServerLands(lands: ServerLand[]): Plot[] {
       state: ready ? 'ready' : land.lifecycle === 'GROWING' ? 'growing' : 'empty',
       plantCount: land.plantedQuantity,
       growthEndTime: maturity,
+      plantedAt: Number.isFinite(plantedAt) ? plantedAt : null,
       readyAt: ready ? maturity : null,
     };
   });

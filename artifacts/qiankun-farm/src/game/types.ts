@@ -75,6 +75,7 @@ export interface Plot {
   state: PlotState;
   plantCount: number;
   growthEndTime: number | null;
+  plantedAt?: number | null;
   maxSeeds: number;
 
   /** 作物 ID，對應 CROP_DATA */

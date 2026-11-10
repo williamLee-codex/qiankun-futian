@@ -5,10 +5,20 @@ import { FarmSceneInteractionLayer } from "./FarmSceneInteractionLayer";
 import { workshopState } from "./workshopRuntime";
 import { mapServerLands } from "./farmV2SceneAdapter";
 import type { FarmV2PublicCave } from "./publicCave";
-import { useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useFarmV2Scene } from "./useFarmV2Scene";
-import { CROP_DATA } from "../types";
+import { CROP_DATA, type Plot } from "../types";
 import { FARM_V2_LANDS } from "./canonicalLandData";
+
+function MaturityCountdown({ end }: { end: number }) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const seconds = Math.max(0, Math.ceil((end - now) / 1000));
+  return <p>成熟剩餘 {Math.floor(seconds / 3600)} 小時 {Math.floor(seconds / 60) % 60} 分 {seconds % 60} 秒</p>;
+}
 
 /**
  * Authenticated Farm V2 integration surface. The platform host supplies a
@@ -44,12 +54,49 @@ export function FarmV2AuthenticatedView(props: {
   const [panelOpen, setPanelOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
+  const [buySeedsOnOpen, setBuySeedsOnOpen] = useState(false);
 
   const [landFeedback, setLandFeedback] = useState<{
     landId: number;
     kind: "sow" | "harvest" | "purchaseSeeds";
     confirmed: boolean;
   } | null>(null);
+
+  const sceneRoot = useRef<HTMLElement>(null);
+  const warehouseButton = useRef<HTMLButtonElement>(null);
+  const [flight, setFlight] = useState<{ icon: string; style: CSSProperties } | null>(null);
+
+  function playLandFlight(kind: "sow" | "harvest", landId: number) {
+    const field = sceneRoot.current?.querySelector(`[data-farm-plot="${landId}"]`);
+    const fieldBox = field?.getBoundingClientRect();
+    const warehouseBox = warehouseButton.current?.getBoundingClientRect();
+    const plot = data?.plots.find(p => p.id + 1 === landId);
+    if (!fieldBox || !warehouseBox || !plot) return;
+    const from = kind === "sow" ? warehouseBox : fieldBox;
+    const to = kind === "sow" ? fieldBox : warehouseBox;
+    setFlight({
+      icon: kind === "sow" ? "🫘" : plot.cropEmoji,
+      style: {
+        left: from.x + from.width / 2,
+        top: from.y + from.height / 2,
+        "--farm-flight-x": `${to.x + to.width / 2 - from.x - from.width / 2}px`,
+        "--farm-flight-y": `${to.y + to.height / 2 - from.y - from.height / 2}px`,
+      } as CSSProperties,
+    });
+  }
+
+  function handlePlotClick(plot: Plot) {
+    const id = plot.id + 1;
+    if (plot.unlocked && plot.state === "ready") {
+      void execute("harvest", id);
+    } else if (plot.unlocked && plot.state === "empty" &&
+        (data?.seedInventory[plot.cropId] ?? 0) >= plot.maxSeeds) {
+      void execute("sow", id);
+    } else {
+      setBuySeedsOnOpen(plot.unlocked && plot.state === "empty" && plot.id < 5);
+      setSelectedLand(id);
+    }
+  }
 
   async function refreshManually() {
     setNotice("正在更新農田…");
@@ -73,7 +120,12 @@ export function FarmV2AuthenticatedView(props: {
     setNotice(null);
     const showFeedback = operation === "sow" || operation === "harvest" || operation === "purchaseSeeds";
     setLandFeedback(showFeedback ? { landId, kind: operation, confirmed: false } : null);
+    setFlight(null);
+    if (showFeedback) setNotice({ sow: "播種確認中…", harvest: "收成確認中…", purchaseSeeds: "購買種子確認中…" }[operation]);
     const ok = await mutate(operation, landId, quantity);
+    if (ok && (operation === "sow" || operation === "harvest") && selectedLand === null) {
+      playLandFlight(operation, landId);
+    }
     setLandFeedback(ok && showFeedback ? { landId, kind: operation, confirmed: true } : null);
     setNotice(
       ok ? "操作已由伺服器確認。" : "操作未確認，請檢查錯誤並重新讀取。",
@@ -153,10 +205,19 @@ export function FarmV2AuthenticatedView(props: {
     );
   return (
     <section
+      ref={sceneRoot}
       className="farm-v2-authenticated-view"
       aria-label="乾坤福田正式農田"
       style={{ maxWidth: 1200, margin: "0 auto" }}
     >
+      <button ref={warehouseButton} type="button" className="farm-v2-warehouse-target" onClick={() => {
+        setPanelTab("福田倉庫");
+        setPanelOpen(true);
+      }}>倉庫</button>
+      {flight && (
+        <span aria-hidden="true" className="farm-v2-flight" style={flight.style}
+          onAnimationEnd={() => setFlight(null)}>{flight.icon}</span>
+      )}
       <FarmSceneInteractionLayer
         plots={data.plots}
         state={{
@@ -173,8 +234,8 @@ export function FarmV2AuthenticatedView(props: {
         ownerLabel="我的福田"
         busy={busy || loading}
         onRefresh={() => { void refreshManually(); }}
-        onLandSelect={setSelectedLand}
-        onLandAction={execute}
+        onLandSelect={(id) => { setBuySeedsOnOpen(false); setSelectedLand(id); }}
+        onPlotClick={handlePlotClick}
         onSection={(tab) => {
           setPanelTab(tab);
           setPanelOpen(true);
@@ -336,7 +397,7 @@ export function FarmV2AuthenticatedView(props: {
           className="farm-v2-operation-dialog"
           aria-describedby={undefined}
         >
-          <DialogTitle>農田操作</DialogTitle>
+          <DialogTitle>{buySeedsOnOpen ? "購買種子" : "農田操作"}</DialogTitle>
           {data.plots
             .filter((plot) => selectedLand === plot.id + 1)
             .map((plot) => {
@@ -383,10 +444,7 @@ export function FarmV2AuthenticatedView(props: {
                   {plot.unlocked &&
                     plot.state === "growing" &&
                     plot.growthEndTime && (
-                      <p>
-                        預計成熟：
-                        {new Date(plot.growthEndTime).toLocaleString("zh-TW")}
-                      </p>
+                      <MaturityCountdown end={plot.growthEndTime} />
                     )}
                   <button
                     type="button"
@@ -406,6 +464,9 @@ export function FarmV2AuthenticatedView(props: {
                   >
                     收成入庫
                   </button>
+                  {buySeedsOnOpen && seeds < plot.maxSeeds && (
+                    <p>還差 {plot.maxSeeds - seeds} 顆種子才能整批播種。</p>
+                  )}
                   {canPurchase && (
                     <button
                       type="button"

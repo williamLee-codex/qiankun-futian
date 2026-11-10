@@ -362,3 +362,47 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .farm-v2-land-effect { animation: none; }
 }
+
+.farm-v2-warehouse-target {
+  position: fixed;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  right: 1rem;
+  z-index: 20;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid #d3ad5e;
+  border-radius: 0.5rem;
+  background: #24362c;
+  color: #fff2c5;
+}
+.farm-v2-flight {
+  position: fixed;
+  z-index: 25;
+  pointer-events: none;
+  font-size: 2rem;
+  animation: farm-v2-fly 850ms ease-in-out both;
+}
+@keyframes farm-v2-fly {
+  from { transform: translate(-50%, -50%) scale(1.15); }
+  to { transform: translate(calc(-50% + var(--farm-flight-x)), calc(-50% + var(--farm-flight-y))) scale(0.45); opacity: 0; }
+}
+.farm-v2-crop-stage {
+  display: inline-block;
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  translate: -50% -50%;
+  pointer-events: none;
+}
+.farm-v2-crop-stage[data-stage="25"] { scale: 0.75; }
+.farm-v2-crop-stage[data-stage="75"] { scale: 1.2; }
+.farm-v2-crop-stage[data-stage="100"] { scale: 1.45; filter: drop-shadow(0 0 4px #ffd76a); }
+.farm-v2-land-manage {
+  position: absolute;
+  right: 0;
+  top: 0;
+  font-size: 0.65rem;
+  padding: 0.1rem 0.25rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .farm-v2-flight { animation-duration: 1ms; }
+}

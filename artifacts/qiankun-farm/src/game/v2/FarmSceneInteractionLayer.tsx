@@ -12,7 +12,7 @@ export function FarmSceneInteractionLayer(props: {
   readOnly?: boolean;
   busy: boolean;
   onLandSelect?: (id: number) => void;
-  onLandAction?: (kind: "sow" | "harvest", id: number) => Promise<void>;
+  onPlotClick?: (plot: Plot) => void;
   onFriendAction?: (kind: "BORROW" | "ASSIST", id: number) => Promise<void>;
   onSection?: (section: string) => void;
   onReturnHome?: () => void;
@@ -163,6 +163,13 @@ export function FarmSceneInteractionLayer(props: {
               const p = plots.find((p) => p.id === i);
               if (!p) return null;
 
+              const remaining = Math.max(0, (p.growthEndTime ?? clock) - clock);
+              const duration = p.growthEndTime != null && p.plantedAt != null
+                ? p.growthEndTime - p.plantedAt
+                : p.growthHours * 3_600_000;
+              const progress = duration > 0 ? 1 - remaining / duration : 0;
+              const stage = p.state === "ready" ? 100 : progress >= 0.75 ? 75 : progress >= 0.5 ? 50 : progress >= 0.25 ? 25 : 0;
+
               return (
                 <div
                   className={"farm-v2-land " + p.state}
@@ -172,8 +179,14 @@ export function FarmSceneInteractionLayer(props: {
                   <button
                     aria-label={`${land.landName}，${!p.unlocked ? "未解鎖" : p.state === "ready" ? "已成熟" : p.state === "growing" ? "生長中" : "待播種"}`}
                     disabled={props.busy}
-                    onClick={() => props.onLandSelect?.(land.id)}
+                    data-farm-plot={land.id}
+                    onClick={() => props.onPlotClick ? props.onPlotClick(p) : props.onLandSelect?.(land.id)}
                   >
+                    {p.unlocked && p.state !== "empty" && (
+                      <span className="farm-v2-crop-stage" data-stage={stage} aria-label={`生長階段 ${stage}%`}>
+                        <span aria-hidden="true">{stage === 0 ? "🫘" : stage === 25 ? "🌱" : stage === 50 ? "🌿" : stage === 75 ? "🪴" : p.cropEmoji}</span>
+                      </span>
+                    )}
                     <span className="farm-v2-land-caption"><strong>{land.landName}{!p.unlocked && <span aria-hidden="true"> 🔒</span>}</strong>
                     {p.unlocked && <span>
                       {p.state === "ready"
@@ -190,6 +203,15 @@ export function FarmSceneInteractionLayer(props: {
                             : "待播種"}
                     </span>}</span>
                   </button>
+                  {!props.readOnly && props.onPlotClick && (
+                    <button
+                      type="button"
+                      className="farm-v2-land-manage"
+                      aria-label={`管理${land.landName}`}
+                      disabled={props.busy}
+                      onClick={() => props.onLandSelect?.(land.id)}
+                    >管理</button>
+                  )}
                   {props.readOnly &&
                     props.onFriendAction &&
                     land.borrowable &&
