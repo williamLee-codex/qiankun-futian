@@ -127,21 +127,21 @@ export function settleFarmV2Farmer(input: Input) {
       if (rows.length !== 6) throw new Error("FARM_INITIALIZATION_INCOMPLETE");
       if (!player.firstFarmEnteredAt)
         throw new Error("FIRST_FARM_ENTERED_AT_REQUIRED");
-      let warehouse = recordFarmAttendance(
-        player.warehouseState as FarmWarehouse,
-        now,
-      );
+      const previousWarehouse = player.warehouseState as FarmWarehouse;
+      let warehouse = recordFarmAttendance(previousWarehouse, now);
       let creditedQuantity = 0;
       for (const row of rows) {
+        const land = farmV2LandRowToEntity(row);
         const result = executeFarmerLandTransaction({
           farmer,
-          land: farmV2LandRowToEntity(row),
+          land,
           warehouse,
           firstFarmEnteredAt: player.firstFarmEnteredAt.getTime(),
           now,
         });
         warehouse = result.warehouse;
         creditedQuantity += result.creditedHarvestQuantity;
+        if (JSON.stringify(land) === JSON.stringify(result.land)) continue;
         await tx
           .update(farmV2LandTable)
           .set({
@@ -155,7 +155,7 @@ export function settleFarmV2Farmer(input: Input) {
             ),
           );
       }
-      await tx
+      if (JSON.stringify(previousWarehouse) !== JSON.stringify(warehouse)) await tx
         .update(farmV2PlayerStateTable)
         .set({ warehouseState: warehouse, updatedAt: new Date(now) })
         .where(eq(farmV2PlayerStateTable.userId, input.userId));
