@@ -29,7 +29,7 @@ function runScenario(options = {}) {
     }},
     'node:crypto': { randomUUID: () => 'b3e51e88-8c8c-4f44-a64b-3a8175b6aa10' },
     '@workspace/db': { createDatabaseConnection: () => ({ pool: { connect: async () => { if (connectFailure) throw connectFailure; return client; } } }) },
-    './farm-v2-platform': { farmV2PlatformConnection: () => ({ base: 'https://example.invalid', secret: 'mock' }) },
+    './farm-v2-platform': { farmV2PlatformConnection: () => ({ base: 'https://example.invalid', secret: 'mock' }), farmV2OperationBridgeHeaders: () => ({}) },
     './farm-v2-authority-context': { farmAuthorityContext: { run: (_context, fn) => fn() } },
   };
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;

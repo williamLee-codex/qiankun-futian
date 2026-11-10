@@ -17,6 +17,24 @@ export async function ensureFarmV2PlayerInitialized(input: { userId: string; now
 
   return db.transaction(async (tx) => {
     await assertFarmAuthorityFence(tx);
+    // Read an existing farm in a single statement, without taking the
+    // initialization lock. The join keeps the player and lands in one snapshot.
+    const existing = await tx.select({
+      player: farmV2PlayerStateTable,
+      land: farmV2LandTable,
+    }).from(farmV2PlayerStateTable)
+      .leftJoin(farmV2LandTable, eq(farmV2PlayerStateTable.userId, farmV2LandTable.userId))
+      .where(eq(farmV2PlayerStateTable.userId, userId))
+      .orderBy(farmV2LandTable.landId);
+
+    const first = existing[0];
+    if (first) {
+      const lands = existing.flatMap(({ land }) => land ? [land] : []);
+      if (lands.length !== 6) throw new Error("FARM_INITIALIZATION_INCOMPLETE");
+      return { player: first.player, lands };
+    }
+
+    // Recheck under the lock in case another request just created the farm.
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtextextended(${userId + ':farm-v2-init'}, 0))`,
     );
