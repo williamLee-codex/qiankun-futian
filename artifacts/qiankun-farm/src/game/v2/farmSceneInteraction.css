@@ -406,3 +406,14 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .farm-v2-flight { animation-duration: 1ms; }
 }
+
+/* Keep account navigation and both inventory entrances visible while scrolling. */
+.farm-v2-interaction { overflow: clip; }
+.farm-v2-interaction > header {
+  position: sticky; top: 0; z-index: 35; background: #192e25;
+  border-bottom: 1px solid #a98e51; padding-right: 96px;
+}
+.farm-v2-platform-home { color: #ffdc82; text-decoration: none; font-weight: 700; }
+.farm-v2-interaction header nav { display: flex; gap: 8px; flex-wrap: wrap; }
+.farm-v2-pet-character { display: block; font-size: clamp(26px, 4vw, 58px); line-height: 1; filter: drop-shadow(0 3px 5px #14241c); }
+.farm-v2-farmer { position: absolute; left: 3%; top: 2%; z-index: 2; font-size: clamp(20px, 3vw, 42px); line-height: 1; pointer-events: none; filter: drop-shadow(0 2px 3px #18291b); }

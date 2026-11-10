@@ -1,4 +1,5 @@
 import { farmAuthorityContext } from "../lib/farm-v2-authority-context";
+import { purchaseFarmV2CoinLand } from "../lib/farm-v2-coin-land-unlock";
 import { runFarmV2AuthorizedJson } from "../lib/farm-v2-authorized-json";
 import { timeFarmV2Function } from "../lib/farm-v2-stage-timing";
 import { completeFarmV2Mutation } from "../lib/farm-v2-mutation-snapshot";
@@ -351,6 +352,17 @@ router.post(
   }),
 );
 
+router.post("/farm/v2/lands/:landId/unlock", authorizedRoute(async (req, res, next) => {
+  try {
+    const userId = String(res.locals.authenticatedUserId);
+    const result = await purchaseFarmV2CoinLand({ userId,
+      launchToken: String(res.locals.launchToken), requestId: req.header("x-request-id") ?? "",
+      landId: Number(req.params.landId) });
+    res.setHeader("Cache-Control", "no-store");
+    res.json(await mutationResponse(req.query.snapshot === "1", userId, result));
+  } catch (error) { next(error); }
+}));
+
 router.post(
   "/farm/v2/seeds/:landId/purchase",
   authorizedRoute(async (req, res, next) => {
@@ -385,7 +397,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }),
+  }, true),
 );
 
 router.post(

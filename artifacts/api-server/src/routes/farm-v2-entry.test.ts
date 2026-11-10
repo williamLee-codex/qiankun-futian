@@ -18,6 +18,7 @@ vi.mock("../lib/farm-v2-platform", () => ({
 }));
 vi.mock("../lib/farm-v2-authority", () => ({ withFarmAuthority: authority }));
 vi.mock("../lib/farm-v2-sow", () => ({ sowFarmV2Land: vi.fn() }));
+vi.mock("../lib/farm-v2-coin-land-unlock", () => ({ purchaseFarmV2CoinLand: vi.fn() }));
 vi.mock("../lib/farm-v2-harvest", () => ({ harvestFarmV2Land: vi.fn() }));
 vi.mock("../lib/farm-v2-seed-purchase", () => ({
   purchaseFarmV2SeedPacks: vi.fn(),

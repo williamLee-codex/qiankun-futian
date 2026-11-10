@@ -1,6 +1,7 @@
 import type { ServerLand } from "./farmV2SceneAdapter";
 import type { PotGrade } from "./potRuntime";
 export interface ScenePublicState {
+  farmer?: import("./farmerRuntime").FarmerState;
   pots: { species: number; grade: PotGrade }[];
   decor: { catalogId: string; slot: number | null }[];
   activeFormation: string | null;

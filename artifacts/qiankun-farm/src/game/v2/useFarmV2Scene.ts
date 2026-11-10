@@ -119,7 +119,8 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         | "purchaseSeeds"
         | "exchangeCrops"
         | "claimChaos"
-        | "configureFarmer",
+        | "configureFarmer"
+        | "unlockCoinLand",
       landId: number,
       quantity?: number,
     ) => {
@@ -130,7 +131,8 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       try {
         if (!api) throw new Error("FARM_V2_LAUNCH_TOKEN_REQUIRED");
         let result: unknown;
-        if (operation === "claimChaos") await api.claimChaosSeeds();
+        if (operation === "unlockCoinLand") result = await api.unlockCoinLand(landId);
+        else if (operation === "claimChaos") await api.claimChaosSeeds();
         else if (operation === "configureFarmer")
           await api.configureFarmer(landId, quantity === 1);
         else if (operation === "sow") result = await api.sow(landId);

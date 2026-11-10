@@ -114,10 +114,24 @@ export function createFarmV2Api(input: {
     }
     return response.json() as Promise<T>;
   }
+  async function timedFetch(path: string, init: RequestInit): Promise<Response> {
+    const started = performance.now();
+    let status = 0;
+    try {
+      const response = await fetch(endpoint(path), init);
+      status = response.status;
+      return response;
+    } finally {
+      console.info("FARM_REQUEST_TIMING", JSON.stringify({
+        path: path.split("?")[0], method: init.method ?? "GET", status,
+        durationMs: Math.round(performance.now() - started),
+      }));
+    }
+  }
   async function session(): Promise<string> {
     if (revoked) throw new FarmV2ApiError(401, "FARM_SESSION_NOT_ACTIVE");
     sessionPromise ??= (async () => {
-      const response = await fetch(endpoint("farm/v2/session"), {
+      const response = await timedFetch("farm/v2/session", {
         method: browserResume ? "GET" : "POST",
         headers: browserResume ? {} : { Authorization: `Bearer ${launchToken}` },
         credentials: "same-origin",
@@ -186,7 +200,7 @@ export function createFarmV2Api(input: {
     savePendingRequests();
     for (let attempt = 0; ; attempt++) {
       try {
-        const response = await fetch(endpoint(path), {
+        const response = await timedFetch(path, {
           method,
           headers: {
             ...authHeader(token),
@@ -221,7 +235,8 @@ export function createFarmV2Api(input: {
           (error.status !== 409 ||
             error.code === "FARM_MUTATION_COMPENSATED" ||
             error.code === "MISSION_NOT_COMPLETE" ||
-            error.code === "MISSION_ALREADY_CLAIMED")
+            error.code === "MISSION_ALREADY_CLAIMED" ||
+            error.code.startsWith("CORE_COIN_LAND_"))
         ) {
           pendingRequests.delete(operation);
           savePendingRequests();
@@ -238,7 +253,7 @@ export function createFarmV2Api(input: {
     revokeSession: async () => {
       const token = await session();
       await decode(
-        await fetch(endpoint("farm/v2/session"), {
+        await timedFetch("farm/v2/session", {
           method: "POST",
           headers: {
             ...authHeader(token),
@@ -298,6 +313,8 @@ export function createFarmV2Api(input: {
       ),
     readWallet: () => request<{ coins: number }>("farm/v2/wallet", "GET"),
     readState: () => request<FarmV2State>("farm/v2/state", "GET"),
+    unlockCoinLand: (landId: number) =>
+      request<unknown>(`farm/v2/lands/${landId}/unlock?snapshot=1`, "POST"),
     sow: (landId: number) =>
       request<FarmV2MutationResult>(`farm/v2/lands/${landId}/sow?snapshot=1`, "POST"),
     harvest: (landId: number) =>

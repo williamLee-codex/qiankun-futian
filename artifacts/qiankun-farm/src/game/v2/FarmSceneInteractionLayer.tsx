@@ -96,11 +96,16 @@ export function FarmSceneInteractionLayer(props: {
       data-layout={desktop ? "desktop" : "mobile"}
     >
       <header>
+        <a href="/" className="farm-v2-platform-home">御策羅盤</a>
         <strong>
           {props.ownerLabel}
           {interior ? "・洞府" : "・農場"}
         </strong>
         <span>{interior ? "洞府內景" : "點選農田查看操作"}</span>
+        {!props.readOnly && <nav aria-label="福田主要入口">
+          <button onClick={() => section("福田倉庫")}>福田倉庫</button>
+          <button onClick={() => section("乾坤寶囊")}>乾坤寶囊</button>
+        </nav>}
         {interior && (
           <button ref={caveExit} className="farm-v2-cave-return" onClick={() => setInterior(false)}>
             返回農場
@@ -183,6 +188,9 @@ export function FarmSceneInteractionLayer(props: {
                     data-farm-plot={land.id}
                     onClick={() => props.onPlotClick ? props.onPlotClick(p) : props.onLandSelect?.(land.id)}
                   >
+                    {p.unlocked && props.state.farmer?.entitled && (
+                      <span className="farm-v2-farmer" role="img" aria-label={`${land.landName}專屬農夫${props.state.farmer.enabledByLand[land.id] ? "值勤中" : "待命中"}`} title={props.state.farmer.enabledByLand[land.id] ? "專屬農夫值勤中" : "專屬農夫待命中"}>👨‍🌾</span>
+                    )}
                     {p.unlocked && p.state !== "empty" && (
                       <span className="farm-v2-crop-stage" data-stage={stage} aria-label={`生長階段 ${stage}%`}>
                         <span aria-hidden="true">{stage === 0 ? "🫘" : stage === 25 ? "🌱" : stage === 50 ? "🌿" : stage === 75 ? "🪴" : p.cropEmoji}</span>
@@ -273,6 +281,7 @@ export function FarmSceneInteractionLayer(props: {
                   disabled={props.readOnly || props.busy}
                   onClick={() => section("靈寵")}
                 >
+                  {props.state.pets?.owned.includes(pet) && <span className="farm-v2-pet-character" role="img" aria-label={pet}>{["🐕", "🦁", "🐉", "🦄"][i]}</span>}
                   <span className="farm-v2-hotspot-label">
                     {pet}
                     {!props.state.pets?.owned.includes(pet) && !active

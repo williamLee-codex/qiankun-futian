@@ -113,7 +113,8 @@ export function FarmV2AuthenticatedView(props: {
       | "purchaseSeeds"
       | "exchangeCrops"
       | "claimChaos"
-      | "configureFarmer",
+      | "configureFarmer"
+      | "unlockCoinLand",
     landId: number,
     quantity?: number,
   ) {
@@ -232,6 +233,7 @@ export function FarmV2AuthenticatedView(props: {
               (f) => f.id === workshopState(data.warehouse).activeFormation,
             )?.expiresAt ?? null,
           pets: data.pets,
+          farmer: data.farmer,
         }}
         ownerLabel="我的福田"
         busy={busy || loading}
@@ -417,6 +419,15 @@ export function FarmV2AuthenticatedView(props: {
               return (
                 <article key={plot.id}>
                   <h3>{plot.name}</h3>
+                  {!plot.unlocked && (plot.id === 1 || plot.id === 2) && (
+                    <>
+                      <button type="button" disabled={busy || loading || (plot.id === 2 && !data.plots[1]?.unlocked)}
+                        onClick={() => { void execute("unlockCoinLand", plot.id + 1); }}>
+                        解鎖田地（{plot.id === 1 ? 88 : 888} 金幣）
+                      </button>
+                      {plot.id === 2 && !data.plots[1]?.unlocked && <p>請先解鎖第 2 田。</p>}
+                    </>
+                  )}
                   {landFeedback?.landId === plot.id + 1 && (
                     <div role="status" className="farm-v2-land-feedback">
                       {landFeedback.confirmed && landFeedback.kind !== "purchaseSeeds" && (
