@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { createInitialFarmAccess, reconcilePaidLandAccess } from "../src/game/v2/accessRuntime";
 
 test("future qualified recharge unlocks fields 4/5/6 without requiring coin fields", () => {
