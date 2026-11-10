@@ -1,3 +1,4 @@
+import { farmAuthorityContext } from "./farm-v2-authority-context";
 import { and, eq } from "drizzle-orm";
 import { fetchFarmV2CorePaidQualification } from "./farm-v2-core-paid-value";
 import { farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
@@ -83,7 +84,11 @@ export async function reconcileFarmV2PaidAccessFromCore(input: {
       const [player] = await tx.select().from(farmV2PlayerStateTable)
         .where(eq(farmV2PlayerStateTable.userId, input.userId)).for("update").limit(1);
       if (!player) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
-      const effectivePaidCrystals = await fetchFarmV2CorePaidQualification(input.launchToken);
+      const authority = farmAuthorityContext.getStore();
+      // The active operation holds Core's refund barrier for this qualification.
+      const effectivePaidCrystals = authority?.userId === input.userId
+        ? authority.qualification
+        : await fetchFarmV2CorePaidQualification(input.launchToken);
       const rows = await tx.select().from(farmV2LandTable)
         .where(eq(farmV2LandTable.userId, input.userId)).orderBy(farmV2LandTable.landId);
       if (rows.length !== 6) throw new Error("FARM_INITIALIZATION_INCOMPLETE");

@@ -45,6 +45,12 @@ export function FarmV2AuthenticatedView(props: {
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
 
+  const [landFeedback, setLandFeedback] = useState<{
+    landId: number;
+    kind: "sow" | "harvest" | "purchaseSeeds";
+    confirmed: boolean;
+  } | null>(null);
+
   async function refreshManually() {
     setNotice("正在更新農田…");
     const ok = await refresh();
@@ -65,7 +71,10 @@ export function FarmV2AuthenticatedView(props: {
     quantity?: number,
   ) {
     setNotice(null);
+    const showFeedback = operation === "sow" || operation === "harvest" || operation === "purchaseSeeds";
+    setLandFeedback(showFeedback ? { landId, kind: operation, confirmed: false } : null);
     const ok = await mutate(operation, landId, quantity);
+    setLandFeedback(ok && showFeedback ? { landId, kind: operation, confirmed: true } : null);
     setNotice(
       ok ? "操作已由伺服器確認。" : "操作未確認，請檢查錯誤並重新讀取。",
     );
@@ -344,6 +353,21 @@ export function FarmV2AuthenticatedView(props: {
               return (
                 <article key={plot.id}>
                   <h3>{plot.name}</h3>
+                  {landFeedback?.landId === plot.id + 1 && (
+                    <div role="status" className="farm-v2-land-feedback">
+                      {landFeedback.confirmed && landFeedback.kind !== "purchaseSeeds" && (
+                        <span
+                          aria-hidden="true"
+                          className={`farm-v2-land-effect farm-v2-land-effect--${landFeedback.kind}`}
+                        >
+                          {landFeedback.kind === "sow" ? "🌱" : "🌾"}
+                        </span>
+                      )}
+                      {landFeedback.confirmed
+                        ? { sow: "播種完成", harvest: "收成已入庫", purchaseSeeds: "種子已入庫" }[landFeedback.kind]
+                        : { sow: "播種確認中…", harvest: "收成確認中…", purchaseSeeds: "購買種子確認中…" }[landFeedback.kind]}
+                    </div>
+                  )}
                   <p>
                     {!plot.unlocked
                       ? "🔒 尚未解鎖"

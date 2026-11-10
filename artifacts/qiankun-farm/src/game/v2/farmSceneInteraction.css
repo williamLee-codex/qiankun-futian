@@ -329,3 +329,36 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
 
 /* Sixth display pot stands in front of the synthesis sign. */
 .farm-v2-canvas.exterior .farm-v2-platform-pot-front{z-index:4}
+
+.farm-v2-land-feedback {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2rem;
+}
+
+.farm-v2-land-effect {
+  display: inline-block;
+  font-size: 1.6rem;
+  animation: farm-v2-land-sprout 750ms ease-out both;
+}
+
+.farm-v2-land-effect--harvest {
+  animation-name: farm-v2-land-harvest;
+}
+
+@keyframes farm-v2-land-sprout {
+  from { opacity: 0; transform: translateY(0.4rem) scale(0.4); }
+  65% { opacity: 1; transform: translateY(-0.25rem) scale(1.2); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes farm-v2-land-harvest {
+  from { opacity: 0; transform: translateY(0.6rem) scale(0.75); }
+  55% { opacity: 1; transform: translateY(-0.5rem) scale(1.15); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .farm-v2-land-effect { animation: none; }
+}
