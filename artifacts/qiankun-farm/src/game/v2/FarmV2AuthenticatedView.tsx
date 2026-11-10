@@ -122,7 +122,8 @@ export function FarmV2AuthenticatedView(props: {
     setLandFeedback(showFeedback ? { landId, kind: operation, confirmed: false } : null);
     setFlight(null);
     if (showFeedback) setNotice({ sow: "播種確認中…", harvest: "收成確認中…", purchaseSeeds: "購買種子確認中…" }[operation]);
-    if ((operation === "sow" || operation === "harvest") && selectedLand === null) {
+    if (operation === "sow" || (operation === "harvest" && selectedLand === null)) {
+      if (operation === "sow") setSelectedLand(null);
       playLandFlight(operation, landId);
     }
     const ok = await mutate(operation, landId, quantity);
@@ -477,7 +478,10 @@ export function FarmV2AuthenticatedView(props: {
                         void execute("purchaseSeeds", plot.id + 1, 1);
                       }}
                     >
-                      購買一包種子（1 金幣）
+                      {landFeedback?.landId === plot.id + 1 &&
+                      landFeedback.kind === "purchaseSeeds" && !landFeedback.confirmed
+                        ? "購買種子確認中…"
+                        : "購買一包種子（1 金幣）"}
                     </button>
                   )}
                   <button
