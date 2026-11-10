@@ -12,6 +12,7 @@ export function FarmSceneInteractionLayer(props: {
   readOnly?: boolean;
   busy: boolean;
   onLandSelect?: (id: number) => void;
+  pendingLandAction?: { landId: number; kind: "sow" | "harvest" | "purchaseSeeds" };
   onPlotClick?: (plot: Plot) => void;
   onFriendAction?: (kind: "BORROW" | "ASSIST", id: number) => Promise<void>;
   onSection?: (section: string) => void;
@@ -189,7 +190,9 @@ export function FarmSceneInteractionLayer(props: {
                     )}
                     <span className="farm-v2-land-caption"><strong>{land.landName}{!p.unlocked && <span aria-hidden="true"> 🔒</span>}</strong>
                     {p.unlocked && <span>
-                      {p.state === "ready"
+                      {props.pendingLandAction?.landId === land.id
+                          ? props.pendingLandAction.kind === "sow" ? "播種確認中…" : "收成確認中…"
+                          : p.state === "ready"
                           ? "成熟・" + p.plantCount + "株"
                           : p.state === "growing"
                             ? "生長中・" +

@@ -122,10 +122,11 @@ export function FarmV2AuthenticatedView(props: {
     setLandFeedback(showFeedback ? { landId, kind: operation, confirmed: false } : null);
     setFlight(null);
     if (showFeedback) setNotice({ sow: "播種確認中…", harvest: "收成確認中…", purchaseSeeds: "購買種子確認中…" }[operation]);
-    const ok = await mutate(operation, landId, quantity);
-    if (ok && (operation === "sow" || operation === "harvest") && selectedLand === null) {
+    if ((operation === "sow" || operation === "harvest") && selectedLand === null) {
       playLandFlight(operation, landId);
     }
+    const ok = await mutate(operation, landId, quantity);
+    if (!ok) setFlight(null);
     setLandFeedback(ok && showFeedback ? { landId, kind: operation, confirmed: true } : null);
     setNotice(
       ok ? "操作已由伺服器確認。" : "操作未確認，請檢查錯誤並重新讀取。",
@@ -235,6 +236,7 @@ export function FarmV2AuthenticatedView(props: {
         busy={busy || loading}
         onRefresh={() => { void refreshManually(); }}
         onLandSelect={(id) => { setBuySeedsOnOpen(false); setSelectedLand(id); }}
+        pendingLandAction={landFeedback && !landFeedback.confirmed && landFeedback.kind !== "purchaseSeeds" ? landFeedback : undefined}
         onPlotClick={handlePlotClick}
         onSection={(tab) => {
           setPanelTab(tab);
