@@ -19,6 +19,7 @@ export type FarmV2Warehouse = {
 
 export type FarmV2State = {
   player: {
+    userId?: string;
     warehouseState: FarmV2Warehouse;
     firstFarmEnteredAt: string | null;
     farmerState?: import("./farmerRuntime").FarmerState;
@@ -90,6 +91,18 @@ export function createFarmV2Api(input: {
       /* Storage may be disabled; in-memory IDs still protect active retries. */
     }
   }
+  function restorePendingRequests(userId: string) {
+    journalKey = `farm-v2:pending:${normalizedApiBase.toString()}:${userId}`;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(journalKey) ?? "{}") as Record<string, unknown>;
+      for (const [operation, id] of Object.entries(saved)) {
+        if (typeof id === "string" && /^[A-Za-z0-9._:-]{1,120}$/.test(id))
+          pendingRequests.set(operation, id);
+      }
+    } catch {
+      /* No credential is read from browser storage. */
+    }
+  }
   async function decode<T>(response: Response): Promise<T> {
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as {
@@ -152,18 +165,7 @@ export function createFarmV2Api(input: {
         typeof result.reauthenticateUrl !== "string"
       )
         throw new Error("INVALID_FARM_SESSION_RESPONSE");
-      journalKey = `farm-v2:pending:${normalizedApiBase.toString()}:${result.userId}`;
-      try {
-        const saved = JSON.parse(
-          sessionStorage.getItem(journalKey) ?? "{}",
-        ) as Record<string, unknown>;
-        for (const [operation, id] of Object.entries(saved)) {
-          if (typeof id === "string" && /^[A-Za-z0-9._:-]{1,120}$/.test(id))
-            pendingRequests.set(operation, id);
-        }
-      } catch {
-        /* No credential is read from browser storage. */
-      }
+      restorePendingRequests(result.userId);
       const login = new URL(result.reauthenticateUrl);
       if (
         login.protocol !== "https:" &&
@@ -187,8 +189,9 @@ export function createFarmV2Api(input: {
     path: string,
     method: "GET" | "POST",
     body?: unknown,
+    resumeFromState = false,
   ): Promise<T> {
-    const token = await session();
+    const token = resumeFromState ? "cookie-session" : await session();
     // Response negotiation must not change durable operation identity: a
     // pending purchase from the older client must keep its original key.
     const operation = JSON.stringify([path.replace(/\?snapshot=1$/, ""), body]);
@@ -312,7 +315,21 @@ export function createFarmV2Api(input: {
         { kind, landId },
       ),
     readWallet: () => request<{ coins: number }>("farm/v2/wallet", "GET"),
-    readState: () => request<FarmV2State>("farm/v2/state", "GET"),
+    readState: async () => {
+      if (!browserResume || sessionPromise)
+        return request<FarmV2State>("farm/v2/state", "GET");
+      if (revoked) throw new FarmV2ApiError(401, "FARM_SESSION_NOT_ACTIVE");
+      // This same-origin request already carries the HttpOnly cookie and the
+      // server validates it before returning state. A session preflight would
+      // repeat that verification and add a sequential network round trip.
+      reauthenticateUrl = new URL("/api/apps/qiankun-futian/launch?farmV2=1", normalizedApiBase.origin).toString();
+      const state = await request<FarmV2State>("farm/v2/state", "GET", undefined, true);
+      if (typeof state?.player?.userId !== "string" || !state.player.userId.trim())
+        throw new Error("INVALID_FARM_STATE_RESPONSE");
+      restorePendingRequests(state.player.userId);
+      sessionPromise = Promise.resolve("cookie-session");
+      return state;
+    },
     unlockCoinLand: (landId: number) =>
       request<unknown>(`farm/v2/lands/${landId}/unlock?snapshot=1`, "POST"),
     sow: (landId: number) =>

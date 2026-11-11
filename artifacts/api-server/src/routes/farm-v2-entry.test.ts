@@ -257,3 +257,35 @@ it("seed purchase keeps wallet transaction authority even with recent paid quali
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ seedsAdded: 20 });
 });
+
+it.each([true, false])("state read uses six-hour qualification and returns post-settlement state (%s)", async (recent) => {
+  const { pool } = await import("@workspace/db");
+  const { settleFarmV2Farmer } = await import("../lib/farm-v2-gameplay");
+  const { reconcileFarmV2PaidAccessFromCore } = await import("../lib/farm-v2-paid-access");
+  const { farmAuthorityContext } = await import("../lib/farm-v2-authority-context");
+  const userId = "00000000-0000-0000-0000-000000000001";
+  vi.stubEnv("FARM_V2_ENTRY_ENABLED", "1");
+  vi.stubEnv("PLATFORM_BASE_URL", "https://platform.test");
+  vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test-only");
+  const originalFetch = globalThis.fetch;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) =>
+    String(input).startsWith("https://platform.test")
+      ? Response.json({ userId, appId: "qiankun-futian" })
+      : originalFetch(input, init),
+  );
+  vi.mocked(pool.query).mockResolvedValue({ rows: recent ? [{}] : [] } as never);
+  authority.mockImplementation(async (_input, run) =>
+    farmAuthorityContext.run({ userId, operationId: "00000000-0000-4000-8000-000000000003", qualification: 600 }, run),
+  );
+  let settled = false;
+  vi.mocked(settleFarmV2Farmer).mockImplementation(async () => { settled = true; return {} as never; });
+  initialize.mockImplementation(async () => ({ player: { crops: settled ? 20 : 0 }, lands: [] }));
+  const response = await fetch(`${base}/api/farm/v2/state`, {
+    headers: { authorization: "Bearer credential" },
+  });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ player: { crops: 20 }, lands: [] });
+  expect(authority).toHaveBeenCalledTimes(recent ? 0 : 1);
+  expect(reconcileFarmV2PaidAccessFromCore).toHaveBeenCalledTimes(recent ? 0 : 1);
+  expect(initialize).toHaveBeenCalledTimes(recent ? 1 : 2);
+});

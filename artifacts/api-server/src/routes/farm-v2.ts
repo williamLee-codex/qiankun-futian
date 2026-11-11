@@ -158,14 +158,17 @@ router.get(
         return;
       }
 
-      // Initialize first, then reconcile against Core on every state read.
-      // Never serve cached paid entitlements when Core is unavailable.
-      await ensureFarmV2PlayerInitialized({ userId });
-      await reconcileFarmV2PaidAccessFromCore({
-        userId,
-        launchToken,
-        requestId: "farm-v2:core-paid-refresh:v1",
-      });
+      // A recent qualification proves this player was initialized and paid
+      // access was checked within the approved six-hour window. New/expired
+      // qualifications still initialize and refresh through Core first.
+      if (farmAuthorityContext.getStore()) {
+        await ensureFarmV2PlayerInitialized({ userId });
+        await reconcileFarmV2PaidAccessFromCore({
+          userId,
+          launchToken,
+          requestId: paidRefreshRequestId,
+        });
+      }
       await settleFarmV2Farmer({
         userId,
         requestId: "login-settle:" + randomUUID(),
@@ -178,7 +181,7 @@ router.get(
     } catch (error) {
       next(error);
     }
-  }),
+  }, true),
 );
 
 router.get(
