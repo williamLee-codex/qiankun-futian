@@ -1,3 +1,4 @@
+import { localCoinTransaction, postLocalCoin } from "./farm-v2-local-coins";
 import { and, eq, sql } from "drizzle-orm";
 import {
   db,
@@ -47,6 +48,21 @@ export async function readFarmV2WalletIntent(
 export async function applyFarmV2WalletStep(
   input: FarmWalletMutationInput,
 ): Promise<FarmWalletMutationResult> {
+  const localTx = localCoinTransaction.getStore();
+  if (localTx && input.currency === "coin") {
+    const result = await postLocalCoin(localTx, input);
+    const { launchToken: _credential, ...command } = input;
+    await localTx
+      .update(farmV2MutationTable)
+      .set({
+        walletDirection: input.direction,
+        walletCurrency: "coin",
+        walletAmount: input.amount,
+        walletTransaction: { settlement: "ATOMIC_FARM_COINS", command, result },
+      })
+      .where(mutationWhere(input.userId, input.requestId));
+    return result;
+  }
   const existing = await journalDb.query.farmV2MutationTable.findFirst({
     where: mutationWhere(input.userId, input.requestId),
   });

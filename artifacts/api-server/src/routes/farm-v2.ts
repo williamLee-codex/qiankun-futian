@@ -1,3 +1,8 @@
+import { localCoinsEnabled } from "../lib/farm-v2-local-coins";
+import {
+  readFarmCoinBalances,
+  transferFarmCoins,
+} from "../lib/farm-v2-bank-http";
 import { farmAuthorityContext } from "../lib/farm-v2-authority-context";
 import { purchaseFarmV2CoinLand } from "../lib/farm-v2-coin-land-unlock";
 import { runFarmV2AuthorizedJson } from "../lib/farm-v2-authorized-json";
@@ -15,7 +20,7 @@ import {
 } from "../lib/farm-v2-gameplay";
 import { randomUUID } from "node:crypto";
 import { withFarmAuthority } from "../lib/farm-v2-authority";
-import { Router, type IRouter, type RequestHandler } from "express";
+import { Router, type IRouter, type Request, type RequestHandler } from "express";
 import { sowFarmV2Land as rawsowFarmV2Land } from "../lib/farm-v2-sow";
 import { harvestFarmV2Land as rawharvestFarmV2Land } from "../lib/farm-v2-harvest";
 import { requireFarmV2LaunchIdentity } from "../middlewares/farm-v2-launch-auth";
@@ -27,12 +32,30 @@ import { reconcileFarmV2PaidAccessFromCore as rawreconcileFarmV2PaidAccessFromCo
 import { requestFarmV2PlatformSession } from "../lib/farm-v2-platform";
 
 const sowFarmV2Land = timeFarmV2Function("domain_sow", rawsowFarmV2Land);
-const harvestFarmV2Land = timeFarmV2Function("domain_harvest", rawharvestFarmV2Land);
-const purchaseFarmV2SeedPacks = timeFarmV2Function("domain_purchase", rawpurchaseFarmV2SeedPacks);
-const exchangeFarmV2Crops = timeFarmV2Function("domain_exchange", rawexchangeFarmV2Crops);
-const reconcileFarmV2PaidAccessFromCore = timeFarmV2Function("paid_access", rawreconcileFarmV2PaidAccessFromCore);
-const settleFarmV2Farmer = timeFarmV2Function("snapshot_settle", rawsettleFarmV2Farmer);
-const ensureFarmV2PlayerInitialized = timeFarmV2Function("snapshot_read", rawensureFarmV2PlayerInitialized);
+const harvestFarmV2Land = timeFarmV2Function(
+  "domain_harvest",
+  rawharvestFarmV2Land,
+);
+const purchaseFarmV2SeedPacks = timeFarmV2Function(
+  "domain_purchase",
+  rawpurchaseFarmV2SeedPacks,
+);
+const exchangeFarmV2Crops = timeFarmV2Function(
+  "domain_exchange",
+  rawexchangeFarmV2Crops,
+);
+const reconcileFarmV2PaidAccessFromCore = timeFarmV2Function(
+  "paid_access",
+  rawreconcileFarmV2PaidAccessFromCore,
+);
+const settleFarmV2Farmer = timeFarmV2Function(
+  "snapshot_settle",
+  rawsettleFarmV2Farmer,
+);
+const ensureFarmV2PlayerInitialized = timeFarmV2Function(
+  "snapshot_read",
+  rawensureFarmV2PlayerInitialized,
+);
 const router: IRouter = Router();
 const paidRefreshRequestId = "farm-v2:core-paid-refresh:v1";
 
@@ -49,12 +72,15 @@ async function hasRecentPaidQualification(userId: string) {
 }
 
 async function mutationResponse<T extends object>(
-  includeSnapshot: boolean, userId: string, result: T,
+  includeSnapshot: boolean,
+  userId: string,
+  result: T,
 ) {
   if (!includeSnapshot) return result;
   return completeFarmV2Mutation({
     mutate: async () => result,
-    settle: () => settleFarmV2Farmer({ userId, requestId: "login-settle:" + randomUUID() }),
+    settle: () =>
+      settleFarmV2Farmer({ userId, requestId: "login-settle:" + randomUUID() }),
     read: () => ensureFarmV2PlayerInitialized({ userId }),
   });
 }
@@ -73,7 +99,10 @@ router.use("/farm/v2", (req, res, next) => {
   res.status(503).json({ error: "FARM_V2_ENTRY_DISABLED" });
 });
 const authorizedRoute =
-  (handler: RequestHandler, useRecentQualification = false): RequestHandler =>
+  (
+    handler: RequestHandler,
+    useRecentQualification: boolean | ((req: Request) => boolean) = false,
+  ): RequestHandler =>
   async (req, res, next) => {
     try {
       const requestId =
@@ -81,23 +110,39 @@ const authorizedRoute =
         (req.method === "GET" ? randomUUID() : "");
       if (!/^[A-Za-z0-9._:-]{1,120}$/.test(requestId))
         throw new Error("REQUEST_ID_REQUIRED");
-      if (useRecentQualification &&
-          await hasRecentPaidQualification(String(res.locals.authenticatedUserId))) {
+      const useRecent =
+        typeof useRecentQualification === "function"
+          ? useRecentQualification(req)
+          : useRecentQualification;
+      const legacy =
+        localCoinsEnabled() && useRecent && req.method !== "GET"
+          ? await pool.query(
+              "select 1 from farm_v2_mutation where user_id=$1 and request_id=$2 and wallet_transaction->'command' is not null and transaction_state <> 'COMPLETED' limit 1",
+              [String(res.locals.authenticatedUserId), requestId],
+            )
+          : { rows: [] };
+      if (
+        useRecent &&
+        !legacy.rows.length &&
+        (await hasRecentPaidQualification(
+          String(res.locals.authenticatedUserId),
+        ))
+      ) {
         await handler(req, res, next);
         return;
       }
       await runFarmV2AuthorizedJson(res, next, async (deferredNext) => {
-      await withFarmAuthority(
-        {
-          userId: String(res.locals.authenticatedUserId),
-          launchToken: String(res.locals.launchToken),
-          requestId,
-          action: req.method + ":" + req.path,
-        },
-        async () => {
-          await handler(req, res, deferredNext);
-        },
-      );
+        await withFarmAuthority(
+          {
+            userId: String(res.locals.authenticatedUserId),
+            launchToken: String(res.locals.launchToken),
+            requestId,
+            action: req.method + ":" + req.path,
+          },
+          async () => {
+            await handler(req, res, deferredNext);
+          },
+        );
       });
     } catch (error) {
       if (!res.headersSent) next(error);
@@ -142,6 +187,31 @@ router.post("/farm/v2/recovery", async (req, res, next) => {
   }
 });
 
+router.get("/farm/v2/wallet", async (_req, res, next) => {
+  try {
+    res.setHeader("Cache-Control", "no-store");
+    res.json(
+      await readFarmCoinBalances(String(res.locals.authenticatedUserId)),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+router.post("/farm/v2/wallet/transfer", async (req, res, next) => {
+  try {
+    res.setHeader("Cache-Control", "no-store");
+    res.json(
+      await transferFarmCoins(
+        String(res.locals.authenticatedUserId),
+        String(req.header("x-request-id") ?? ""),
+        req.body?.direction,
+        req.body?.amount,
+      ),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
 router.get(
   "/farm/v2/state",
   authorizedRoute(async (req, res, next) => {
@@ -309,7 +379,9 @@ router.post(
         landId: Number(req.params.landId),
       });
       res.setHeader("Cache-Control", "no-store");
-      res.json(await mutationResponse(req.query.snapshot === "1", userId, result));
+      res.json(
+        await mutationResponse(req.query.snapshot === "1", userId, result),
+      );
     } catch (error) {
       next(error);
     }
@@ -350,23 +422,35 @@ router.post(
         landId: Number(req.params.landId),
       });
       res.setHeader("Cache-Control", "no-store");
-      res.json(await mutationResponse(req.query.snapshot === "1", userId, result));
+      res.json(
+        await mutationResponse(req.query.snapshot === "1", userId, result),
+      );
     } catch (error) {
       next(error);
     }
   }, true),
 );
 
-router.post("/farm/v2/lands/:landId/unlock", authorizedRoute(async (req, res, next) => {
-  try {
-    const userId = String(res.locals.authenticatedUserId);
-    const result = await purchaseFarmV2CoinLand({ userId,
-      launchToken: String(res.locals.launchToken), requestId: req.header("x-request-id") ?? "",
-      landId: Number(req.params.landId) });
-    res.setHeader("Cache-Control", "no-store");
-    res.json(await mutationResponse(req.query.snapshot === "1", userId, result));
-  } catch (error) { next(error); }
-}));
+router.post(
+  "/farm/v2/lands/:landId/unlock",
+  authorizedRoute(async (req, res, next) => {
+    try {
+      const userId = String(res.locals.authenticatedUserId);
+      const result = await purchaseFarmV2CoinLand({
+        userId,
+        launchToken: String(res.locals.launchToken),
+        requestId: req.header("x-request-id") ?? "",
+        landId: Number(req.params.landId),
+      });
+      res.setHeader("Cache-Control", "no-store");
+      res.json(
+        await mutationResponse(req.query.snapshot === "1", userId, result),
+      );
+    } catch (error) {
+      next(error);
+    }
+  }),
+);
 
 router.post(
   "/farm/v2/seeds/:landId/purchase",
@@ -383,7 +467,7 @@ router.post(
         res.status(400).json({ error: "REQUEST_ID_REQUIRED" });
         return;
       }
-      if (!await hasRecentPaidQualification(userId)) {
+      if (!(await hasRecentPaidQualification(userId))) {
         await reconcileFarmV2PaidAccessFromCore({
           userId,
           launchToken,
@@ -398,13 +482,15 @@ router.post(
         packs: Number(req.body?.packs),
       });
       res.setHeader("Cache-Control", "no-store");
-      res.json(await mutationResponse(req.query.snapshot === "1", userId, result));
+      res.json(
+        await mutationResponse(req.query.snapshot === "1", userId, result),
+      );
     } catch (error) {
       next(error);
     }
-  // Cached paid-land qualification does not replace the per-transaction
-  // authority UUID required by Core Wallet for a debit.
-  }),
+    // Local coin settlement needs no Core wallet operation. Legacy pending
+    // journals still establish authority through authorizedRoute's guard.
+  }, localCoinsEnabled),
 );
 
 router.post(
@@ -422,7 +508,7 @@ router.post(
         res.status(400).json({ error: "REQUEST_ID_REQUIRED" });
         return;
       }
-      await reconcileFarmV2PaidAccessFromCore({
+      if (farmAuthorityContext.getStore()) await reconcileFarmV2PaidAccessFromCore({
         userId,
         launchToken,
         requestId: "farm-v2:core-paid-refresh:v1",
@@ -435,11 +521,13 @@ router.post(
         cropQuantity: Number(req.body?.cropQuantity),
       });
       res.setHeader("Cache-Control", "no-store");
-      res.json(await mutationResponse(req.query.snapshot === "1", userId, result));
+      res.json(
+        await mutationResponse(req.query.snapshot === "1", userId, result),
+      );
     } catch (error) {
       next(error);
     }
-  }),
+  }, req => localCoinsEnabled() && Number(req.params.landId) < 6),
 );
 
 // Never accept paid qualification from the request body. Only Core Wallet

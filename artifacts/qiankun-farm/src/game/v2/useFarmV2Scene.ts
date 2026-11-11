@@ -6,6 +6,7 @@ import { mapServerLands, mapServerWarehouse } from "./farmV2SceneAdapter";
 import type { Plot, CropInventory } from "../types";
 
 type Snapshot = {
+  features?: { localCoins?: boolean };
   player: {
     missionState?: import("./missionRuntime").MissionState;
     petState?: {
@@ -24,6 +25,7 @@ type Snapshot = {
 };
 
 type SceneData = {
+  localCoins?: boolean;
   warehouse: WorkshopWarehouse;
   missions?: import("./missionRuntime").MissionState;
   pets?: {
@@ -61,48 +63,54 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   const mutationInFlight = useRef(false);
   const readSequence = useRef(0);
 
-  const refresh = useCallback(async (mutationResult?: unknown) => {
-    const sequence = ++readSequence.current;
-    if (!launchToken) {
-      setData(null);
-      setError("FARM_V2_LAUNCH_TOKEN_REQUIRED");
-      setLoading(false);
-      return false;
-    }
-    setLoading(true);
-    try {
-      const snapshot = await resolveFarmV2MutationSnapshot<Snapshot>(
-        mutationResult,
-        () => api!.readState(),
-      );
-      const nextData = {
-        warehouse: snapshot.player.warehouseState as WorkshopWarehouse,
-        missions: snapshot.player.missionState,
-        pets: snapshot.player.petState,
-        farmer: snapshot.player.farmerState,
-        chaos: snapshot.player.chaosSeedState,
-        plots: mapServerLands(snapshot.lands),
-        ...mapServerWarehouse(snapshot.player.warehouseState),
-      };
-      if (sequence !== readSequence.current) return false;
-      setData(nextData);
-      setError(null);
-      return true;
-    } catch (cause) {
-      if (sequence !== readSequence.current) return false;
-      setData(null);
-      setPendingWorkshop(api?.pendingWorkshop() ?? []);
-      setReauthenticateUrl(api?.getReauthenticationUrl() ?? null);
-      setError(cause instanceof Error ? cause.message : "FARM_V2_STATE_FAILED");
-      return false;
-    } finally {
-      if (sequence === readSequence.current) {
-        setPendingWorkshop(api?.pendingWorkshop() ?? []);
-        setPendingFriends(api?.pendingFriends() ?? []);
+  const refresh = useCallback(
+    async (mutationResult?: unknown) => {
+      const sequence = ++readSequence.current;
+      if (!launchToken) {
+        setData(null);
+        setError("FARM_V2_LAUNCH_TOKEN_REQUIRED");
         setLoading(false);
+        return false;
       }
-    }
-  }, [api, launchToken]);
+      setLoading(true);
+      try {
+        const snapshot = await resolveFarmV2MutationSnapshot<Snapshot>(
+          mutationResult,
+          () => api!.readState(),
+        );
+        const nextData = {
+          warehouse: snapshot.player.warehouseState as WorkshopWarehouse,
+          localCoins: snapshot.features?.localCoins,
+          missions: snapshot.player.missionState,
+          pets: snapshot.player.petState,
+          farmer: snapshot.player.farmerState,
+          chaos: snapshot.player.chaosSeedState,
+          plots: mapServerLands(snapshot.lands),
+          ...mapServerWarehouse(snapshot.player.warehouseState),
+        };
+        if (sequence !== readSequence.current) return false;
+        setData(nextData);
+        setError(null);
+        return true;
+      } catch (cause) {
+        if (sequence !== readSequence.current) return false;
+        setData(null);
+        setPendingWorkshop(api?.pendingWorkshop() ?? []);
+        setReauthenticateUrl(api?.getReauthenticationUrl() ?? null);
+        setError(
+          cause instanceof Error ? cause.message : "FARM_V2_STATE_FAILED",
+        );
+        return false;
+      } finally {
+        if (sequence === readSequence.current) {
+          setPendingWorkshop(api?.pendingWorkshop() ?? []);
+          setPendingFriends(api?.pendingFriends() ?? []);
+          setLoading(false);
+        }
+      }
+    },
+    [api, launchToken],
+  );
 
   useEffect(() => {
     void refresh();
@@ -131,7 +139,8 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       try {
         if (!api) throw new Error("FARM_V2_LAUNCH_TOKEN_REQUIRED");
         let result: unknown;
-        if (operation === "unlockCoinLand") result = await api.unlockCoinLand(landId);
+        if (operation === "unlockCoinLand")
+          result = await api.unlockCoinLand(landId);
         else if (operation === "claimChaos") await api.claimChaosSeeds();
         else if (operation === "configureFarmer")
           await api.configureFarmer(landId, quantity === 1);
@@ -147,8 +156,9 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         // Use the server's post-commit state; older responses require a read.
         return await refresh(result);
       } catch (cause) {
-        // A failed mutation must not leave the previously loaded state looking current.
-        setData(null);
+        // A rejected local debit committed no asset changes; keep the scene
+        // available so the player can open the manual transfer wallet.
+        if (!(cause instanceof Error && cause.message === "FARM_COIN_INSUFFICIENT")) setData(null);
         setReauthenticateUrl(api?.getReauthenticationUrl() ?? null);
         setError(
           cause instanceof Error ? cause.message : "FARM_V2_MUTATION_FAILED",
@@ -231,6 +241,19 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   }, [api]);
   return {
     readWallet,
+    pendingTransfers: () => api?.pendingTransfers() ?? [],
+    transferCoins: async (direction: "in" | "out", amount: number) => {
+      if (!api) throw new Error("AUTH_REQUIRED");
+      if (mutationInFlight.current) throw new Error("FARM_OPERATION_BUSY");
+      mutationInFlight.current = true;
+      setBusy(true);
+      try {
+        return await api.transferCoins(direction, amount);
+      } finally {
+        mutationInFlight.current = false;
+        setBusy(false);
+      }
+    },
     friendAction,
     pendingFriends,
     readFriends: () => {
@@ -253,5 +276,3 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     reauthenticateUrl,
   };
 }
-
-

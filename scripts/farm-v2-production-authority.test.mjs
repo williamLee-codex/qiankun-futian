@@ -14,7 +14,7 @@ test("offline sources, ordered versions and unauthorized execution", () => {
   const ms = loadFarmMigrations(platform);
   assert.deepEqual(
     ms.map((m) => m.version),
-    ["20261011000201", "20261011000202", "20261011000203"],
+    ["20261011000201", "20261011000202", "20261011000203", "20261111184000"],
   );
   for (const m of ms) {
     assert.equal(m.executionAuthorized, false);

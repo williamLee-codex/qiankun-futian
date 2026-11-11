@@ -1,3 +1,5 @@
+import { localCoinsEnabled } from "./farm-v2-local-coins";
+import { purchaseLocalCoinLand } from "./farm-v2-local-coin-land";
 import { and, eq } from "drizzle-orm";
 import {
   db,
@@ -22,7 +24,6 @@ import {
 } from "./farm-v2-mappers";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
 
-
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export async function purchaseFarmV2CoinLand(input: {
   userId: string;
@@ -40,6 +41,15 @@ export async function purchaseFarmV2CoinLand(input: {
     eq(farmV2MutationTable.userId, input.userId),
     eq(farmV2MutationTable.requestId, input.requestId),
   );
+  if (localCoinsEnabled()) {
+    const existing = await walletJournalDb
+      .select()
+      .from(farmV2MutationTable)
+      .where(where)
+      .limit(1);
+    if (!existing.length || existing[0].transactionState === "COMPLETED")
+      return purchaseLocalCoinLand({ ...input, landId });
+  }
   // Commit a full intent before starting the domain transaction/contacting Core.
   // Core owns the permanent right. Farm must never compensate this operation.
   const inserted = await walletJournalDb
@@ -87,9 +97,10 @@ export async function purchaseFarmV2CoinLand(input: {
     ))
       await tx
         .update(farmV2LandTable)
-        .set(
-          { ...farmV2LandEntityToPersistence(land), version: rows.find((r) => r.landId === land.landId)!.version + 1 },
-        )
+        .set({
+          ...farmV2LandEntityToPersistence(land),
+          version: rows.find((r) => r.landId === land.landId)!.version + 1,
+        })
         .where(
           and(
             eq(farmV2LandTable.userId, input.userId),

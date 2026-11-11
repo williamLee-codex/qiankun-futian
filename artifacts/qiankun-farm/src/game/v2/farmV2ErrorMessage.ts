@@ -1,5 +1,11 @@
 /** Presentation only: do not reinterpret an uncertain transaction as failed. */
 export function farmV2ErrorMessage(code: string): string {
+  if (code === "FARM_COIN_INSUFFICIENT")
+    return "福田金幣不足，請開啟福田錢包，手動從中央轉入金幣。";
+  if (code === "FARM_TRANSFER_PENDING")
+    return "上一筆轉帳尚未確認，請先重試原轉帳。";
+  if (code === "FARM_COIN_BALANCE_LIMIT")
+    return "轉入後餘額超過上限，請減少金額。";
   if (code === "FARM_SEED_LAND_LOCKED") return "請先解鎖這塊田，再購買種子。";
   if (
     /AUTH_REQUIRED|UNAUTHORIZED|NOT_AUTHORIZED|FORBIDDEN|SESSION|LAUNCH_TOKEN|LOGIN|TOKEN_EXPIRED/.test(

@@ -1,3 +1,4 @@
+import { localCoinsEnabled } from "./farm-v2-local-coins";
 import { mutateFarmV2AtomicPot } from "./farm-v2-atomic-pot";
 import {
   findOfficialFestivalCode,
@@ -205,23 +206,31 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
             now,
           );
         } catch (error) {
-          if (!(error instanceof Error) ||
-              !["MISSION_NOT_COMPLETE", "MISSION_ALREADY_CLAIMED"].includes(error.message)) {
+          if (
+            !(error instanceof Error) ||
+            !["MISSION_NOT_COMPLETE", "MISSION_ALREADY_CLAIMED"].includes(
+              error.message,
+            )
+          ) {
             throw error;
           }
           // Preserve the definitive pre-wallet rejection outside the transaction
           // that will roll back. A request with a wallet plan requires recovery.
-          const rejected = await journalDb.update(farmV2MutationTable)
+          const rejected = await journalDb
+            .update(farmV2MutationTable)
             .set({ failureCode: error.message, updatedAt: new Date() })
-            .where(and(
-              where,
-              eq(farmV2MutationTable.transactionState, "PENDING"),
-              isNull(farmV2MutationTable.walletTransaction),
-              isNull(farmV2MutationTable.walletAmount),
-              isNull(farmV2MutationTable.response),
-            ))
+            .where(
+              and(
+                where,
+                eq(farmV2MutationTable.transactionState, "PENDING"),
+                isNull(farmV2MutationTable.walletTransaction),
+                isNull(farmV2MutationTable.walletAmount),
+                isNull(farmV2MutationTable.response),
+              ),
+            )
             .returning({ requestId: farmV2MutationTable.requestId });
-          if (rejected.length !== 1) throw new Error("MUTATION_RECOVERY_REQUIRED");
+          if (rejected.length !== 1)
+            throw new Error("MUTATION_RECOVERY_REQUIRED");
           throw error;
         }
         const state = structuredClone(workshopState(before));
@@ -330,7 +339,11 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
           // on the same key after the player earns funds. Unknown outcomes stay reserved.
           if (
             error instanceof Error &&
-            ["INSUFFICIENT_FUNDS", "insufficient_funds"].includes(error.message)
+            [
+              "INSUFFICIENT_FUNDS",
+              "insufficient_funds",
+              "FARM_COIN_INSUFFICIENT",
+            ].includes(error.message)
           ) {
             await journalDb
               .update(farmV2MutationTable)
@@ -381,7 +394,7 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
 
 /** Public dispatcher: every NEW pot settlement requires verified co-location. */
 export async function mutateFarmV2Workshop(input: Input) {
-  if (input.command?.kind !== "synthesize")
+  if (input.command?.kind !== "synthesize" || localCoinsEnabled())
     return mutateLegacyFarmV2Workshop(input);
   const [existing] = await journalDb
     .select()

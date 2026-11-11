@@ -8,7 +8,9 @@ const { initialize, session, authority } = vi.hoisted(() => ({
   authority: vi.fn(),
 }));
 // Entry-gate tests must never construct a real database pool.
-vi.mock("@workspace/db", () => ({ pool: { query: vi.fn(), connect: vi.fn() } }));
+vi.mock("@workspace/db", () => ({
+  pool: { query: vi.fn(), connect: vi.fn() },
+}));
 vi.mock("../lib/farm-v2-init", () => ({
   ensureFarmV2PlayerInitialized: initialize,
 }));
@@ -18,7 +20,9 @@ vi.mock("../lib/farm-v2-platform", () => ({
 }));
 vi.mock("../lib/farm-v2-authority", () => ({ withFarmAuthority: authority }));
 vi.mock("../lib/farm-v2-sow", () => ({ sowFarmV2Land: vi.fn() }));
-vi.mock("../lib/farm-v2-coin-land-unlock", () => ({ purchaseFarmV2CoinLand: vi.fn() }));
+vi.mock("../lib/farm-v2-coin-land-unlock", () => ({
+  purchaseFarmV2CoinLand: vi.fn(),
+}));
 vi.mock("../lib/farm-v2-harvest", () => ({ harvestFarmV2Land: vi.fn() }));
 vi.mock("../lib/farm-v2-seed-purchase", () => ({
   purchaseFarmV2SeedPacks: vi.fn(),
@@ -191,43 +195,61 @@ it.each([
   { operation: "sow", recent: false },
   { operation: "harvest", recent: true },
   { operation: "harvest", recent: false },
-])("$operation uses recent paid qualification when available ($recent)", async ({ operation, recent }) => {
-  const { pool } = await import("@workspace/db");
-  const { sowFarmV2Land } = await import("../lib/farm-v2-sow");
-  const { harvestFarmV2Land } = await import("../lib/farm-v2-harvest");
-  const { reconcileFarmV2PaidAccessFromCore } = await import("../lib/farm-v2-paid-access");
-  const { farmAuthorityContext } = await import("../lib/farm-v2-authority-context");
-  const userId = "00000000-0000-0000-0000-000000000001";
-  vi.stubEnv("FARM_V2_ENTRY_ENABLED", "1");
-  vi.stubEnv("PLATFORM_BASE_URL", "https://platform.test");
-  vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test-only");
-  const originalFetch = globalThis.fetch;
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) =>
-    String(input).startsWith("https://platform.test")
-      ? Response.json({ userId, appId: "qiankun-futian" })
-      : originalFetch(input, init),
-  );
-  vi.mocked(pool.query).mockResolvedValueOnce({ rows: recent ? [{}] : [] } as never);
-  vi.mocked(sowFarmV2Land).mockResolvedValueOnce({} as never);
-  vi.mocked(harvestFarmV2Land).mockResolvedValueOnce({} as never);
-  authority.mockImplementationOnce(async (_input, run) =>
-    farmAuthorityContext.run({ userId, operationId: "test", qualification: 600 }, run),
-  );
-  const response = await fetch(`${base}/api/farm/v2/lands/4/${operation}`, {
-    method: "POST",
-    headers: { authorization: "Bearer credential", "x-request-id": "sow-test" },
-  });
-  expect(response.status).toBe(200);
-  expect(authority).toHaveBeenCalledTimes(recent ? 0 : 1);
-  expect(reconcileFarmV2PaidAccessFromCore).toHaveBeenCalledTimes(recent ? 0 : 1);
-  expect(operation === "sow" ? sowFarmV2Land : harvestFarmV2Land)
-    .toHaveBeenCalledWith({ userId, requestId: "sow-test", landId: 4 });
-});
+])(
+  "$operation uses recent paid qualification when available ($recent)",
+  async ({ operation, recent }) => {
+    const { pool } = await import("@workspace/db");
+    const { sowFarmV2Land } = await import("../lib/farm-v2-sow");
+    const { harvestFarmV2Land } = await import("../lib/farm-v2-harvest");
+    const { reconcileFarmV2PaidAccessFromCore } =
+      await import("../lib/farm-v2-paid-access");
+    const { farmAuthorityContext } =
+      await import("../lib/farm-v2-authority-context");
+    const userId = "00000000-0000-0000-0000-000000000001";
+    vi.stubEnv("FARM_V2_ENTRY_ENABLED", "1");
+    vi.stubEnv("PLATFORM_BASE_URL", "https://platform.test");
+    vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test-only");
+    const originalFetch = globalThis.fetch;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) =>
+      String(input).startsWith("https://platform.test")
+        ? Response.json({ userId, appId: "qiankun-futian" })
+        : originalFetch(input, init),
+    );
+    vi.mocked(pool.query).mockResolvedValueOnce({
+      rows: recent ? [{}] : [],
+    } as never);
+    vi.mocked(sowFarmV2Land).mockResolvedValueOnce({} as never);
+    vi.mocked(harvestFarmV2Land).mockResolvedValueOnce({} as never);
+    authority.mockImplementationOnce(async (_input, run) =>
+      farmAuthorityContext.run(
+        { userId, operationId: "test", qualification: 600 },
+        run,
+      ),
+    );
+    const response = await fetch(`${base}/api/farm/v2/lands/4/${operation}`, {
+      method: "POST",
+      headers: {
+        authorization: "Bearer credential",
+        "x-request-id": "sow-test",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(authority).toHaveBeenCalledTimes(recent ? 0 : 1);
+    expect(reconcileFarmV2PaidAccessFromCore).toHaveBeenCalledTimes(
+      recent ? 0 : 1,
+    );
+    expect(
+      operation === "sow" ? sowFarmV2Land : harvestFarmV2Land,
+    ).toHaveBeenCalledWith({ userId, requestId: "sow-test", landId: 4 });
+  },
+);
 
 it("seed purchase keeps wallet transaction authority even with recent paid qualification", async () => {
   const { pool } = await import("@workspace/db");
-  const { purchaseFarmV2SeedPacks } = await import("../lib/farm-v2-seed-purchase");
-  const { farmAuthorityContext } = await import("../lib/farm-v2-authority-context");
+  const { purchaseFarmV2SeedPacks } =
+    await import("../lib/farm-v2-seed-purchase");
+  const { farmAuthorityContext } =
+    await import("../lib/farm-v2-authority-context");
   const userId = "00000000-0000-0000-0000-000000000001";
   vi.stubEnv("FARM_V2_ENTRY_ENABLED", "1");
   vi.stubEnv("PLATFORM_BASE_URL", "https://platform.test");
@@ -240,7 +262,14 @@ it("seed purchase keeps wallet transaction authority even with recent paid quali
   );
   vi.mocked(pool.query).mockResolvedValue({ rows: [{}] } as never);
   authority.mockImplementation(async (_input, run) =>
-    farmAuthorityContext.run({ userId, operationId: "00000000-0000-4000-8000-000000000002", qualification: 600 }, run),
+    farmAuthorityContext.run(
+      {
+        userId,
+        operationId: "00000000-0000-4000-8000-000000000002",
+        qualification: 600,
+      },
+      run,
+    ),
   );
   // The real Core wallet contract requires an operation UUID, independently
   // of the cached six-hour paid-land qualification.
@@ -251,41 +280,111 @@ it("seed purchase keeps wallet transaction authority even with recent paid quali
   });
   const response = await fetch(`${base}/api/farm/v2/seeds/1/purchase`, {
     method: "POST",
-    headers: { authorization: "Bearer credential", "content-type": "application/json", "x-request-id": "seed-authority-regression" },
+    headers: {
+      authorization: "Bearer credential",
+      "content-type": "application/json",
+      "x-request-id": "seed-authority-regression",
+    },
     body: JSON.stringify({ packs: 1 }),
   });
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ seedsAdded: 20 });
 });
 
-it.each([true, false])("state read uses six-hour qualification and returns post-settlement state (%s)", async (recent) => {
-  const { pool } = await import("@workspace/db");
-  const { settleFarmV2Farmer } = await import("../lib/farm-v2-gameplay");
-  const { reconcileFarmV2PaidAccessFromCore } = await import("../lib/farm-v2-paid-access");
-  const { farmAuthorityContext } = await import("../lib/farm-v2-authority-context");
-  const userId = "00000000-0000-0000-0000-000000000001";
-  vi.stubEnv("FARM_V2_ENTRY_ENABLED", "1");
-  vi.stubEnv("PLATFORM_BASE_URL", "https://platform.test");
-  vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test-only");
-  const originalFetch = globalThis.fetch;
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) =>
-    String(input).startsWith("https://platform.test")
-      ? Response.json({ userId, appId: "qiankun-futian" })
-      : originalFetch(input, init),
-  );
-  vi.mocked(pool.query).mockResolvedValue({ rows: recent ? [{}] : [] } as never);
-  authority.mockImplementation(async (_input, run) =>
-    farmAuthorityContext.run({ userId, operationId: "00000000-0000-4000-8000-000000000003", qualification: 600 }, run),
-  );
-  let settled = false;
-  vi.mocked(settleFarmV2Farmer).mockImplementation(async () => { settled = true; return {} as never; });
-  initialize.mockImplementation(async () => ({ player: { crops: settled ? 20 : 0 }, lands: [] }));
-  const response = await fetch(`${base}/api/farm/v2/state`, {
-    headers: { authorization: "Bearer credential" },
-  });
-  expect(response.status).toBe(200);
-  expect(await response.json()).toEqual({ player: { crops: 20 }, lands: [] });
-  expect(authority).toHaveBeenCalledTimes(recent ? 0 : 1);
-  expect(reconcileFarmV2PaidAccessFromCore).toHaveBeenCalledTimes(recent ? 0 : 1);
-  expect(initialize).toHaveBeenCalledTimes(recent ? 1 : 2);
-});
+it.each([true, false])(
+  "state read uses six-hour qualification and returns post-settlement state (%s)",
+  async (recent) => {
+    const { pool } = await import("@workspace/db");
+    const { settleFarmV2Farmer } = await import("../lib/farm-v2-gameplay");
+    const { reconcileFarmV2PaidAccessFromCore } =
+      await import("../lib/farm-v2-paid-access");
+    const { farmAuthorityContext } =
+      await import("../lib/farm-v2-authority-context");
+    const userId = "00000000-0000-0000-0000-000000000001";
+    vi.stubEnv("FARM_V2_ENTRY_ENABLED", "1");
+    vi.stubEnv("PLATFORM_BASE_URL", "https://platform.test");
+    vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test-only");
+    const originalFetch = globalThis.fetch;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) =>
+      String(input).startsWith("https://platform.test")
+        ? Response.json({ userId, appId: "qiankun-futian" })
+        : originalFetch(input, init),
+    );
+    vi.mocked(pool.query).mockResolvedValue({
+      rows: recent ? [{}] : [],
+    } as never);
+    authority.mockImplementation(async (_input, run) =>
+      farmAuthorityContext.run(
+        {
+          userId,
+          operationId: "00000000-0000-4000-8000-000000000003",
+          qualification: 600,
+        },
+        run,
+      ),
+    );
+    let settled = false;
+    vi.mocked(settleFarmV2Farmer).mockImplementation(async () => {
+      settled = true;
+      return {} as never;
+    });
+    initialize.mockImplementation(async () => ({
+      player: { crops: settled ? 20 : 0 },
+      lands: [],
+    }));
+    const response = await fetch(`${base}/api/farm/v2/state`, {
+      headers: { authorization: "Bearer credential" },
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ player: { crops: 20 }, lands: [] });
+    expect(authority).toHaveBeenCalledTimes(recent ? 0 : 1);
+    expect(reconcileFarmV2PaidAccessFromCore).toHaveBeenCalledTimes(
+      recent ? 0 : 1,
+    );
+    expect(initialize).toHaveBeenCalledTimes(recent ? 1 : 2);
+  },
+);
+it.each([false, true])(
+  "local seed settlement avoids central authority except for an original legacy wallet intent (%s)",
+  async (legacy) => {
+    const { pool } = await import("@workspace/db");
+    const { purchaseFarmV2SeedPacks } =
+      await import("../lib/farm-v2-seed-purchase");
+    vi.stubEnv("FARM_V2_ENTRY_ENABLED", "1");
+    vi.stubEnv("FARM_V2_LOCAL_COINS_ENABLED", "1");
+    vi.stubEnv("PLATFORM_BASE_URL", "https://platform.test");
+    vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test");
+    const originalFetch = globalThis.fetch;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) =>
+      String(input).startsWith("https://platform.test")
+        ? Response.json({ userId: "u", appId: "qiankun-futian" })
+        : originalFetch(input, init),
+    );
+    vi.mocked(pool.query).mockImplementation(
+      async (text: any) =>
+        ({
+          rows: String(text).includes("wallet_transaction->'command'")
+            ? legacy
+              ? [{}]
+              : []
+            : [{}],
+        }) as never,
+    );
+    authority.mockImplementation(async (_input, run) => run());
+    vi.mocked(purchaseFarmV2SeedPacks).mockResolvedValue({
+      seedsAdded: 20,
+    } as never);
+    const response = await fetch(`${base}/api/farm/v2/seeds/1/purchase`, {
+      method: "POST",
+      headers: {
+        authorization: "Bearer credential",
+        "content-type": "application/json",
+        "x-request-id": "local-seeds",
+      },
+      body: JSON.stringify({ packs: 1 }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ seedsAdded: 20 });
+    expect(authority).toHaveBeenCalledTimes(legacy ? 1 : 0);
+  },
+);

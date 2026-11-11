@@ -1,3 +1,8 @@
+export type FarmCoinBalances = {
+  coins: number;
+  centralCoins: number;
+  localCoinsEnabled: boolean;
+};
 /**
  * Farm V2 transport boundary. The server, never localStorage, owns all farm assets.
  * The launch token must be provided by the platform launch integration.
@@ -18,6 +23,7 @@ export type FarmV2Warehouse = {
 };
 
 export type FarmV2State = {
+  features?: { localCoins?: boolean };
   player: {
     userId?: string;
     warehouseState: FarmV2Warehouse;
@@ -69,9 +75,13 @@ export function createFarmV2Api(input: {
     return new URL(normalizedPath, normalizedBase).toString();
   };
 
-  const browserOrigin = (globalThis as { location?: { origin?: string } }).location?.origin;
+  const browserOrigin = (globalThis as { location?: { origin?: string } })
+    .location?.origin;
   const browserResume = launchToken === "browser-session";
-  if (browserResume && (!browserOrigin || normalizedApiBase.origin !== browserOrigin))
+  if (
+    browserResume &&
+    (!browserOrigin || normalizedApiBase.origin !== browserOrigin)
+  )
     throw new Error("FARM_V2_SAME_ORIGIN_SESSION_REQUIRED");
   const authHeader = (token: string): Record<string, string> =>
     token === "cookie-session" ? {} : { Authorization: `Bearer ${token}` };
@@ -94,7 +104,9 @@ export function createFarmV2Api(input: {
   function restorePendingRequests(userId: string) {
     journalKey = `farm-v2:pending:${normalizedApiBase.toString()}:${userId}`;
     try {
-      const saved = JSON.parse(sessionStorage.getItem(journalKey) ?? "{}") as Record<string, unknown>;
+      const saved = JSON.parse(
+        sessionStorage.getItem(journalKey) ?? "{}",
+      ) as Record<string, unknown>;
       for (const [operation, id] of Object.entries(saved)) {
         if (typeof id === "string" && /^[A-Za-z0-9._:-]{1,120}$/.test(id))
           pendingRequests.set(operation, id);
@@ -127,7 +139,10 @@ export function createFarmV2Api(input: {
     }
     return response.json() as Promise<T>;
   }
-  async function timedFetch(path: string, init: RequestInit): Promise<Response> {
+  async function timedFetch(
+    path: string,
+    init: RequestInit,
+  ): Promise<Response> {
     const started = performance.now();
     let status = 0;
     try {
@@ -135,10 +150,15 @@ export function createFarmV2Api(input: {
       status = response.status;
       return response;
     } finally {
-      console.info("FARM_REQUEST_TIMING", JSON.stringify({
-        path: path.split("?")[0], method: init.method ?? "GET", status,
-        durationMs: Math.round(performance.now() - started),
-      }));
+      console.info(
+        "FARM_REQUEST_TIMING",
+        JSON.stringify({
+          path: path.split("?")[0],
+          method: init.method ?? "GET",
+          status,
+          durationMs: Math.round(performance.now() - started),
+        }),
+      );
     }
   }
   async function session(): Promise<string> {
@@ -146,7 +166,9 @@ export function createFarmV2Api(input: {
     sessionPromise ??= (async () => {
       const response = await timedFetch("farm/v2/session", {
         method: browserResume ? "GET" : "POST",
-        headers: browserResume ? {} : { Authorization: `Bearer ${launchToken}` },
+        headers: browserResume
+          ? {}
+          : { Authorization: `Bearer ${launchToken}` },
         credentials: "same-origin",
         cache: "no-store",
         redirect: "error",
@@ -161,7 +183,11 @@ export function createFarmV2Api(input: {
         typeof result.userId !== "string" ||
         !result.userId ||
         typeof result.sessionToken !== "string" ||
-        !(result.sessionToken.startsWith("fvs1.") || (normalizedApiBase.origin === browserOrigin && result.sessionToken === "cookie-session")) ||
+        !(
+          result.sessionToken.startsWith("fvs1.") ||
+          (normalizedApiBase.origin === browserOrigin &&
+            result.sessionToken === "cookie-session")
+        ) ||
         typeof result.reauthenticateUrl !== "string"
       )
         throw new Error("INVALID_FARM_SESSION_RESPONSE");
@@ -238,6 +264,10 @@ export function createFarmV2Api(input: {
           (error.status !== 409 ||
             error.code === "FARM_MUTATION_COMPENSATED" ||
             error.code === "MISSION_NOT_COMPLETE" ||
+            error.code === "FARM_COIN_INSUFFICIENT" ||
+            (path === "farm/v2/wallet/transfer" &&
+              error.code === "INSUFFICIENT_FUNDS") ||
+            error.code === "FARM_COIN_BALANCE_LIMIT" ||
             error.code === "MISSION_ALREADY_CLAIMED" ||
             error.code.startsWith("CORE_COIN_LAND_"))
         ) {
@@ -251,6 +281,19 @@ export function createFarmV2Api(input: {
     }
   }
 
+  const pendingTransfers = () =>
+    [...pendingRequests.keys()].flatMap((key) => {
+      const [path, body] = JSON.parse(key) as [
+        string,
+        { direction?: unknown; amount?: unknown } | null,
+      ];
+      return path === "farm/v2/wallet/transfer" &&
+        body &&
+        (body.direction === "in" || body.direction === "out") &&
+        typeof body.amount === "number"
+        ? [{ direction: body.direction as "in" | "out", amount: body.amount }]
+        : [];
+    });
   return {
     getReauthenticationUrl: () => reauthenticateUrl,
     revokeSession: async () => {
@@ -314,7 +357,19 @@ export function createFarmV2Api(input: {
         "POST",
         { kind, landId },
       ),
-    readWallet: () => request<{ coins: number }>("farm/v2/wallet", "GET"),
+    readWallet: () => request<FarmCoinBalances>("farm/v2/wallet", "GET"),
+    pendingTransfers,
+    transferCoins: async (direction: "in" | "out", amount: number) => {
+      // Restore the per-user journal before deciding whether a NEW transfer is allowed.
+      await session();
+      const pending = pendingTransfers();
+      if (pending.some((p) => p.direction !== direction || p.amount !== amount))
+        throw new Error("FARM_TRANSFER_PENDING");
+      return request<FarmCoinBalances>("farm/v2/wallet/transfer", "POST", {
+        direction,
+        amount,
+      });
+    },
     readState: async () => {
       if (!browserResume || sessionPromise)
         return request<FarmV2State>("farm/v2/state", "GET");
@@ -322,9 +377,20 @@ export function createFarmV2Api(input: {
       // This same-origin request already carries the HttpOnly cookie and the
       // server validates it before returning state. A session preflight would
       // repeat that verification and add a sequential network round trip.
-      reauthenticateUrl = new URL("/api/apps/qiankun-futian/launch?farmV2=1", normalizedApiBase.origin).toString();
-      const state = await request<FarmV2State>("farm/v2/state", "GET", undefined, true);
-      if (typeof state?.player?.userId !== "string" || !state.player.userId.trim())
+      reauthenticateUrl = new URL(
+        "/api/apps/qiankun-futian/launch?farmV2=1",
+        normalizedApiBase.origin,
+      ).toString();
+      const state = await request<FarmV2State>(
+        "farm/v2/state",
+        "GET",
+        undefined,
+        true,
+      );
+      if (
+        typeof state?.player?.userId !== "string" ||
+        !state.player.userId.trim()
+      )
         throw new Error("INVALID_FARM_STATE_RESPONSE");
       restorePendingRequests(state.player.userId);
       sessionPromise = Promise.resolve("cookie-session");
@@ -333,18 +399,22 @@ export function createFarmV2Api(input: {
     unlockCoinLand: (landId: number) =>
       request<unknown>(`farm/v2/lands/${landId}/unlock?snapshot=1`, "POST"),
     sow: (landId: number) =>
-      request<FarmV2MutationResult>(`farm/v2/lands/${landId}/sow?snapshot=1`, "POST"),
+      request<FarmV2MutationResult>(
+        `farm/v2/lands/${landId}/sow?snapshot=1`,
+        "POST",
+      ),
     harvest: (landId: number) =>
-      request<FarmV2MutationResult>(`farm/v2/lands/${landId}/harvest?snapshot=1`, "POST"),
+      request<FarmV2MutationResult>(
+        `farm/v2/lands/${landId}/harvest?snapshot=1`,
+        "POST",
+      ),
     purchaseSeeds: (landId: number, packs: number) =>
-      request<unknown>(`farm/v2/seeds/${landId}/purchase?snapshot=1`, "POST", { packs }),
+      request<unknown>(`farm/v2/seeds/${landId}/purchase?snapshot=1`, "POST", {
+        packs,
+      }),
     exchangeCrops: (landId: number, cropQuantity: number) =>
       request<unknown>(`farm/v2/crops/${landId}/exchange?snapshot=1`, "POST", {
         cropQuantity,
       }),
   };
 }
-
-
-
-

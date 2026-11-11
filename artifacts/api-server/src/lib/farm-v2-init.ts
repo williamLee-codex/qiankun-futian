@@ -1,3 +1,4 @@
+import { localCoinsEnabled } from "./farm-v2-local-coins";
 import { assertFarmAuthorityFence } from "./farm-v2-authority-context";
 import { eq, sql } from "drizzle-orm";
 import { db, farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
@@ -7,36 +8,47 @@ import { createMissionState } from "../../../qiankun-farm/src/game/v2/missionRun
 import { createFarmPetState } from "../../../qiankun-farm/src/game/v2/petRuntime";
 import { createFarmerState } from "../../../qiankun-farm/src/game/v2/farmerRuntime";
 import { createEmptyFarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
-import { encodeFarmAccessState, encodeFarmPetState } from "./farm-v2-json-codecs";
+import {
+  encodeFarmAccessState,
+  encodeFarmPetState,
+} from "./farm-v2-json-codecs";
 
-export async function ensureFarmV2PlayerInitialized(input: { userId: string; now?: number }) {
+export async function ensureFarmV2PlayerInitialized(input: {
+  userId: string;
+  now?: number;
+}) {
   const userId = input.userId.trim();
   if (!userId) throw new Error("ACTOR_UID_REQUIRED");
   const now = input.now ?? Date.now();
   const enteredAt = new Date(now);
 
-  return db.transaction(async (tx) => {
+  const snapshot = await db.transaction(async (tx) => {
     await assertFarmAuthorityFence(tx);
     // Read an existing farm in a single statement, without taking the
     // initialization lock. The join keeps the player and lands in one snapshot.
-    const existing = await tx.select({
-      player: farmV2PlayerStateTable,
-      land: farmV2LandTable,
-    }).from(farmV2PlayerStateTable)
-      .leftJoin(farmV2LandTable, eq(farmV2PlayerStateTable.userId, farmV2LandTable.userId))
+    const existing = await tx
+      .select({
+        player: farmV2PlayerStateTable,
+        land: farmV2LandTable,
+      })
+      .from(farmV2PlayerStateTable)
+      .leftJoin(
+        farmV2LandTable,
+        eq(farmV2PlayerStateTable.userId, farmV2LandTable.userId),
+      )
       .where(eq(farmV2PlayerStateTable.userId, userId))
       .orderBy(farmV2LandTable.landId);
 
     const first = existing[0];
     if (first) {
-      const lands = existing.flatMap(({ land }) => land ? [land] : []);
+      const lands = existing.flatMap(({ land }) => (land ? [land] : []));
       if (lands.length !== 6) throw new Error("FARM_INITIALIZATION_INCOMPLETE");
       return { player: first.player, lands };
     }
 
     // Recheck under the lock in case another request just created the farm.
     await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtextextended(${userId + ':farm-v2-init'}, 0))`,
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${userId + ":farm-v2-init"}, 0))`,
     );
 
     let player = await tx.query.farmV2PlayerStateTable.findFirst({
@@ -45,37 +57,47 @@ export async function ensureFarmV2PlayerInitialized(input: { userId: string; now
 
     if (!player) {
       const access = createInitialFarmAccess();
-      const [created] = await tx.insert(farmV2PlayerStateTable).values({
-        userId,
-        firstFarmEnteredAt: enteredAt,
-        effectivePaidCrystals: 0,
-        accessState: encodeFarmAccessState(access),
-        warehouseState: createEmptyFarmWarehouse(),
-        missionState: createMissionState(now),
-        petState: encodeFarmPetState(createFarmPetState()),
-        farmerState: createFarmerState(),
-        chaosSeedState: null,
-      }).returning();
+      const [created] = await tx
+        .insert(farmV2PlayerStateTable)
+        .values({
+          userId,
+          firstFarmEnteredAt: enteredAt,
+          effectivePaidCrystals: 0,
+          accessState: encodeFarmAccessState(access),
+          warehouseState: createEmptyFarmWarehouse(),
+          missionState: createMissionState(now),
+          petState: encodeFarmPetState(createFarmPetState()),
+          farmerState: createFarmerState(),
+          chaosSeedState: null,
+        })
+        .returning();
       player = created;
 
       const lands = createInitialLandEntities(access.accessActive);
-      await tx.insert(farmV2LandTable).values(lands.map((land) => ({
-        userId,
-        landId: land.landId,
-        lifecycle: land.lifecycle,
-        accessActive: land.accessActive,
-        plantedQuantity: land.plantedQuantity,
-        plantedAt: null,
-        maturesAt: null,
-        version: 0,
-      })));
+      await tx.insert(farmV2LandTable).values(
+        lands.map((land) => ({
+          userId,
+          landId: land.landId,
+          lifecycle: land.lifecycle,
+          accessActive: land.accessActive,
+          plantedQuantity: land.plantedQuantity,
+          plantedAt: null,
+          maturesAt: null,
+          version: 0,
+        })),
+      );
     }
 
-    const lands = await tx.select().from(farmV2LandTable)
+    const lands = await tx
+      .select()
+      .from(farmV2LandTable)
       .where(eq(farmV2LandTable.userId, userId))
       .orderBy(farmV2LandTable.landId);
 
     if (lands.length !== 6) throw new Error("FARM_INITIALIZATION_INCOMPLETE");
     return { player, lands };
   });
+  return localCoinsEnabled()
+    ? { ...snapshot, features: { localCoins: true } }
+    : snapshot;
 }

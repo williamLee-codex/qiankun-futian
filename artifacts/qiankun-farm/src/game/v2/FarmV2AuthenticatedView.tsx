@@ -1,3 +1,4 @@
+import { FarmCoinWallet } from "./FarmCoinWallet";
 import { farmV2ErrorMessage } from "./farmV2ErrorMessage";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
@@ -17,7 +18,12 @@ function MaturityCountdown({ end }: { end: number }) {
     return () => clearInterval(timer);
   }, []);
   const seconds = Math.max(0, Math.ceil((end - now) / 1000));
-  return <p>成熟剩餘 {Math.floor(seconds / 3600)} 小時 {Math.floor(seconds / 60) % 60} 分 {seconds % 60} 秒</p>;
+  return (
+    <p>
+      成熟剩餘 {Math.floor(seconds / 3600)} 小時 {Math.floor(seconds / 60) % 60}{" "}
+      分 {seconds % 60} 秒
+    </p>
+  );
 }
 
 /**
@@ -45,10 +51,13 @@ export function FarmV2AuthenticatedView(props: {
     pendingWorkshop,
     readFriends,
     readWallet,
+    transferCoins,
+    pendingTransfers,
     visitCave,
     friendAction,
     pendingFriends,
   } = useFarmV2Scene(props.apiBaseUrl, props.launchToken);
+  const [walletOpen, setWalletOpen] = useState(false);
   const [visited, setVisited] = useState<FarmV2PublicCave | null>(null);
   const [panelTab, setPanelTab] = useState("盆栽");
   const [panelOpen, setPanelOpen] = useState(false);
@@ -64,13 +73,18 @@ export function FarmV2AuthenticatedView(props: {
 
   const sceneRoot = useRef<HTMLElement>(null);
   const warehouseButton = useRef<HTMLButtonElement>(null);
-  const [flight, setFlight] = useState<{ icon: string; style: CSSProperties } | null>(null);
+  const [flight, setFlight] = useState<{
+    icon: string;
+    style: CSSProperties;
+  } | null>(null);
 
   function playLandFlight(kind: "sow" | "harvest", landId: number) {
-    const field = sceneRoot.current?.querySelector(`[data-farm-plot="${landId}"]`);
+    const field = sceneRoot.current?.querySelector(
+      `[data-farm-plot="${landId}"]`,
+    );
     const fieldBox = field?.getBoundingClientRect();
     const warehouseBox = warehouseButton.current?.getBoundingClientRect();
-    const plot = data?.plots.find(p => p.id + 1 === landId);
+    const plot = data?.plots.find((p) => p.id + 1 === landId);
     if (!fieldBox || !warehouseBox || !plot) return;
     const from = kind === "sow" ? warehouseBox : fieldBox;
     const to = kind === "sow" ? fieldBox : warehouseBox;
@@ -89,8 +103,11 @@ export function FarmV2AuthenticatedView(props: {
     const id = plot.id + 1;
     if (plot.unlocked && plot.state === "ready") {
       void execute("harvest", id);
-    } else if (plot.unlocked && plot.state === "empty" &&
-        (data?.seedInventory[plot.cropId] ?? 0) >= plot.maxSeeds) {
+    } else if (
+      plot.unlocked &&
+      plot.state === "empty" &&
+      (data?.seedInventory[plot.cropId] ?? 0) >= plot.maxSeeds
+    ) {
       void execute("sow", id);
     } else {
       setBuySeedsOnOpen(plot.unlocked && plot.state === "empty" && plot.id < 5);
@@ -101,9 +118,11 @@ export function FarmV2AuthenticatedView(props: {
   async function refreshManually() {
     setNotice("正在更新農田…");
     const ok = await refresh();
-    setNotice(ok
-      ? `農田已更新（${new Date().toLocaleTimeString("zh-TW")}）。`
-      : "農田更新失敗，請查看錯誤提示。");
+    setNotice(
+      ok
+        ? `農田已更新（${new Date().toLocaleTimeString("zh-TW")}）。`
+        : "農田更新失敗，請查看錯誤提示。",
+    );
   }
 
   async function execute(
@@ -119,17 +138,34 @@ export function FarmV2AuthenticatedView(props: {
     quantity?: number,
   ) {
     setNotice(null);
-    const showFeedback = operation === "sow" || operation === "harvest" || operation === "purchaseSeeds";
-    setLandFeedback(showFeedback ? { landId, kind: operation, confirmed: false } : null);
+    const showFeedback =
+      operation === "sow" ||
+      operation === "harvest" ||
+      operation === "purchaseSeeds";
+    setLandFeedback(
+      showFeedback ? { landId, kind: operation, confirmed: false } : null,
+    );
     setFlight(null);
-    if (showFeedback) setNotice({ sow: "播種確認中…", harvest: "收成確認中…", purchaseSeeds: "購買種子確認中…" }[operation]);
-    if (operation === "sow" || (operation === "harvest" && selectedLand === null)) {
+    if (showFeedback)
+      setNotice(
+        {
+          sow: "播種確認中…",
+          harvest: "收成確認中…",
+          purchaseSeeds: "購買種子確認中…",
+        }[operation],
+      );
+    if (
+      operation === "sow" ||
+      (operation === "harvest" && selectedLand === null)
+    ) {
       if (operation === "sow") setSelectedLand(null);
       playLandFlight(operation, landId);
     }
     const ok = await mutate(operation, landId, quantity);
     if (!ok) setFlight(null);
-    setLandFeedback(ok && showFeedback ? { landId, kind: operation, confirmed: true } : null);
+    setLandFeedback(
+      ok && showFeedback ? { landId, kind: operation, confirmed: true } : null,
+    );
     setNotice(
       ok ? "操作已由伺服器確認。" : "操作未確認，請檢查錯誤並重新讀取。",
     );
@@ -139,7 +175,18 @@ export function FarmV2AuthenticatedView(props: {
     return <section role="status">正在讀取正式農田資料…</section>;
   if (!data)
     return (
-      <section role="alert" style={{minHeight:"100vh",background:"#0b1020",color:"#f8fafc",fontFamily:"system-ui, sans-serif",fontSize:20,lineHeight:1.6,padding:24}}>
+      <section
+        role="alert"
+        style={{
+          minHeight: "100vh",
+          background: "#0b1020",
+          color: "#f8fafc",
+          fontFamily: "system-ui, sans-serif",
+          fontSize: 20,
+          lineHeight: 1.6,
+          padding: 24,
+        }}
+      >
         <p>無法取得正式農田資料，已停止所有操作。</p>
         {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
         {pendingWorkshop.map((command, index) => (
@@ -202,7 +249,11 @@ export function FarmV2AuthenticatedView(props: {
             }
           }}
         />
-        {notice && <p role="status" aria-live="polite">{notice}</p>}
+        {notice && (
+          <p role="status" aria-live="polite">
+            {notice}
+          </p>
+        )}
         {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
       </>
     );
@@ -213,9 +264,31 @@ export function FarmV2AuthenticatedView(props: {
       aria-label="乾坤福田正式農田"
       style={{ maxWidth: 1200, margin: "0 auto" }}
     >
+      {data.localCoins && (
+        <button onClick={() => setWalletOpen(true)}>福田金幣／轉入回存</button>
+      )}
+      {data.localCoins && (
+        <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
+          <DialogContent>
+            <DialogTitle>福田金幣錢包</DialogTitle>
+            <FarmCoinWallet
+              read={readWallet}
+              transfer={transferCoins}
+              pending={pendingTransfers}
+              busy={busy}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
       {flight && (
-        <span aria-hidden="true" className="farm-v2-flight" style={flight.style}
-          onAnimationEnd={() => setFlight(null)}>{flight.icon}</span>
+        <span
+          aria-hidden="true"
+          className="farm-v2-flight"
+          style={flight.style}
+          onAnimationEnd={() => setFlight(null)}
+        >
+          {flight.icon}
+        </span>
       )}
       <FarmSceneInteractionLayer
         warehouseTargetRef={warehouseButton}
@@ -234,9 +307,20 @@ export function FarmV2AuthenticatedView(props: {
         }}
         ownerLabel="我的福田"
         busy={busy || loading}
-        onRefresh={() => { void refreshManually(); }}
-        onLandSelect={(id) => { setBuySeedsOnOpen(false); setSelectedLand(id); }}
-        pendingLandAction={landFeedback && !landFeedback.confirmed && landFeedback.kind !== "purchaseSeeds" ? landFeedback : undefined}
+        onRefresh={() => {
+          void refreshManually();
+        }}
+        onLandSelect={(id) => {
+          setBuySeedsOnOpen(false);
+          setSelectedLand(id);
+        }}
+        pendingLandAction={
+          landFeedback &&
+          !landFeedback.confirmed &&
+          landFeedback.kind !== "purchaseSeeds"
+            ? landFeedback
+            : undefined
+        }
         onPlotClick={handlePlotClick}
         onSection={(tab) => {
           setPanelTab(tab);
@@ -268,7 +352,16 @@ export function FarmV2AuthenticatedView(props: {
           filter: "drop-shadow(0 4px 8px rgba(0,0,0,.55))",
         }}
       >
-        <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+        <img
+          src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`}
+          alt=""
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            display: "block",
+          }}
+        />
       </button>
       {friendRetries}
       <Dialog open={panelOpen} onOpenChange={setPanelOpen}>
@@ -280,40 +373,71 @@ export function FarmV2AuthenticatedView(props: {
           {panelTab === "福田倉庫" ? (
             <section aria-label="福田倉庫庫存">
               <p>以下數量來自目前伺服器回傳的農田庫存。</p>
-              <table><thead><tr><th scope="col">田別</th><th scope="col">種子</th><th scope="col">靈植</th></tr></thead>
-                <tbody>{FARM_V2_LANDS.map((land) => {
-                  const plot = data.plots.find((item) => item.id === land.id - 1);
-                  return (
-                    <tr key={land.id}><th scope="row">{land.landName}</th>
-                      <td>{land.seedName}：{plot ? (data.seedInventory[plot.cropId] ?? 0) : "資料缺失"}</td>
-                      <td>{land.cropName}：{plot ? (data.cropInventory[plot.cropId] ?? 0) : "資料缺失"}</td>
-                    </tr>
-                  );
-                })}</tbody>
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">田別</th>
+                    <th scope="col">種子</th>
+                    <th scope="col">靈植</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {FARM_V2_LANDS.map((land) => {
+                    const plot = data.plots.find(
+                      (item) => item.id === land.id - 1,
+                    );
+                    return (
+                      <tr key={land.id}>
+                        <th scope="row">{land.landName}</th>
+                        <td>
+                          {land.seedName}：
+                          {plot
+                            ? (data.seedInventory[plot.cropId] ?? 0)
+                            : "資料缺失"}
+                        </td>
+                        <td>
+                          {land.cropName}：
+                          {plot
+                            ? (data.cropInventory[plot.cropId] ?? 0)
+                            : "資料缺失"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
               </table>
             </section>
           ) : (
-          <FarmWorkshopPanel
-            tab={panelTab}
-            onTabChange={setPanelTab}
-            readFriends={readFriends}
-            visitCave={async (id) => {
-              const view = await visitCave(id);
-              setVisited(view);
-              return view;
-            }}
-            readWallet={readWallet}
-            warehouse={data.warehouse}
-            missions={data.missions}
-            pets={data.pets}
-            busy={busy || loading}
-            transact={workshop}
-          />
+            <FarmWorkshopPanel
+              tab={panelTab}
+              onTabChange={setPanelTab}
+              readFriends={readFriends}
+              visitCave={async (id) => {
+                const view = await visitCave(id);
+                setVisited(view);
+                return view;
+              }}
+              readWallet={readWallet}
+              warehouse={data.warehouse}
+              missions={data.missions}
+              pets={data.pets}
+              busy={busy || loading}
+              transact={workshop}
+            />
           )}
         </DialogContent>
       </Dialog>
       <nav aria-label="農場操作">
-        {["福田倉庫", "乾坤寶囊", "盆栽", "洞府", "任務", "靈寵", "護陣", "好友"].map((tab) => (
+        {[
+          "福田倉庫",
+          "乾坤寶囊",
+          "盆栽",
+          "洞府",
+          "任務",
+          "靈寵",
+          "護陣",
+          "好友",
+        ].map((tab) => (
           <button
             key={tab}
             onClick={() => {
@@ -336,7 +460,11 @@ export function FarmV2AuthenticatedView(props: {
       ))}
       {data.chaos && (
         <button
-          disabled={busy || loading || !data.plots.find((plot) => plot.id === 5)?.unlocked}
+          disabled={
+            busy ||
+            loading ||
+            !data.plots.find((plot) => plot.id === 5)?.unlocked
+          }
           onClick={() => void execute("claimChaos", 6)}
         >
           領取混沌種子（待領 {data.chaos.pending}）
@@ -377,6 +505,7 @@ export function FarmV2AuthenticatedView(props: {
         結束遊玩並登出
       </button>
       {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
+      {error === "FARM_COIN_INSUFFICIENT" && data.localCoins && <button onClick={()=>{setSelectedLand(null);setPanelOpen(false);setWalletOpen(true);}}>轉入福田金幣</button>}
       {notice && <p role="status">{notice}</p>}
       <button
         type="button"
@@ -416,26 +545,46 @@ export function FarmV2AuthenticatedView(props: {
                   <h3>{plot.name}</h3>
                   {!plot.unlocked && (plot.id === 1 || plot.id === 2) && (
                     <>
-                      <button type="button" disabled={busy || loading || (plot.id === 2 && !data.plots[1]?.unlocked)}
-                        onClick={() => { void execute("unlockCoinLand", plot.id + 1); }}>
+                      <button
+                        type="button"
+                        disabled={
+                          busy ||
+                          loading ||
+                          (plot.id === 2 && !data.plots[1]?.unlocked)
+                        }
+                        onClick={() => {
+                          void execute("unlockCoinLand", plot.id + 1);
+                        }}
+                      >
                         解鎖田地（{plot.id === 1 ? 88 : 888} 金幣）
                       </button>
-                      {plot.id === 2 && !data.plots[1]?.unlocked && <p>請先解鎖第 2 田。</p>}
+                      {plot.id === 2 && !data.plots[1]?.unlocked && (
+                        <p>請先解鎖第 2 田。</p>
+                      )}
                     </>
                   )}
                   {landFeedback?.landId === plot.id + 1 && (
                     <div role="status" className="farm-v2-land-feedback">
-                      {landFeedback.confirmed && landFeedback.kind !== "purchaseSeeds" && (
-                        <span
-                          aria-hidden="true"
-                          className={`farm-v2-land-effect farm-v2-land-effect--${landFeedback.kind}`}
-                        >
-                          {landFeedback.kind === "sow" ? "🌱" : "🌾"}
-                        </span>
-                      )}
+                      {landFeedback.confirmed &&
+                        landFeedback.kind !== "purchaseSeeds" && (
+                          <span
+                            aria-hidden="true"
+                            className={`farm-v2-land-effect farm-v2-land-effect--${landFeedback.kind}`}
+                          >
+                            {landFeedback.kind === "sow" ? "🌱" : "🌾"}
+                          </span>
+                        )}
                       {landFeedback.confirmed
-                        ? { sow: "播種完成", harvest: "收成已入庫", purchaseSeeds: "種子已入庫" }[landFeedback.kind]
-                        : { sow: "播種確認中…", harvest: "收成確認中…", purchaseSeeds: "購買種子確認中…" }[landFeedback.kind]}
+                        ? {
+                            sow: "播種完成",
+                            harvest: "收成已入庫",
+                            purchaseSeeds: "種子已入庫",
+                          }[landFeedback.kind]
+                        : {
+                            sow: "播種確認中…",
+                            harvest: "收成確認中…",
+                            purchaseSeeds: "購買種子確認中…",
+                          }[landFeedback.kind]}
                     </div>
                   )}
                   <p>
@@ -485,7 +634,8 @@ export function FarmV2AuthenticatedView(props: {
                       }}
                     >
                       {landFeedback?.landId === plot.id + 1 &&
-                      landFeedback.kind === "purchaseSeeds" && !landFeedback.confirmed
+                      landFeedback.kind === "purchaseSeeds" &&
+                      !landFeedback.confirmed
                         ? "購買種子確認中…"
                         : "購買一包種子（1 金幣）"}
                     </button>
@@ -507,4 +657,3 @@ export function FarmV2AuthenticatedView(props: {
     </section>
   );
 }
-

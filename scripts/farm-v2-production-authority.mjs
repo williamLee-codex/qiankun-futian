@@ -63,7 +63,7 @@ export function guard(m) {
  IF current_user <> 'postgres' THEN RAISE EXCEPTION 'MIGRATION_OPERATOR_REQUIRED'; END IF;
  IF EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version>=${q(m.version)} OR name=${q(m.name)}) THEN RAISE EXCEPTION 'MIGRATION_VERSION_CONFLICT'; END IF;
  ${m.prerequisites.map((p) => `IF NOT EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version=${q(p.version)} AND name=${q(p.name)} AND statements=ARRAY[${q(p.source)}]::text[]) THEN RAISE EXCEPTION 'MIGRATION_PREDECESSOR_DRIFT'; END IF;`).join("\n")}
- ${m.targets.map((t) => `IF to_regclass(${q("public." + t)}) IS NOT NULL THEN RAISE EXCEPTION 'FARM_TARGET_CONFLICT'; END IF;`).join("\n")}
+ ${m.targets.map((t) => `IF to_regclass(${q(t.includes(".") ? t : "public." + t)}) IS NOT NULL THEN RAISE EXCEPTION 'FARM_TARGET_CONFLICT'; END IF;`).join("\n")}
  ${(m.functions ?? []).map((f) => `IF to_regprocedure(${q(f)}) IS NOT NULL THEN RAISE EXCEPTION 'FARM_TARGET_CONFLICT'; END IF;`).join("\n")}
  ${m.id === "0001" ? "IF to_regprocedure('public.farm_v2_audit_append_only()') IS NOT NULL THEN RAISE EXCEPTION 'FARM_TARGET_CONFLICT'; END IF;" : ""}
  END $farm_gate$;`;

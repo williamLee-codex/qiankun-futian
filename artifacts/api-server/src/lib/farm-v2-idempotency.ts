@@ -1,3 +1,4 @@
+import { localCoinsEnabled, localCoinTransaction } from "./farm-v2-local-coins";
 import { assertFarmAuthorityFence } from "./farm-v2-authority-context";
 import { and, eq, sql } from "drizzle-orm";
 import { db, farmV2MutationTable, farmV2PlayerStateTable } from "@workspace/db";
@@ -85,7 +86,8 @@ export async function runFarmV2IdempotentMutation<T>(input: {
         existing.action.startsWith("WORKSHOP:") &&
         (existing.failureCode === "MISSION_NOT_COMPLETE" ||
           existing.failureCode === "MISSION_ALREADY_CLAIMED")
-      ) throw new Error(existing.failureCode);
+      )
+        throw new Error(existing.failureCode);
       if (existing.transactionState === "COMPENSATED")
         throw new Error("FARM_MUTATION_COMPENSATED");
       if (existing.transactionState === "COMPENSATING")
@@ -164,7 +166,10 @@ export async function runFarmV2IdempotentMutation<T>(input: {
 
     // The domain mutation must use this same transaction. If it fails, the
     // idempotency reservation rolls back with the state mutation.
-    const response = await input.execute(tx);
+    const response = await (localCoinsEnabled() &&
+    !(existing?.walletTransaction as { command?: unknown } | null)?.command
+      ? localCoinTransaction.run(tx, () => input.execute(tx))
+      : input.execute(tx));
 
     await tx
       .update(farmV2MutationTable)
