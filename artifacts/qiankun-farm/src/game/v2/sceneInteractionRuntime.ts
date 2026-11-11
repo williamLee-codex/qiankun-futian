@@ -33,6 +33,8 @@ export const SCENE_LAYOUTS = {
       region(3, 54.1, 13.5, 3.5),
     ],
     formation: region(41, 38.5, 29, 4),
+    warehouse: region(63, 42.8, 31, 10.1),
+    warehouseAnnex: region(88, 50.5, 11, 9.2),
   },
   desktop: {
     aspectRatio: "1215 / 1295",
@@ -54,6 +56,8 @@ export const SCENE_LAYOUTS = {
       region(5.5, 48, 10.5, 4.3),
     ],
     formation: region(43, 25.4, 23.6, 5.1),
+    warehouse: region(67.2, 35.8, 26.5, 12.0),
+    warehouseAnnex: region(88.7, 45.8, 10.8, 10.1),
   },
 } as const;
 export function sceneLandAction(plot: { unlocked: boolean; state: string }) {

@@ -434,3 +434,18 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
   object-fit: contain;
   pointer-events: none;
 }
+
+/* Restore platform-like navigation, with safe links to the same host. */
+.farm-v2-interaction > header { background:rgba(9,11,15,.96);color:#f6efe2;border-bottom:1px solid #3a3020;position:relative;z-index:5; }
+.farm-v2-platform-home { color:#d6ad55;font-size:1.1rem;font-weight:700;text-decoration:none;white-space:nowrap; }
+.farm-v2-shared-nav { display:flex;gap:2px;flex-wrap:wrap;align-items:center;font-size:13px; }
+.farm-v2-shared-nav a,.farm-v2-mobile-nav a { padding:8px;color:#b7ad9d;text-decoration:none; }
+.farm-v2-shared-nav a:hover,.farm-v2-mobile-nav a:hover { color:#f0d892;text-decoration:underline; }
+.farm-v2-mobile-nav { display:none; }
+.farm-v2-interaction > header > strong { color:#f0d892; }
+.farm-v2-canvas.exterior .farm-v2-warehouse-building,.farm-v2-canvas.exterior .farm-v2-warehouse-annex { position:absolute;z-index:4;padding:0;background:transparent;border:0;cursor:pointer; }
+.farm-v2-canvas.exterior .farm-v2-warehouse-building { display:flex;justify-content:center;align-items:flex-end; }
+.farm-v2-warehouse-name { display:block;margin-bottom:10%;padding:3px 8px;background:rgba(12,20,15,.85);border:1px solid #cda85a;border-radius:6px;color:#ffe6a4;white-space:nowrap;font-size:clamp(11px,1.2vw,16px);font-weight:700;text-shadow:0 1px 2px #000; }
+.farm-v2-canvas.exterior .farm-v2-warehouse-building:focus-visible,.farm-v2-canvas.exterior .farm-v2-warehouse-annex:focus-visible { outline:3px solid #f0d892;outline-offset:0; }
+@media(max-width:1099px){.farm-v2-shared-nav{display:none}.farm-v2-mobile-nav{display:block;margin-left:auto}.farm-v2-mobile-nav > summary{cursor:pointer;list-style:none;padding:6px 12px;color:#f0d892;border:1px solid #3a3020;border-radius:5px}.farm-v2-mobile-nav > nav{position:absolute;top:100%;right:0;z-index:12;display:grid;min-width:145px;padding:8px;background:#11151c;border:1px solid #3a3020;border-radius:8px}}
+@media(max-width:767px){.farm-v2-warehouse-name{font-size:10px;padding:2px 4px}}

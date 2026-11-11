@@ -99,13 +99,39 @@ export function FarmSceneInteractionLayer(props: {
     >
       <header>
         <a href="/" className="farm-v2-platform-home">御策羅盤</a>
+        <nav className="farm-v2-shared-nav" aria-label="御策羅盤共用導覽">
+          <a href="/apps">天機閣</a>
+          <a href="/friends">好友</a>
+          <a href="/profiles">命盤</a>
+          <a href="/quizzes">心理測驗</a>
+          <a href="/unlocks">解鎖</a>
+          <a href="/top-up">靈寶閣</a>
+          <a href="/wallet">錢包</a>
+          <a href="/account">帳戶</a>
+          <a href="/setup">設定</a>
+          <a href="https://line.me/R/oaMessage/@yuceluopan/">客服</a>
+        </nav>
+        <details className="farm-v2-mobile-nav"><summary>選單</summary>
+          <nav aria-label="御策羅盤手機導覽">
+            <a href="/apps">天機閣</a>
+            <a href="/friends">好友</a>
+            <a href="/profiles">命盤</a>
+            <a href="/quizzes">心理測驗</a>
+            <a href="/unlocks">解鎖</a>
+            <a href="/top-up">靈寶閣</a>
+            <a href="/wallet">錢包</a>
+            <a href="/account">帳戶</a>
+            <a href="/setup">設定</a>
+            <a href="https://line.me/R/oaMessage/@yuceluopan/">客服</a>
+          </nav>
+        </details>
         <strong>
           {props.ownerLabel}
           {interior ? "・洞府" : "・農場"}
         </strong>
         {interior && <span>洞府內景</span>}
         {!props.readOnly && <nav aria-label="福田主要入口">
-          <button ref={props.warehouseTargetRef} onClick={() => section("福田倉庫")}>福田倉庫</button>
+          
           <button onClick={() => section("乾坤寶囊")}>乾坤寶囊</button>
         </nav>}
         {interior && (
@@ -149,6 +175,18 @@ export function FarmSceneInteractionLayer(props: {
           </>
         ) : (
           <>
+            {!props.readOnly && (
+              <>
+                <button ref={props.warehouseTargetRef} className="farm-v2-warehouse-building"
+                  type="button" aria-label="福田倉庫：點擊農舍開啟倉庫" title="福田倉庫"
+                  style={position(layout.warehouse)} onClick={() => section("福田倉庫")}>
+                  <span className="farm-v2-warehouse-name">福田倉庫</span>
+                </button>
+                <button className="farm-v2-warehouse-annex" type="button"
+                  aria-label="開啟福田倉庫" title="福田倉庫"
+                  style={position(layout.warehouseAnnex)} onClick={() => section("福田倉庫")} />
+              </>
+            )}
             <button
               ref={caveEntry}
               className="farm-v2-cave"
