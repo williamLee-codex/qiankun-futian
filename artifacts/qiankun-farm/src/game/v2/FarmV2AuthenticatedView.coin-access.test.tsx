@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { FarmV2AuthenticatedView } from "./FarmV2AuthenticatedView";
 import { mapServerLands, mapServerWarehouse } from "./farmV2SceneAdapter";
 const { scene } = vi.hoisted(() => ({ scene: vi.fn() }));
@@ -39,6 +39,6 @@ it("renders owned resting pets, an entitled farmer, and both inventory entrances
   expect(screen.getByRole("img",{name:"乾坤麒麟"})).toBeTruthy();
   expect(screen.getByRole("img",{name:"微芒凡土專屬農夫值勤中"})).toBeTruthy();
   expect(screen.getByRole("navigation",{name:"福田主要入口"})).toBeTruthy();
-  fireEvent.click(within(screen.getByRole("navigation",{name:"福田主要入口"})).getByRole("button",{name:"福田倉庫"}));
+  fireEvent.click(screen.getByRole("button",{name:"福田倉庫：點擊農舍開啟倉庫"}));
   expect(screen.getByRole("region",{name:"福田倉庫庫存"})).toBeTruthy();
 });
