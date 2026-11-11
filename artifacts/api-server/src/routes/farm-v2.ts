@@ -332,13 +332,15 @@ router.post(
         res.status(401).json({ error: "AUTH_REQUIRED" });
         return;
       }
-      // Refresh paid land access before accepting a gameplay mutation.
-      // Core outage fails closed instead of trusting cached unlocks.
-      await reconcileFarmV2PaidAccessFromCore({
-        userId,
-        launchToken,
-        requestId: "farm-v2:core-paid-refresh:v1",
-      });
+      // Like sowing, harvesting may use the approved six-hour paid-access
+      // qualification. Expired qualification still refreshes through Core.
+      if (farmAuthorityContext.getStore()) {
+        await reconcileFarmV2PaidAccessFromCore({
+          userId,
+          launchToken,
+          requestId: paidRefreshRequestId,
+        });
+      }
       const result = await harvestFarmV2Land({
         requestId,
         userId,
@@ -349,7 +351,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }),
+  }, true),
 );
 
 router.post("/farm/v2/lands/:landId/unlock", authorizedRoute(async (req, res, next) => {

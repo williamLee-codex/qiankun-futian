@@ -186,9 +186,15 @@ it("platform closure overrides the farm flag for a previously issued direct laun
   expect(authority).not.toHaveBeenCalled();
 });
 
-it.each([true, false])("sow uses recent paid qualification when available (%s)", async (recent) => {
+it.each([
+  { operation: "sow", recent: true },
+  { operation: "sow", recent: false },
+  { operation: "harvest", recent: true },
+  { operation: "harvest", recent: false },
+])("$operation uses recent paid qualification when available ($recent)", async ({ operation, recent }) => {
   const { pool } = await import("@workspace/db");
   const { sowFarmV2Land } = await import("../lib/farm-v2-sow");
+  const { harvestFarmV2Land } = await import("../lib/farm-v2-harvest");
   const { reconcileFarmV2PaidAccessFromCore } = await import("../lib/farm-v2-paid-access");
   const { farmAuthorityContext } = await import("../lib/farm-v2-authority-context");
   const userId = "00000000-0000-0000-0000-000000000001";
@@ -203,17 +209,19 @@ it.each([true, false])("sow uses recent paid qualification when available (%s)",
   );
   vi.mocked(pool.query).mockResolvedValueOnce({ rows: recent ? [{}] : [] } as never);
   vi.mocked(sowFarmV2Land).mockResolvedValueOnce({} as never);
+  vi.mocked(harvestFarmV2Land).mockResolvedValueOnce({} as never);
   authority.mockImplementationOnce(async (_input, run) =>
     farmAuthorityContext.run({ userId, operationId: "test", qualification: 600 }, run),
   );
-  const response = await fetch(`${base}/api/farm/v2/lands/4/sow`, {
+  const response = await fetch(`${base}/api/farm/v2/lands/4/${operation}`, {
     method: "POST",
     headers: { authorization: "Bearer credential", "x-request-id": "sow-test" },
   });
   expect(response.status).toBe(200);
   expect(authority).toHaveBeenCalledTimes(recent ? 0 : 1);
   expect(reconcileFarmV2PaidAccessFromCore).toHaveBeenCalledTimes(recent ? 0 : 1);
-  expect(sowFarmV2Land).toHaveBeenCalledWith({ userId, requestId: "sow-test", landId: 4 });
+  expect(operation === "sow" ? sowFarmV2Land : harvestFarmV2Land)
+    .toHaveBeenCalledWith({ userId, requestId: "sow-test", landId: 4 });
 });
 
 it("seed purchase keeps wallet transaction authority even with recent paid qualification", async () => {
