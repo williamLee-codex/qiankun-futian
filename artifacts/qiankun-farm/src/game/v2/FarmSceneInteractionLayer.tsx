@@ -102,7 +102,7 @@ export function FarmSceneInteractionLayer(props: {
           {props.ownerLabel}
           {interior ? "・洞府" : "・農場"}
         </strong>
-        <span>{interior ? "洞府內景" : "點選農田查看操作"}</span>
+        {interior && <span>洞府內景</span>}
         {!props.readOnly && <nav aria-label="福田主要入口">
           <button onClick={() => section("福田倉庫")}>福田倉庫</button>
           <button onClick={() => section("乾坤寶囊")}>乾坤寶囊</button>
