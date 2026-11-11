@@ -1,3 +1,4 @@
+export type FarmSeedRecovery = {requestId:string;landId:number;packs:number};
 export type FarmCoinBalances = {
   coins: number;
   centralCoins: number;
@@ -222,14 +223,16 @@ export function createFarmV2Api(input: {
     method: "GET" | "POST",
     body?: unknown,
     resumeFromState = false,
+    originalRequestId?: string,
   ): Promise<T> {
     const token = resumeFromState ? "cookie-session" : await session();
     // Response negotiation must not change durable operation identity: a
     // pending purchase from the older client must keep its original key.
     const operation = JSON.stringify([path.replace(/\?snapshot=1$/, ""), body]);
+    if (originalRequestId && (!/^[A-Za-z0-9._:-]{1,120}$/.test(originalRequestId) || (pendingRequests.has(operation) && pendingRequests.get(operation) !== originalRequestId))) throw new Error("FARM_SEED_RECOVERY_CONFLICT");
     const requestId =
       method === "POST"
-        ? (pendingRequests.get(operation) ?? crypto.randomUUID())
+        ? (originalRequestId ?? pendingRequests.get(operation) ?? crypto.randomUUID())
         : undefined;
     if (requestId) pendingRequests.set(operation, requestId);
     savePendingRequests();
@@ -363,6 +366,11 @@ export function createFarmV2Api(input: {
         "POST",
         { kind, landId },
       ),
+    readSeedRecoveries: () => request<{purchases:FarmSeedRecovery[]}>("farm/v2/recovery/seeds","GET"),
+    resumeSeedPurchase: (original:FarmSeedRecovery) => {
+      if (!Number.isInteger(original.landId) || original.landId < 1 || original.landId > 5 || !Number.isSafeInteger(original.packs) || original.packs <= 0 || original.packs > 2147483647 || !/^[A-Za-z0-9._:-]{1,120}$/.test(original.requestId)) throw new Error("INVALID_FARM_SEED_RECOVERY");
+      return request<unknown>(`farm/v2/seeds/${original.landId}/purchase?snapshot=1`,"POST",{packs:original.packs},false,original.requestId);
+    },
     readWallet: () => request<FarmCoinBalances>("farm/v2/wallet", "GET"),
     pendingTransfers,
     transferCoins: async (direction: "in" | "out", amount: number) => {

@@ -8,7 +8,7 @@
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "test": "vitest run && pnpm run test:node",
-    "test:node": "node --experimental-transform-types --test artifacts/api-server/src/lib/farm-v2-identity-cache.node-test.mjs artifacts/api-server/src/lib/farm-v2-authority.node-test.mjs artifacts/api-server/src/lib/farm-v2-authorized-json.node-test.mjs artifacts/api-server/src/lib/farm-v2-stage-timing.test.mjs artifacts/qiankun-farm/src/game/v2/farmV2ApiClient.node-test.mjs test/isolation-check.test.mjs scripts/farm-v2-bank-migration.node-test.mjs",
+    "test:node": "node --experimental-transform-types --test artifacts/api-server/src/lib/farm-v2-identity-cache.node-test.mjs artifacts/api-server/src/lib/farm-v2-authority.node-test.mjs artifacts/api-server/src/lib/farm-v2-authorized-json.node-test.mjs artifacts/api-server/src/lib/farm-v2-stage-timing.test.mjs artifacts/qiankun-farm/src/game/v2/farmV2ApiClient.node-test.mjs test/isolation-check.test.mjs scripts/farm-v2-bank-migration.node-test.mjs artifacts/api-server/src/lib/farm-v2-seed-recovery.node-test.mjs",
     "farm:reconcile": "pnpm --filter @workspace/scripts exec tsx ../artifacts/api-server/src/cli/farm-v2-reconcile.ts",
     "test:farm-authority": "node --test artifacts/api-server/src/lib/farm-v2-authority.node-test.mjs artifacts/api-server/src/lib/farm-v2-stage-timing.test.mjs"
   },

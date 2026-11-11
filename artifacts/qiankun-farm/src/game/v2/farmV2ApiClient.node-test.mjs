@@ -194,3 +194,18 @@ test('malformed saved operation keys cannot block wallet recovery',async()=>{
  assert.deepEqual(api.pendingTransfers(),[{direction:'in',amount:10}]);
  await api.transferCoins('in',10);assert.deepEqual(ids,['original-transfer']);
 });
+test('resume lost seed request reuses original handler, quantity and request id through uncertain responses',async()=>{
+ globalThis.location={origin:'https://farm.example'};globalThis.sessionStorage={getItem:()=>null,setItem:()=>{}};
+ const ids=[],paths=[],bodies=[];let calls=0;
+ globalThis.fetch=async(url,o)=>{if(url.endsWith('/session'))return Response.json({userId:'u',sessionToken:'cookie-session',reauthenticateUrl:'https://farm.example/launch'});paths.push(url);ids.push(o.headers['x-request-id']);bodies.push(JSON.parse(o.body));return ++calls<=2?Response.json({error:'FARM_API_UNAVAILABLE'},{status:503}):Response.json({seedsAdded:20});};
+ const api=createFarmV2Api({baseUrl:'https://farm.example/api/farm-backend/',launchToken:'browser-session'});
+ const original={requestId:'original-seed-request',landId:1,packs:1};
+ await assert.rejects(api.resumeSeedPurchase(original));await api.resumeSeedPurchase(original);
+ assert.ok(paths.every(p=>p.endsWith('/farm/v2/seeds/1/purchase?snapshot=1')));assert.deepEqual(ids,['original-seed-request','original-seed-request','original-seed-request']);assert.ok(bodies.every(b=>b.packs===1));
+});
+test('recovery cannot overwrite a different unresolved purchase key',async()=>{
+ globalThis.location={origin:'https://farm.example'};globalThis.sessionStorage={getItem:()=>null,setItem:()=>{}};
+ const ids=[];globalThis.fetch=async(url,o)=>url.endsWith('/session')?Response.json({userId:'u',sessionToken:'cookie-session',reauthenticateUrl:'https://farm.example/launch'}):(ids.push(o.headers['x-request-id']),Response.json({error:'FARM_API_UNAVAILABLE'},{status:503}));
+ const api=createFarmV2Api({baseUrl:'https://farm.example/api/farm-backend/',launchToken:'browser-session'});await assert.rejects(api.purchaseSeeds(1,1));
+ await assert.rejects(api.resumeSeedPurchase({requestId:'another-original',landId:1,packs:1}),/FARM_SEED_RECOVERY_CONFLICT/);assert.equal(ids.length,2);assert.equal(new Set(ids).size,1);
+});

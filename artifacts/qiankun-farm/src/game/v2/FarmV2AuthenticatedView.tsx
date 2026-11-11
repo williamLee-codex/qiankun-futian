@@ -1,3 +1,4 @@
+import type { FarmSeedRecovery } from "./farmV2ApiClient";
 import { FarmCoinWallet } from "./FarmCoinWallet";
 import { farmV2ErrorMessage } from "./farmV2ErrorMessage";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -51,12 +52,16 @@ export function FarmV2AuthenticatedView(props: {
     pendingWorkshop,
     readFriends,
     readWallet,
+    readSeedRecoveries,
+    resumeSeedPurchase,
     transferCoins,
     pendingTransfers,
     visitCave,
     friendAction,
     pendingFriends,
   } = useFarmV2Scene(props.apiBaseUrl, props.launchToken);
+  const [seedRecoveries,setSeedRecoveries]=useState<FarmSeedRecovery[]>([]);
+  const [checkingSeeds,setCheckingSeeds]=useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
   const [visited, setVisited] = useState<FarmV2PublicCave | null>(null);
   const [panelTab, setPanelTab] = useState("盆栽");
@@ -267,6 +272,19 @@ export function FarmV2AuthenticatedView(props: {
       {data.localCoins && (
         <button onClick={() => setWalletOpen(true)}>福田金幣／轉入回存</button>
       )}
+      <button disabled={busy||loading||checkingSeeds} onClick={async()=>{
+        setCheckingSeeds(true);
+        try {const result=await readSeedRecoveries();setSeedRecoveries(result.purchases);setNotice(result.purchases.length?"請接續原買種子交易，系統會先查核原扣款。":"沒有待接續的買種子交易。");}
+        catch(cause){setNotice(farmV2ErrorMessage(cause instanceof Error?cause.message:"FARM_API_UNAVAILABLE"));}
+        finally{setCheckingSeeds(false);}
+      }}>查核未完成買種子</button>
+      {seedRecoveries.length>0&&<section aria-label="未完成的買種子" style={{background:"#12251f",color:"#f8f1df",padding:16,fontFamily:'"Microsoft JhengHei",system-ui,sans-serif'}}>
+        <p>以下是原本尚未完成的訂單。接續時會沿用原交易，避免再次扣款。</p>
+        {seedRecoveries.map(original=><button key={original.requestId} disabled={busy||loading} onClick={async()=>{
+          if(await resumeSeedPurchase(original)){setSeedRecoveries(rows=>rows.filter(row=>row.requestId!==original.requestId));setNotice("原買種子交易已接續完成。");}
+        }}>接續第 {original.landId} 田原訂單（{original.packs} 包）</button>)}
+      </section>}
+
       {data.localCoins && (
         <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
           <DialogContent style={{ background: "#12251f", color: "#f8f1df", border: "1px solid #bda365", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(32rem, calc(100vw - 2rem))", maxHeight: "calc(100dvh - 2rem)", overflowY: "auto", lineHeight: 1.6 }}>

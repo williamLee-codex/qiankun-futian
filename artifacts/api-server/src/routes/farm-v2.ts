@@ -1,3 +1,4 @@
+import { decodePendingSeedPurchases } from "../lib/farm-v2-seed-recovery";
 import { localCoinsEnabled } from "../lib/farm-v2-local-coins";
 import {
   readFarmCoinBalances,
@@ -171,6 +172,17 @@ router.post("/farm/v2/session", async (req, res, next) => {
 });
 
 router.use("/farm/v2", requireFarmV2LaunchIdentity);
+router.get("/farm/v2/recovery/seeds", async (_req,res,next) => {
+  try {
+    const result = await pool.query(
+      "select request_id,action,wallet_transaction->'command'->>'referenceId' as reference_id,wallet_amount,wallet_currency,wallet_direction from public.farm_v2_mutation where user_id=$1 and action like 'seed-purchase:%' and transaction_state in ('WALLET_PENDING','WALLET_APPLIED') and response is null and wallet_transaction->'command'->>'reason'='farm_seed_purchase' order by created_at limit 10",
+      [String(res.locals.authenticatedUserId)],
+    );
+    res.setHeader("Cache-Control","no-store");
+    res.json({purchases:decodePendingSeedPurchases(result.rows)});
+  } catch(error) {next(error);}
+});
+
 router.post("/farm/v2/recovery", async (req, res, next) => {
   try {
     const requestId = req.header("x-request-id") ?? "";

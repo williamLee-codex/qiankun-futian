@@ -1,3 +1,4 @@
+import type { FarmSeedRecovery } from "./farmV2ApiClient";
 import type { WorkshopCommand, WorkshopWarehouse } from "./workshopRuntime";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFarmV2Api } from "./farmV2ApiClient";
@@ -241,6 +242,14 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   }, [api]);
   return {
     readWallet,
+    readSeedRecoveries: () => {if(!api) throw new Error("AUTH_REQUIRED"); return api.readSeedRecoveries();},
+    resumeSeedPurchase: async (original:FarmSeedRecovery) => {
+      if(!api || mutationInFlight.current) return false;
+      mutationInFlight.current=true;setBusy(true);
+      try { const result=await api.resumeSeedPurchase(original);return await refresh(result); }
+      catch(cause) {setError(cause instanceof Error?cause.message:"FARM_SEED_RECOVERY_FAILED");return false;}
+      finally {mutationInFlight.current=false;setBusy(false);}
+    },
     pendingTransfers: () => api?.pendingTransfers() ?? [],
     transferCoins: async (direction: "in" | "out", amount: number) => {
       if (!api) throw new Error("AUTH_REQUIRED");
