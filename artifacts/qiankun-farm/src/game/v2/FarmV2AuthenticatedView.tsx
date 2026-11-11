@@ -216,7 +216,7 @@ export function FarmV2AuthenticatedView(props: {
       <button ref={warehouseButton} type="button" className="farm-v2-warehouse-target" onClick={() => {
         setPanelTab("福田倉庫");
         setPanelOpen(true);
-      }}>倉庫</button>
+      }}>福田倉庫</button>
       {flight && (
         <span aria-hidden="true" className="farm-v2-flight" style={flight.style}
           onAnimationEnd={() => setFlight(null)}>{flight.icon}</span>
