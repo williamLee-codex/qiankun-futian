@@ -273,7 +273,6 @@ export function FarmV2AuthenticatedView(props: {
       >
         <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
       </button>
-      <h2>乾坤福田</h2>
       {friendRetries}
       <Dialog open={panelOpen} onOpenChange={setPanelOpen}>
         <DialogContent
@@ -391,7 +390,6 @@ export function FarmV2AuthenticatedView(props: {
       >
         {loading ? "正在更新農田…" : "更新農田"}
       </button>
-      {selectedLand === null && <p>請點選 2D 場景中的農田查看操作。</p>}
       <Dialog
         open={selectedLand !== null}
         onOpenChange={(open) => {
