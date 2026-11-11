@@ -175,3 +175,22 @@ test("uncertain manual transfer retries original amount and key and blocks a dif
   assert.ok(calls.every((o) => JSON.parse(o.body).amount === 10));
   assert.deepEqual(api.pendingTransfers(), []);
 });
+test('parallel transfer submissions cannot create two different manual transfers',async()=>{
+ globalThis.location={origin:'https://farm.example'};globalThis.sessionStorage={getItem:()=>null,setItem:()=>{}};
+ let transfers=0;
+ globalThis.fetch=async(url)=>url.endsWith('/session')?Response.json({userId:'parallel-user',sessionToken:'cookie-session',reauthenticateUrl:'https://farm.example/launch'}):(transfers++,Response.json({coins:10,centralCoins:90}));
+ const api=createFarmV2Api({baseUrl:'https://farm.example/api/farm-backend/',launchToken:'browser-session'});
+ const result=await Promise.allSettled([api.transferCoins('in',10),api.transferCoins('out',20)]);
+ assert.equal(transfers,1);
+ assert.equal(result.filter(r=>r.status==='fulfilled').length,1);
+ assert.match(result.find(r=>r.status==='rejected').reason.message,/FARM_TRANSFER_PENDING/);
+});
+test('malformed saved operation keys cannot block wallet recovery',async()=>{
+ globalThis.location={origin:'https://farm.example'};
+ globalThis.sessionStorage={getItem:()=>JSON.stringify({'broken-json-key':'old-id',[JSON.stringify(['farm/v2/wallet/transfer',{direction:'in',amount:10}])]:'original-transfer'}),setItem:()=>{}};
+ const ids=[];globalThis.fetch=async(url,o)=>url.endsWith('/state')?Response.json({player:{userId:'u'},lands:[]}):(ids.push(o.headers['x-request-id']),Response.json({coins:10,centralCoins:90}));
+ const api=createFarmV2Api({baseUrl:'https://farm.example/api/farm-backend/',launchToken:'browser-session'});
+ await api.readState();
+ assert.deepEqual(api.pendingTransfers(),[{direction:'in',amount:10}]);
+ await api.transferCoins('in',10);assert.deepEqual(ids,['original-transfer']);
+});

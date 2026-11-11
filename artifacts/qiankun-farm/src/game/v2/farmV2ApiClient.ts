@@ -90,6 +90,7 @@ export function createFarmV2Api(input: {
   let reauthenticateUrl: string | null = null;
   const pendingRequests = new Map<string, string>();
   let journalKey: string | null = null;
+  let transferInFlight = false;
   function savePendingRequests() {
     if (!journalKey) return;
     try {
@@ -108,8 +109,13 @@ export function createFarmV2Api(input: {
         sessionStorage.getItem(journalKey) ?? "{}",
       ) as Record<string, unknown>;
       for (const [operation, id] of Object.entries(saved)) {
-        if (typeof id === "string" && /^[A-Za-z0-9._:-]{1,120}$/.test(id))
-          pendingRequests.set(operation, id);
+        // An invalid legacy/browser-storage record must not prevent recovery
+        // of other valid requests, especially an unconfirmed transfer.
+        try {
+          const key: unknown = JSON.parse(operation);
+          if (!Array.isArray(key) || key.length !== 2 || typeof key[0] !== "string" || !key[0].startsWith("farm/v2/")) continue;
+          if (typeof id === "string" && /^[A-Za-z0-9._:-]{1,120}$/.test(id)) pendingRequests.set(operation, id);
+        } catch { /* Skip only this malformed record; preserve valid keys. */ }
       }
     } catch {
       /* No credential is read from browser storage. */
@@ -360,15 +366,17 @@ export function createFarmV2Api(input: {
     readWallet: () => request<FarmCoinBalances>("farm/v2/wallet", "GET"),
     pendingTransfers,
     transferCoins: async (direction: "in" | "out", amount: number) => {
-      // Restore the per-user journal before deciding whether a NEW transfer is allowed.
-      await session();
-      const pending = pendingTransfers();
-      if (pending.some((p) => p.direction !== direction || p.amount !== amount))
-        throw new Error("FARM_TRANSFER_PENDING");
-      return request<FarmCoinBalances>("farm/v2/wallet/transfer", "POST", {
-        direction,
-        amount,
-      });
+      // Acquire before the first await: parallel callers must not both pass
+      // the pending-journal check before request() records their commands.
+      if (transferInFlight) throw new Error("FARM_TRANSFER_PENDING");
+      transferInFlight = true;
+      try {
+        // Restore the per-user journal before deciding whether a NEW transfer is allowed.
+        await session();
+        const pending = pendingTransfers();
+        if (pending.some((p) => p.direction !== direction || p.amount !== amount)) throw new Error("FARM_TRANSFER_PENDING");
+        return await request<FarmCoinBalances>("farm/v2/wallet/transfer", "POST", { direction, amount });
+      } finally { transferInFlight = false; }
     },
     readState: async () => {
       if (!browserResume || sessionPromise)
