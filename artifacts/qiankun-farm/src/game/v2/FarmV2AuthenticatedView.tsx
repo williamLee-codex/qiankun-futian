@@ -213,15 +213,12 @@ export function FarmV2AuthenticatedView(props: {
       aria-label="乾坤福田正式農田"
       style={{ maxWidth: 1200, margin: "0 auto" }}
     >
-      <button ref={warehouseButton} type="button" className="farm-v2-warehouse-target" onClick={() => {
-        setPanelTab("福田倉庫");
-        setPanelOpen(true);
-      }}>福田倉庫</button>
       {flight && (
         <span aria-hidden="true" className="farm-v2-flight" style={flight.style}
           onAnimationEnd={() => setFlight(null)}>{flight.icon}</span>
       )}
       <FarmSceneInteractionLayer
+        warehouseTargetRef={warehouseButton}
         plots={data.plots}
         state={{
           pots: workshopState(data.warehouse).pots.filter((p) => p.displayed),
