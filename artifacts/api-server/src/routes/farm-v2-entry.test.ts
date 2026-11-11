@@ -215,3 +215,37 @@ it.each([true, false])("sow uses recent paid qualification when available (%s)",
   expect(reconcileFarmV2PaidAccessFromCore).toHaveBeenCalledTimes(recent ? 0 : 1);
   expect(sowFarmV2Land).toHaveBeenCalledWith({ userId, requestId: "sow-test", landId: 4 });
 });
+
+it("seed purchase keeps wallet transaction authority even with recent paid qualification", async () => {
+  const { pool } = await import("@workspace/db");
+  const { purchaseFarmV2SeedPacks } = await import("../lib/farm-v2-seed-purchase");
+  const { farmAuthorityContext } = await import("../lib/farm-v2-authority-context");
+  const userId = "00000000-0000-0000-0000-000000000001";
+  vi.stubEnv("FARM_V2_ENTRY_ENABLED", "1");
+  vi.stubEnv("PLATFORM_BASE_URL", "https://platform.test");
+  vi.stubEnv("REPLIT_APP_SHARED_SECRET", "test-only");
+  const originalFetch = globalThis.fetch;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) =>
+    String(input).startsWith("https://platform.test")
+      ? Response.json({ userId, appId: "qiankun-futian" })
+      : originalFetch(input, init),
+  );
+  vi.mocked(pool.query).mockResolvedValue({ rows: [{}] } as never);
+  authority.mockImplementation(async (_input, run) =>
+    farmAuthorityContext.run({ userId, operationId: "00000000-0000-4000-8000-000000000002", qualification: 600 }, run),
+  );
+  // The real Core wallet contract requires an operation UUID, independently
+  // of the cached six-hour paid-land qualification.
+  vi.mocked(purchaseFarmV2SeedPacks).mockImplementation(async () => {
+    if (!farmAuthorityContext.getStore()?.operationId)
+      throw new Error("INVALID_FARM_WALLET_OPERATION");
+    return { seedsAdded: 20 } as never;
+  });
+  const response = await fetch(`${base}/api/farm/v2/seeds/1/purchase`, {
+    method: "POST",
+    headers: { authorization: "Bearer credential", "content-type": "application/json", "x-request-id": "seed-authority-regression" },
+    body: JSON.stringify({ packs: 1 }),
+  });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ seedsAdded: 20 });
+});

@@ -397,7 +397,9 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }, true),
+  // Cached paid-land qualification does not replace the per-transaction
+  // authority UUID required by Core Wallet for a debit.
+  }),
 );
 
 router.post(
