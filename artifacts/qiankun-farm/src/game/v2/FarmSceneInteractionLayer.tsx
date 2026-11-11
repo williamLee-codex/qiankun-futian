@@ -89,6 +89,7 @@ export function FarmSceneInteractionLayer(props: {
     height: r.h + "%",
   });
   const section = (name: string) => props.onSection?.(name);
+  const artBase = `${import.meta.env.BASE_URL ?? "/"}images/farm/characters/`;
   return (
     <section
       className={"farm-v2-interaction " + (desktop ? "desktop" : "mobile") + (interior ? " cave-open" : "")}
@@ -189,7 +190,7 @@ export function FarmSceneInteractionLayer(props: {
                     onClick={() => props.onPlotClick ? props.onPlotClick(p) : props.onLandSelect?.(land.id)}
                   >
                     {p.unlocked && props.state.farmer?.entitled && (
-                      <span className="farm-v2-farmer" role="img" aria-label={`${land.landName}專屬農夫${props.state.farmer.enabledByLand[land.id] ? "值勤中" : "待命中"}`} title={props.state.farmer.enabledByLand[land.id] ? "專屬農夫值勤中" : "專屬農夫待命中"}>👨‍🌾</span>
+                      <span className="farm-v2-farmer" role="img" aria-label={`${land.landName}專屬農夫${props.state.farmer.enabledByLand[land.id] ? "值勤中" : "待命中"}`} title={props.state.farmer.enabledByLand[land.id] ? "專屬農夫值勤中" : "專屬農夫待命中"}><img src={`${artBase}農夫-男.png`} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}} /></span>
                     )}
                     {p.unlocked && p.state !== "empty" && (
                       <span className="farm-v2-crop-stage" data-stage={stage} aria-label={`生長階段 ${stage}%`}>
@@ -281,7 +282,7 @@ export function FarmSceneInteractionLayer(props: {
                   disabled={props.readOnly || props.busy}
                   onClick={() => section("靈寵")}
                 >
-                  {props.state.pets?.owned.includes(pet) && <span className="farm-v2-pet-character" role="img" aria-label={pet}>{["🐕", "🦁", "🐉", "🦄"][i]}</span>}
+                  {props.state.pets?.owned.includes(pet) && <span className="farm-v2-pet-character" role="img" aria-label={pet}><img src={`${artBase}${pet}.png`} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}} /></span>}
                   <span className="farm-v2-hotspot-label">
                     {pet}
                     {!props.state.pets?.owned.includes(pet) && !active
