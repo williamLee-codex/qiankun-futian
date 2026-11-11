@@ -269,8 +269,8 @@ export function FarmV2AuthenticatedView(props: {
       )}
       {data.localCoins && (
         <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
-          <DialogContent>
-            <DialogTitle>福田金幣錢包</DialogTitle>
+          <DialogContent style={{ background: "#12251f", color: "#f8f1df", border: "1px solid #bda365", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(32rem, calc(100vw - 2rem))", maxHeight: "calc(100dvh - 2rem)", overflowY: "auto", lineHeight: 1.6 }}>
+            <DialogTitle style={{ color: "#f8f1df", fontFamily: "inherit" }}>福田金幣錢包</DialogTitle>
             <FarmCoinWallet
               read={readWallet}
               transfer={transferCoins}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FarmCoinBalances } from "./farmV2ApiClient";
 import { farmV2ErrorMessage } from "./farmV2ErrorMessage";
+const controlStyle = { background: "#f8f3e7", color: "#14221c", border: "1px solid #bda365", borderRadius: 8, padding: "10px 12px", width: "100%", font: "inherit" };
 type Transfer = { direction: "in" | "out"; amount: number };
 export function FarmCoinWallet(props: {
   read: () => Promise<FarmCoinBalances>;
@@ -79,6 +80,7 @@ export function FarmCoinWallet(props: {
           <label>
             轉帳方向{" "}
             <select
+              style={controlStyle}
               aria-label="轉帳方向"
               value={direction}
               onChange={(e) => setDirection(e.target.value as "in" | "out")}
@@ -91,6 +93,7 @@ export function FarmCoinWallet(props: {
           <label>
             金額{" "}
             <input
+              style={controlStyle}
               aria-label="轉帳金額"
               inputMode="numeric"
               value={amount}
@@ -101,6 +104,7 @@ export function FarmCoinWallet(props: {
         </>
       )}
       <button
+        style={{ ...controlStyle, background: "#d6b76c", fontWeight: 600, opacity: working || props.busy || (!pending && !valid) ? 0.55 : 1 }}
         onClick={() => void submit()}
         disabled={working || props.busy || (!pending && !valid)}
       >
