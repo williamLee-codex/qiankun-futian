@@ -25,7 +25,9 @@ export function farmDatabaseConfig(env: NodeJS.ProcessEnv): PoolConfig {
     connectionString: url.toString(),
     max,
     connectionTimeoutMillis: 5000,
-    idleTimeoutMillis: 5000,
+    // Reuse the one bounded connection across normal pauses between actions.
+    // This is idle connection retention, not an open transaction timeout.
+    idleTimeoutMillis: production ? 30000 : 5000,
     allowExitOnIdle: true,
     application_name: "farm_v2_api",
     // Server-side cancellation, including lock waits; not merely a client timer.

@@ -10,6 +10,8 @@ test("production enforces verified TLS and a bounded reusable pool", () => {
   expect(config.ssl).toEqual({ rejectUnauthorized: true });
   expect(config.connectionString).not.toContain("sslmode");
   expect(config.max).toBe(1);
+  expect(config.idleTimeoutMillis).toBe(30000);
+  expect(config.connectionTimeoutMillis).toBe(5000);
   expect(config.options).toContain("statement_timeout=15000");
   expect(config.options).toContain("lock_timeout=3000");
   expect(config.options).toContain("idle_in_transaction_session_timeout=8000");
