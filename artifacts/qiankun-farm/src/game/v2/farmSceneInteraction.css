@@ -417,3 +417,20 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
 .farm-v2-interaction header nav { display: flex; gap: 8px; flex-wrap: wrap; }
 .farm-v2-pet-character { display: block; font-size: clamp(26px, 4vw, 58px); line-height: 1; filter: drop-shadow(0 3px 5px #14241c); }
 .farm-v2-farmer { position: absolute; left: 3%; top: 2%; z-index: 2; font-size: clamp(20px, 3vw, 42px); line-height: 1; pointer-events: none; filter: drop-shadow(0 2px 3px #18291b); }
+
+/* Official V2 character artwork: preserve proportions inside the scene hotspots. */
+.farm-v2-canvas.exterior .farm-v2-pet-character,
+.farm-v2-canvas.exterior .farm-v2-farmer {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.farm-v2-canvas.exterior .farm-v2-pet-character img,
+.farm-v2-canvas.exterior .farm-v2-farmer img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
