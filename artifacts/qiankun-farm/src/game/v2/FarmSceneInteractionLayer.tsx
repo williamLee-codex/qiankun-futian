@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type Ref } from "react";
 import { SCENE_LAYOUTS, type SceneRegion } from "./sceneInteractionRuntime";
 import { FARM_V2_LANDS } from "./canonicalLandData";
 import { FORMATION_NAMES } from "./formationSourcesRuntime";
@@ -16,6 +16,7 @@ export function FarmSceneInteractionLayer(props: {
   onPlotClick?: (plot: Plot) => void;
   onFriendAction?: (kind: "BORROW" | "ASSIST", id: number) => Promise<void>;
   onSection?: (section: string) => void;
+  warehouseTargetRef?: Ref<HTMLButtonElement>;
   onReturnHome?: () => void;
   onRefresh?: () => unknown;
 }) {
@@ -104,7 +105,7 @@ export function FarmSceneInteractionLayer(props: {
         </strong>
         {interior && <span>洞府內景</span>}
         {!props.readOnly && <nav aria-label="福田主要入口">
-          <button onClick={() => section("福田倉庫")}>福田倉庫</button>
+          <button ref={props.warehouseTargetRef} onClick={() => section("福田倉庫")}>福田倉庫</button>
           <button onClick={() => section("乾坤寶囊")}>乾坤寶囊</button>
         </nav>}
         {interior && (
