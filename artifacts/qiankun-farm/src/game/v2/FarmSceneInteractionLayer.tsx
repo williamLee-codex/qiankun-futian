@@ -205,6 +205,12 @@ export function FarmSceneInteractionLayer(props: {
                 ? (FORMATION_NAMES[props.state.activeFormation] ?? "洞府護陣")
                 : "護陣平台"}
             </button>
+            {/* One entitled farmer is a single character, not one clone per field. */}
+            {props.state.farmer?.entitled && plots.some(p => p.unlocked) && (
+              <span className="farm-v2-farmer-single" role="img" aria-label="專屬農夫" title="專屬農夫">
+                <img src={`${artBase}農夫-男.png`} alt="" draggable={false} />
+              </span>
+            )}
             {FARM_V2_LANDS.map((land, i) => {
               const p = plots.find((p) => p.id === i);
               if (!p) return null;
@@ -228,9 +234,7 @@ export function FarmSceneInteractionLayer(props: {
                     data-farm-plot={land.id}
                     onClick={() => props.onPlotClick ? props.onPlotClick(p) : props.onLandSelect?.(land.id)}
                   >
-                    {p.unlocked && props.state.farmer?.entitled && (
-                      <span className="farm-v2-farmer" role="img" aria-label={`${land.landName}專屬農夫${props.state.farmer.enabledByLand[land.id] ? "值勤中" : "待命中"}`} title={props.state.farmer.enabledByLand[land.id] ? "專屬農夫值勤中" : "專屬農夫待命中"}><img src={`${artBase}農夫-男.png`} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}} /></span>
-                    )}
+                    
                     {p.unlocked && p.state !== "empty" && (
                       <span className="farm-v2-crop-stage" data-stage={stage} aria-label={`生長階段 ${stage}%`}>
                         <span aria-hidden="true">{stage === 0 ? "🫘" : stage === 25 ? "🌱" : stage === 50 ? "🌿" : stage === 75 ? "🪴" : p.cropEmoji}</span>
