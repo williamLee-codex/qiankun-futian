@@ -157,10 +157,16 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         // Use the server's post-commit state; older responses require a read.
         return await refresh(result);
       } catch (cause) {
-        // A rejected local debit committed no asset changes; keep the scene
-        // available so the player can open the manual transfer wallet.
-        if (!(cause instanceof Error && cause.message === "FARM_COIN_INSUFFICIENT")) setData(null);
-        setReauthenticateUrl(api?.getReauthenticationUrl() ?? null);
+        // Mutation failures do not invalidate the last confirmed farm snapshot.
+        // In particular, insufficient local coins or a pending idempotent request
+        // must not replace the whole farm with a fatal loading screen.
+        // Only an explicitly invalid session requires reauthentication.
+        const code = cause instanceof Error ? cause.message : "";
+        const sessionInvalid = code === "FARM_SESSION_NOT_ACTIVE" ||
+          code === "FARM_V2_LAUNCH_TOKEN_REQUIRED" ||
+          code === "AUTH_REQUIRED";
+        if (sessionInvalid) setData(null);
+        setReauthenticateUrl(sessionInvalid ? api?.getReauthenticationUrl() ?? null : null);
         setError(
           cause instanceof Error ? cause.message : "FARM_V2_MUTATION_FAILED",
         );
