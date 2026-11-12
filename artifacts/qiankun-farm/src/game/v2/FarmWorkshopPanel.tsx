@@ -43,6 +43,7 @@ export function FarmWorkshopPanel(props: {
     [friendError, setFriendError] = useState("");
   const [localTab, setLocalTab] = useState("盆栽");
   const [festivalCode, setFestivalCode] = useState("");
+  const [selectedPet, setSelectedPet] = useState<string | null>(null);
   const [bagCategory, setBagCategory] = useState<(typeof BAG_CATEGORIES)[number]>("材料");
   const tab = props.tab ?? localTab;
   const state = workshopState(props.warehouse), summary = workshopPublicState(props.warehouse);
@@ -222,16 +223,21 @@ export function FarmWorkshopPanel(props: {
               購買一份
             </button>
             {props.pets?.owned.map((p) => (
-              <article key={p}>
-                {p}
-                {props.pets?.activePetId === p ? "（活動中）" : ""}
-                <button
-                  onClick={() =>
-                    void props.transact({ kind: "feedPet", petId: p })
-                  }
-                >
-                  完整餵食・活動24小時
+              <article key={p} style={{ margin: "12px 0", padding: 12, border: "1px solid #a99565", borderRadius: 10 }}>
+                <button type="button" onClick={() => setSelectedPet(selectedPet === p ? null : p)} aria-expanded={selectedPet === p}>
+                  <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/characters/${p}.png`} alt="" style={{ width: 64, height: 64, objectFit: "contain", verticalAlign: "middle" }} />
+                  {p}・查看靈獸資訊
                 </button>
+                {selectedPet === p && (
+                  <section aria-label={p + "靈獸資訊"} style={{ padding: 12 }}>
+                    <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/characters/${p}.png`} alt={p + "正式角色圖片"} style={{ display: "block", maxWidth: "100%", maxHeight: 220, objectFit: "contain", margin: "0 auto" }} />
+                    <p>持有狀態：已取得</p>
+                    <p>目前狀態：{props.pets?.activePetId === p && (props.pets.activeUntil ?? 0) > Date.now() ? "活動中" : "未活動"}</p>
+                    {props.pets?.activePetId === p && props.pets.activeUntil != null && <p>本次活動截止：{new Date(props.pets.activeUntil).toLocaleString("zh-TW")}</p>}
+                    <p>靈獸能力說明原圖尚未接入；此處僅顯示已確認的角色圖片與伺服器狀態，不填入推測的能力數值。</p>
+                    <button type="button" onClick={() => void props.transact({ kind: "feedPet", petId: p })}>餵食靈獸</button>
+                  </section>
+                )}
               </article>
             ))}
           </>
