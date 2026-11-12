@@ -470,3 +470,25 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
   object-fit: contain;
   object-position: bottom center;
 }
+
+/* Empty display positions are physical pedestals, never development placeholders. */
+.farm-v2-platform-pot .farm-v2-empty-pot-stand {
+  display: block;
+  position: relative;
+  width: 72%;
+  height: 32%;
+  margin-top: 42%;
+  border: 1px solid #e6cb8c;
+  border-radius: 50% 50% 28% 28%;
+  background: linear-gradient(180deg, #b6a47b 0%, #6d6658 28%, #393d3c 70%, #262e2e 100%);
+  box-shadow: inset 0 3px 5px #fff5cc55, 0 5px 7px #0009;
+}
+.farm-v2-platform-pot .farm-v2-empty-pot-stand::after {
+  content: "";
+  position: absolute;
+  inset: 6% 8% auto;
+  height: 18%;
+  border-radius: 50%;
+  border: 1px solid #e6cb8c88;
+  background: #d0bc91;
+}
