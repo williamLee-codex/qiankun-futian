@@ -63,6 +63,7 @@ export function FarmV2AuthenticatedView(props: {
   const [seedRecoveries,setSeedRecoveries]=useState<FarmSeedRecovery[]>([]);
   const [checkingSeeds,setCheckingSeeds]=useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [warehouseTab, setWarehouseTab] = useState<"crops" | "items">("crops");
   const [visited, setVisited] = useState<FarmV2PublicCave | null>(null);
   const [panelTab, setPanelTab] = useState("盆栽");
   const [panelOpen, setPanelOpen] = useState(false);
@@ -428,39 +429,29 @@ export function FarmV2AuthenticatedView(props: {
       </section>}
 
 
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">田別</th>
-                    <th scope="col">種子</th>
-                    <th scope="col">靈植</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {FARM_V2_LANDS.map((land) => {
-                    const plot = data.plots.find(
-                      (item) => item.id === land.id - 1,
-                    );
-                    return (
-                      <tr key={land.id}>
-                        <th scope="row">{land.landName}</th>
-                        <td>
-                          {land.seedName}：
-                          {plot
-                            ? (data.seedInventory[plot.cropId] ?? 0)
-                            : "資料缺失"}
-                        </td>
-                        <td>
-                          {land.cropName}：
-                          {plot
-                            ? (data.cropInventory[plot.cropId] ?? 0)
-                            : "資料缺失"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <nav aria-label="倉庫分類" style={{ display: "flex", gap: 8, margin: "12px 0" }}>
+                <button type="button" aria-pressed={warehouseTab === "crops"} onClick={() => setWarehouseTab("crops")}>靈植倉庫</button>
+                <button type="button" aria-pressed={warehouseTab === "items"} onClick={() => setWarehouseTab("items")}>道具背包</button>
+              </nav>
+              <div role="list" aria-label={warehouseTab === "crops" ? "靈植倉庫格子" : "道具背包格子"} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(76px, 1fr))", gap: 8 }}>
+                {(warehouseTab === "crops"
+                  ? FARM_V2_LANDS.map(land => {
+                      const plot = data.plots.find(item => item.id === land.id - 1);
+                      return { key: "crop-" + land.id, name: land.cropName, icon: plot?.cropEmoji ?? "🌿", qty: plot ? data.cropInventory[plot.cropId] ?? 0 : null };
+                    })
+                  : FARM_V2_LANDS.map(land => {
+                      const plot = data.plots.find(item => item.id === land.id - 1);
+                      return { key: "seed-" + land.id, name: land.seedName, icon: "🌱", qty: plot ? data.seedInventory[plot.cropId] ?? 0 : null };
+                    })
+                ).map(item => (
+                  <div role="listitem" key={item.key} title={item.name} style={{ minHeight: 88, border: "1px solid #a99565", borderRadius: 8, padding: 6, background: "#25392e", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                    <span aria-hidden="true" style={{ fontSize: 24 }}>{item.icon}</span>
+                    <span style={{ fontSize: 12 }}>{item.name}</span>
+                    <strong style={{ fontSize: 12 }}>{item.qty === null ? "資料缺失" : "×" + item.qty}</strong>
+                  </div>
+                ))}
+              </div>
+              {warehouseTab === "items" && <p>此分類目前顯示伺服器回傳的種子庫存；其他道具待既有道具庫存資料接入後顯示，不使用假數量。</p>}
             </section>
           ) : (
             <FarmWorkshopPanel
