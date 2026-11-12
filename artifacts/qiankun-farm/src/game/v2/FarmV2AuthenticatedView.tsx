@@ -176,6 +176,21 @@ export function FarmV2AuthenticatedView(props: {
     );
   }
 
+  // A direct /farm-v2/ visit may have no farm cookie even when the platform
+  // login is still valid. Attempt the official launch exactly once per tab,
+  // without storing credentials or looping on an unavailable login.
+  useEffect(() => {
+    if (loading || data || props.launchToken !== "browser-session" ||
+        !["FARM_SESSION_NOT_ACTIVE", "AUTH_REQUIRED"].includes(error ?? "")) return;
+    const key = "farm-v2:launch-recovery-attempted";
+    try {
+      if (sessionStorage.getItem(key) === "1") return;
+      sessionStorage.setItem(key, "1");
+    } catch { return; }
+    const destination = new URL("/api/apps/qiankun-futian/launch?farmV2=1", window.location.origin);
+    window.location.assign(destination.toString());
+  }, [loading, data, error, props.launchToken]);
+
   if (loading && !data)
     return <section role="status">正在讀取正式農田資料…</section>;
   if (!data)
