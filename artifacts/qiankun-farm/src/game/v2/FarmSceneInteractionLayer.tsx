@@ -125,15 +125,6 @@ export function FarmSceneInteractionLayer(props: {
             <a href="https://line.me/R/oaMessage/@yuceluopan/">客服</a>
           </nav>
         </details>
-        <strong>
-          {props.ownerLabel}
-          {interior ? "・洞府" : "・農場"}
-        </strong>
-        {interior && <span>洞府內景</span>}
-        {!props.readOnly && <nav aria-label="福田主要入口">
-          
-          <button onClick={() => section("乾坤寶囊")}>乾坤寶囊</button>
-        </nav>}
         {interior && (
           <button ref={caveExit} className="farm-v2-cave-return" onClick={() => setInterior(false)}>
             返回農場
@@ -304,8 +295,8 @@ export function FarmSceneInteractionLayer(props: {
                 title={`${land.cropName} · ${pot ? pot.grade + "階" : "空位"}`}
                 disabled={props.busy || props.readOnly}
                 onClick={() => section("盆栽")}>
-                {pot && level > 0 ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/plants/${land.id}-${level}.webp`} alt="" /> : <span aria-hidden="true">♧</span>}
-                <small>{pot ? land.cropName : "展示位 " + (i + 1)}</small>
+                {pot && level > 0 ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/plants/${land.id}-${level}.webp`} alt="" /> : <span className="farm-v2-empty-pot-stand" aria-hidden="true" />}
+                {pot && <small>{land.cropName}</small>}
               </button>;
             })}
             <button className="farm-v2-pot-entry" aria-label="盆栽合成" style={position(layout.potEntry)}
