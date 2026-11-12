@@ -297,6 +297,29 @@ export function FarmV2AuthenticatedView(props: {
           </DialogContent>
         </Dialog>
       )}
+      {data.localCoins && (
+        <button
+          type="button"
+          aria-label="開啟福田金幣錢包，轉入或回存金幣"
+          onClick={() => setWalletOpen(true)}
+          disabled={busy || loading}
+          style={{
+            position: "fixed",
+            left: "max(12px, env(safe-area-inset-left, 12px))",
+            bottom: "max(16px, env(safe-area-inset-bottom, 16px))",
+            zIndex: 45,
+            padding: "10px 14px",
+            borderRadius: 12,
+            border: "1px solid #bda365",
+            background: "#12251f",
+            color: "#f8f1df",
+            fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif',
+            cursor: "pointer",
+          }}
+        >
+          🪙 福田金幣・轉入／回存
+        </button>
+      )}
       {flight && (
         <span
           aria-hidden="true"
