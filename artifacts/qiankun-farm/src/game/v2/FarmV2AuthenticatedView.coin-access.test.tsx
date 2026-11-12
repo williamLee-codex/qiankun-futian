@@ -37,7 +37,7 @@ it("renders owned resting pets, an entitled farmer, and both inventory entrances
   showFarm();
   expect(screen.getByRole("img",{name:"噬時諦聽"})).toBeTruthy();
   expect(screen.getByRole("img",{name:"乾坤麒麟"})).toBeTruthy();
-  expect(screen.getByRole("img",{name:"微芒凡土專屬農夫值勤中"})).toBeTruthy();
+  expect(screen.getAllByRole("img",{name:"專屬農夫"})).toHaveLength(1);
   expect(screen.getByRole("navigation",{name:"福田主要入口"})).toBeTruthy();
   fireEvent.click(screen.getByRole("button",{name:"福田倉庫：點擊農舍開啟倉庫"}));
   expect(screen.getByRole("region",{name:"福田倉庫庫存"})).toBeTruthy();
