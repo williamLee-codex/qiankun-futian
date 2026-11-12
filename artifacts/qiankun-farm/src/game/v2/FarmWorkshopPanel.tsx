@@ -234,7 +234,14 @@ export function FarmWorkshopPanel(props: {
                     <p>持有狀態：已取得</p>
                     <p>目前狀態：{props.pets?.activePetId === p && (props.pets.activeUntil ?? 0) > Date.now() ? "活動中" : "未活動"}</p>
                     {props.pets?.activePetId === p && props.pets.activeUntil != null && <p>本次活動截止：{new Date(props.pets.activeUntil).toLocaleString("zh-TW")}</p>}
-                    <p>靈獸能力說明原圖尚未接入；此處僅顯示已確認的角色圖片與伺服器狀態，不填入推測的能力數值。</p>
+                    <img
+                      src={`${import.meta.env.BASE_URL ?? "/"}images/farm/pet-descriptions/${p}-說明.png`}
+                      alt={p + "正式能力說明圖"}
+                      loading="lazy"
+                      style={{ display: "block", width: "100%", maxWidth: 460, height: "auto", margin: "12px auto", borderRadius: 10 }}
+                      onError={event => { event.currentTarget.style.display = "none"; }}
+                    />
+                    <p>能力與飼料消耗以正式說明圖片為準；目前狀態及時間由伺服器提供。</p>
                     <button type="button" onClick={() => void props.transact({ kind: "feedPet", petId: p })}>餵食靈獸</button>
                   </section>
                 )}
