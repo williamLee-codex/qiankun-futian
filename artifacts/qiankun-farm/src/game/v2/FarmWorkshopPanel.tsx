@@ -239,8 +239,13 @@ export function FarmWorkshopPanel(props: {
                       alt={p + "正式能力說明圖"}
                       loading="lazy"
                       style={{ display: "block", width: "100%", maxWidth: 460, height: "auto", margin: "12px auto", borderRadius: 10 }}
-                      onError={event => { event.currentTarget.style.display = "none"; }}
+                      onError={event => {
+                        event.currentTarget.style.display = "none";
+                        const warning = event.currentTarget.nextElementSibling;
+                        if (warning instanceof HTMLElement) warning.hidden = false;
+                      }}
                     />
+                    <p hidden role="status">正式靈獸說明圖片尚未安裝，請先核對圖片資源。</p>
                     <p>能力與飼料消耗以正式說明圖片為準；目前狀態及時間由伺服器提供。</p>
                     <button type="button" onClick={() => void props.transact({ kind: "feedPet", petId: p })}>餵食靈獸</button>
                   </section>
