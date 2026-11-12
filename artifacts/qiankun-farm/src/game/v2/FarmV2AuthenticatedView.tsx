@@ -439,10 +439,17 @@ export function FarmV2AuthenticatedView(props: {
                       const plot = data.plots.find(item => item.id === land.id - 1);
                       return { key: "crop-" + land.id, name: land.cropName, icon: plot?.cropEmoji ?? "🌿", qty: plot ? data.cropInventory[plot.cropId] ?? 0 : null };
                     })
-                  : FARM_V2_LANDS.map(land => {
-                      const plot = data.plots.find(item => item.id === land.id - 1);
-                      return { key: "seed-" + land.id, name: land.seedName, icon: "🌱", qty: plot ? data.seedInventory[plot.cropId] ?? 0 : null };
-                    })
+                  : [
+                      ...FARM_V2_LANDS.map(land => {
+                        const plot = data.plots.find(item => item.id === land.id - 1);
+                        return { key: "seed-" + land.id, name: land.seedName, icon: "🌱", qty: plot ? data.seedInventory[plot.cropId] ?? 0 : null };
+                      }),
+                      ...(data.warehouse.workshop ? [
+                        { key: "material-sand", name: "蘊靈砂", icon: "✨", qty: data.warehouse.workshop.materials.蘊靈砂 ?? 0 },
+                        { key: "material-jade", name: "九霄玉髓", icon: "💠", qty: data.warehouse.workshop.materials.九霄玉髓 ?? 0 },
+                        { key: "pet-food", name: "靈獸百味糧", icon: "🥣", qty: data.warehouse.workshop.petFood ?? 0 },
+                      ] : []),
+                    ]
                 ).map(item => (
                   <div role="listitem" key={item.key} title={item.name} style={{ minHeight: 88, border: "1px solid #a99565", borderRadius: 8, padding: 6, background: "#25392e", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
                     <span aria-hidden="true" style={{ fontSize: 24 }}>{item.icon}</span>
@@ -451,7 +458,7 @@ export function FarmV2AuthenticatedView(props: {
                   </div>
                 ))}
               </div>
-              {warehouseTab === "items" && <p>此分類目前顯示伺服器回傳的種子庫存；其他道具待既有道具庫存資料接入後顯示，不使用假數量。</p>}
+              {warehouseTab === "items" && <p>此分類顯示伺服器回傳的種子、材料及靈獸飼料；尚未接入的道具不使用假數量。</p>}
             </section>
           ) : (
             <FarmWorkshopPanel
