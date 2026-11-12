@@ -449,3 +449,24 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
 .farm-v2-canvas.exterior .farm-v2-warehouse-building:focus-visible,.farm-v2-canvas.exterior .farm-v2-warehouse-annex:focus-visible { outline:3px solid #f0d892;outline-offset:0; }
 @media(max-width:1099px){.farm-v2-shared-nav{display:none}.farm-v2-mobile-nav{display:block;margin-left:auto}.farm-v2-mobile-nav > summary{cursor:pointer;list-style:none;padding:6px 12px;color:#f0d892;border:1px solid #3a3020;border-radius:5px}.farm-v2-mobile-nav > nav{position:absolute;top:100%;right:0;z-index:12;display:grid;min-width:145px;padding:8px;background:#11151c;border:1px solid #3a3020;border-radius:8px}}
 @media(max-width:767px){.farm-v2-warehouse-name{font-size:10px;padding:2px 4px}}
+
+/* One human-scale farmer anchored to the scene, outside individual land hotspots. */
+.farm-v2-canvas.exterior .farm-v2-farmer-single {
+  position: absolute;
+  left: 35%;
+  top: 40%;
+  width: 5%;
+  height: 11%;
+  z-index: 3;
+  pointer-events: none;
+  display: block;
+  transform: translate(-50%, -100%);
+  filter: drop-shadow(0 2px 2px rgba(12, 23, 17, .55));
+}
+.farm-v2-canvas.exterior .farm-v2-farmer-single img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+}
