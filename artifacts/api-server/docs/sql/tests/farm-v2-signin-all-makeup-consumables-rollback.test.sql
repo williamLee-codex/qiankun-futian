@@ -27,7 +27,7 @@ begin
  loop
   v_cycle:=v_cycle+1;
   insert into public.farm_v2_signin_cycles(user_id,cycle_number,cycle_start_day)
-  values(v_user,v_cycle,(now() at time zone 'Asia/Taipei')::date-v_day);
+  values(v_user,v_cycle,(now() at time zone 'Asia/Taipei' - interval '5 hours')::date-v_day);
   insert into public.farm_v2_signin_days(user_id,cycle_number,cycle_day,is_makeup)
   select v_user,v_cycle,x,false from pg_catalog.generate_series(1,v_day-1)x;
   insert into public.farm_v2_signin_makeup_grants(user_id,cycle_number,grant_day)
