@@ -10,11 +10,11 @@ create or replace function public.farm_v2_six_distinct_task_ids(p_ids text[])
 returns boolean
 language sql immutable strict
 set search_path = ''
-as $
+as $$
   select cardinality(p_ids) = 6
      and array_position(p_ids, null) is null
      and (select count(distinct item) from unnest(p_ids) as item) = 6
-$;
+$$;
 revoke all on function public.farm_v2_six_distinct_task_ids(text[]) from public, anon, authenticated;
 
 create table if not exists public.farm_v2_daily_activity_days (
