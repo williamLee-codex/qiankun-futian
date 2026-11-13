@@ -33,7 +33,7 @@ begin
     'status','ready','cycleNumber',p_cycle_number,'cycleDay',v_day,
     'signedDays',to_jsonb(v_signed),'makeupDays',to_jsonb(v_makeup),
     'makeupCreditsAvailable',greatest(0,v_earned-v_used),
-    'perfectAttendanceReady',(coalesce(array_length(v_signed,1),0)=30 and coalesce(array_length(v_makeup,1),0)=0 and v_cycle.perfect_reward_claimed_at is null),
+    'perfectAttendanceReady',(coalesce(array_length(v_signed,1),0)=30 and v_cycle.perfect_reward_claimed_at is null),
     'perfectAttendanceClaimed',(v_cycle.perfect_reward_claimed_at is not null)
   );
 end;
