@@ -59,33 +59,48 @@ export function eligibleDailyTasks(eligibility: TaskEligibility): DailyTask[] {
   });
 }
 
+/** Can the remaining pool supply enough compatible tasks? Exhaustive search is bounded by 17 candidates. */
+function canCompleteSix(tasks: readonly DailyTask[], selected: readonly DailyTask[]): boolean {
+  if (selected.length === 6) return true;
+  if (selected.length + tasks.length < 6) return false;
+  for (let i = 0; i < tasks.length; i++) {
+    const task = tasks[i];
+    if (selected.some(prior =>
+      (task.exclusiveGroup && prior.exclusiveGroup === task.exclusiveGroup)
+      || (task.clickOnly && prior.clickOnly)
+    )) continue;
+    if (canCompleteSix(tasks.slice(i + 1), [...selected, task])) return true;
+  }
+  return false;
+}
+
 /** Inject a cryptographically secure server-side random index generator. */
 export function selectDailyTasks(
   eligibility: TaskEligibility,
   randomIndex: (upperExclusive: number) => number,
 ): DailyTask[] {
-  const pool = eligibleDailyTasks(eligibility);
+  let pool = eligibleDailyTasks(eligibility);
   const selected: DailyTask[] = [];
-  while (pool.length && selected.length < 6) {
-    const index = randomIndex(pool.length);
-    if (!Number.isInteger(index) || index < 0 || index >= pool.length) {
+  if (!canCompleteSix(pool, selected)) throw new Error('INSUFFICIENT_ELIGIBLE_DAILY_TASKS');
+  while (selected.length < 6) {
+    const candidates = pool.filter(task => {
+      const remaining = pool.filter(other => other.id !== task.id && !(
+        (task.exclusiveGroup && other.exclusiveGroup === task.exclusiveGroup)
+        || (task.clickOnly && other.clickOnly)
+      ));
+      return canCompleteSix(remaining, [...selected, task]);
+    });
+    if (!candidates.length) throw new Error('INSUFFICIENT_ELIGIBLE_DAILY_TASKS');
+    const index = randomIndex(candidates.length);
+    if (!Number.isInteger(index) || index < 0 || index >= candidates.length) {
       throw new Error('INVALID_RANDOM_INDEX');
     }
-    const [task] = pool.splice(index, 1);
+    const task = candidates[index];
     selected.push(task);
-    if (task.exclusiveGroup) {
-      for (let i = pool.length - 1; i >= 0; i--) {
-        if (pool[i].exclusiveGroup === task.exclusiveGroup) pool.splice(i, 1);
-      }
-    }
-    if (task.clickOnly) {
-      for (let i = pool.length - 1; i >= 0; i--) {
-        if (pool[i].clickOnly) pool.splice(i, 1);
-      }
-    }
-  }
-  if (selected.length !== 6) {
-    throw new Error('INSUFFICIENT_ELIGIBLE_DAILY_TASKS');
+    pool = pool.filter(other => other.id !== task.id && !(
+      (task.exclusiveGroup && other.exclusiveGroup === task.exclusiveGroup)
+      || (task.clickOnly && other.clickOnly)
+    ));
   }
   return selected;
 }
