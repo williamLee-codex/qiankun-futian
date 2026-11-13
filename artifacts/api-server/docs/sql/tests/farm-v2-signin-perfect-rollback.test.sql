@@ -23,7 +23,7 @@ begin
  where public.farm_v2_resolve_verified_wallet_owner(p.user_id) is not null limit 1;
  if v_owner is null then raise exception 'TEST_SETUP: no verified player'; end if;
  insert into public.farm_v2_signin_cycles(user_id,cycle_number,cycle_start_day)
- values(v_user,v_cycle,(now() at time zone 'Asia/Taipei')::date-29);
+ values(v_user,v_cycle,(now() at time zone 'Asia/Taipei' - interval '5 hours')::date-29);
  v_incomplete:=public.farm_v2_signin_claim_perfect(v_user,v_cycle);
  if v_incomplete->>'status'<>'incomplete' then raise exception 'incomplete award granted'; end if;
  insert into public.farm_v2_signin_days(user_id,cycle_number,cycle_day,is_makeup)
