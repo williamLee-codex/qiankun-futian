@@ -586,8 +586,17 @@ router.get("/farm/v2/signin", async (_req, res, next) => {
     const status = await pool.query(
       "select public.farm_v2_signin_status($1) as result", [userId],
     );
+    const pending = await pool.query(
+      "select public.farm_v2_signin_pending_perfect_cycle($1) as cycle",
+      [userId],
+    );
+    const pendingCycle = pending.rows[0]?.cycle ?? null;
     res.setHeader("Cache-Control", "no-store");
-    res.json(status.rows[0].result);
+    res.json({
+      ...status.rows[0].result,
+      pendingPerfectCycle: pendingCycle,
+      perfectAttendanceReady: pendingCycle !== null,
+    });
   } catch (error) { next(error); }
 });
 
