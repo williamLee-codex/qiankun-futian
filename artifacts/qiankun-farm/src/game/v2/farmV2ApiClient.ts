@@ -126,6 +126,7 @@ export function createFarmV2Api(input: {
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as {
         error?: string;
+        status?: string;
         reauthenticateUrl?: string;
       } | null;
       if (payload?.reauthenticateUrl) {
@@ -141,7 +142,9 @@ export function createFarmV2Api(input: {
       }
       throw new FarmV2ApiError(
         response.status,
-        payload?.error ?? "FARM_V2_REQUEST_FAILED",
+        payload?.error ??
+          (response.url.includes("/farm/v2/signin") ? payload?.status : undefined) ??
+          "FARM_V2_REQUEST_FAILED",
       );
     }
     return response.json() as Promise<T>;
