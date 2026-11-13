@@ -323,7 +323,7 @@ export function createFarmV2Api(input: {
       revoked = true;
       sessionPromise = null;
     },
-    readSignIn: () => request<{status:string;cycleNumber?:number;cycleDay?:number;signedDays?:number[];makeupDays?:number[];makeupCreditsAvailable?:number;todayClaimable?:boolean;nextMakeupDay?:number|null;makeupClaimable?:boolean;perfectAttendanceReady?:boolean;perfectAttendanceClaimed?:boolean}>("farm/v2/signin", "GET"),
+    readSignIn: () => request<import("../../signInBridge").SignInSnapshot>("farm/v2/signin", "GET"),
     claimSignInToday: () => request<{status:string}>("farm/v2/signin/claim", "POST", {}),
     claimSignInMakeup: (cycleDay: number) =>
       request<{status:string}>("farm/v2/signin/makeup", "POST", {cycleDay}),
