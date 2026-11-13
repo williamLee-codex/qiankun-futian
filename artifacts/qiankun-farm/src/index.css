@@ -1973,3 +1973,11 @@ body {
 .coin-conversion-actions { justify-content: flex-end; }
 .coin-conversion-dialog [role="alert"] { color: #ffb3a3; }
 .coin-conversion-dialog [role="status"] { color: #b7edab; }
+
+.farm-coin-help {
+  position: absolute; top: 73px; left: 8px; z-index: 55;
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid #ad8b43; background: #211a14;
+  color: #ffe4ae; font-size: 13px; font-weight: 700;
+  pointer-events: auto; cursor: pointer;
+}
