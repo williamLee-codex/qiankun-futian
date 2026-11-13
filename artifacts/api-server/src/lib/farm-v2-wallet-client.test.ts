@@ -20,6 +20,8 @@ afterEach(() => {
 
 describe("Farm V2 Core Wallet bridge", () => {
   it("rejects missing configuration and insecure platform URLs", async () => {
+    vi.stubEnv("PLATFORM_BASE_URL", "");
+    vi.stubEnv("REPLIT_APP_SHARED_SECRET", "");
     await expect(mutateFarmV2Wallet(input)).rejects.toThrow(
       "FARM_WALLET_BRIDGE_NOT_CONFIGURED",
     );

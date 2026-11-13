@@ -21,6 +21,6 @@ describe("Farm V2 daily activity rules", () => {
     const empty = activitySnapshot(tasks, {});
     expect(empty.points).toBe(0);
     expect(empty.milestones.map(m => m.eligible)).toEqual([false,false,false]);
-    expect(activitySnapshot(tasks, { plant: -1 })).toThrow("INVALID_ACTIVITY_COUNTER");
+    expect(() => activitySnapshot(tasks, { plant: -1 })).toThrow("INVALID_ACTIVITY_COUNTER");
   });
 });

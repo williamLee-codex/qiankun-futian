@@ -5,6 +5,7 @@ vi.mock('@vercel/oidc', () => ({ getVercelOidcToken: async () => 'test-runtime-i
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 it('attaches the runtime identity while preserving application authentication in Preview', async () => {
   vi.stubEnv('VERCEL_ENV', 'preview');
+  vi.stubEnv('FARM_V2_BRIDGE_SHARED_SECRET', '');
   vi.stubEnv('PLATFORM_BASE_URL', 'https://platform-test.vercel.app');
   vi.stubEnv('REPLIT_APP_SHARED_SECRET', 'test-application-secret');
   let sent: RequestInit | undefined;

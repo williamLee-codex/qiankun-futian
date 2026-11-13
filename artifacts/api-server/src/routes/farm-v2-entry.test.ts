@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import express from "express";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -72,6 +72,10 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
   vi.resetAllMocks();
+});
+beforeEach(() => {
+  vi.stubEnv("FARM_V2_LOCAL_COINS_ENABLED", "0");
+  vi.stubEnv("FARM_V2_IDENTITY_CACHE_ENABLED", "0");
 });
 const paths = [
   "state",
