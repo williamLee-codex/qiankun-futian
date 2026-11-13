@@ -7,13 +7,27 @@ export default function SignInDialog({bridge,onClose}:{bridge:SignInBridge;onClo
  const [error,setError]=useState('');
  useEffect(()=>{let active=true;bridge.load().then(v=>{if(active)setData(v);})
  .catch(()=>{if(active)setError('簽到資料暫時無法讀取');});return()=>{active=false;};},[bridge]);
+ const errors:Record<string,string>={
+  not_today:'今日尚未到簽到日期，或今天已完成簽到',
+  not_past_day:'只能補簽今天以前的日期',
+  no_makeup_credit:'補簽額度不足',
+  earlier_day_missing:'請依照日期順序補簽',
+  incomplete:'尚未完成本輪 30 天簽到',
+  cycle_inactive:'本輪簽到已結束，請重新開啟日曆',
+  cycle_not_found:'找不到本輪簽到資料',
+  already_signed:'該日已完成簽到',
+  inventory_overflow:'道具庫存已達上限',
+  unverified_identity:'帳號身分尚未完成驗證',
+  FARM_SESSION_NOT_ACTIVE:'登入已失效，請重新登入',
+ };
  async function submit(action:()=>Promise<{status:string}>){
   setBusy(true);setError('');
   try{const result=await action();
    if(result.status!=='claimed'&&result.status!=='already_claimed'&&result.status!=='already_signed')
     throw new Error(result.status);
    setData(await bridge.load());
-  }catch{setError('操作未完成，請稍後再試；系統會防止重複發獎');}
+  }catch(e){const code=e instanceof Error?e.message:'';
+   setError(errors[code]??'操作未完成，請稍後再試；系統會防止重複發獎');}
   finally{setBusy(false);}
  }
  const signed=new Set(data?.signedDays??[]);
