@@ -1,5 +1,6 @@
 import {useEffect,useState} from 'react';
 import type {SignInBridge,SignInSnapshot} from '../signInBridge';
+import {signInRewards} from '../signInRewards';
 export default function SignInDialog({bridge,onClose}:{bridge:SignInBridge;onClose:()=>void}){
  const [data,setData]=useState<SignInSnapshot|null>(null);
  const [busy,setBusy]=useState(false);
@@ -26,12 +27,13 @@ export default function SignInDialog({bridge,onClose}:{bridge:SignInBridge;onClo
    <h2>30 日簽到</h2>
    <p>依序簽到，補簽計入全勤。30 日完成後重置新週期。</p>
    {data?.cycleNumber!=null&&<p>第 {data.cycleNumber} 輪 · 今日第 {data.cycleDay??'—'} 天 · 補簽額度 {data.makeupCreditsAvailable??0}</p>}
-   <div style={{display:'grid',gridTemplateColumns:'repeat(5,minmax(0,1fr))',gap:5}}>
+   <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:5}}>
     {Array.from({length:30},(_,i)=>i+1).map(day=>
-     <div key={day} aria-label={`第${day}天${signed.has(day)?'已簽到':''}`}
-      style={{padding:'7px 2px',textAlign:'center',border:'1px solid #bfa67c',borderRadius:4,
-       background:signed.has(day)?'#335b42':'transparent'}}>
-      {day}{makeup.has(day)?' 補':signed.has(day)?' ✓':''}
+     <div key={day} aria-label={`第${day}天，${signInRewards[day-1]}，${makeup.has(day)?'已補簽':signed.has(day)?'已簽到':'未簽到'}`}
+      style={{padding:'7px 3px',textAlign:'center',border:'1px solid #bfa67c',borderRadius:4,
+       background:signed.has(day)?'#335b42':day===data?.cycleDay?'#56472d':'transparent'}}>
+      <strong>第 {day} 天 {makeup.has(day)?'補':signed.has(day)?'✓':''}</strong>
+      <div style={{fontSize:11,lineHeight:1.4}}>{signInRewards[day-1]}</div>
      </div>)}
    </div>
    <p><button type="button" disabled={busy||!data?.todayClaimable}
