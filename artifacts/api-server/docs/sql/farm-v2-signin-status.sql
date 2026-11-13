@@ -37,8 +37,8 @@ begin
  'makeupCandidates',to_jsonb(v_makeup),
  'nextMakeupDay',case when v_credits>0 then v_next_makeup else null end,
  'makeupClaimable',v_credits>0 and v_next_makeup is not null,
- 'nextMakeupRewardSupported',v_next_makeup=any(array[1,2,4,6,7,10,11,12,15,16,17,20,21,22,24,25,27,29]),
- 'supportedRewardDays',to_jsonb(array[1,2,4,6,7,10,11,12,15,16,17,20,21,22,24,25,27,29,30]),
- 'pendingItemRewardDays',to_jsonb(array[3,5,8,9,13,14,18,19,23,26,28]));
+ 'nextMakeupRewardSupported',v_next_makeup between 1 and 29,
+ 'supportedRewardDays',to_jsonb(array(select d from pg_catalog.generate_series(1,30) d)),
+ 'pendingItemRewardDays','[]'::jsonb);
 end; $$;
 revoke all on function public.farm_v2_signin_status(text) from public,anon,authenticated;
