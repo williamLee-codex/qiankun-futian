@@ -75,7 +75,7 @@ export default function FarmScene() {
       {/* ── 氣運倉庫 — 左建築 Hotspot ── */}
       <button
         className="bh bh-left"
-        onClick={e => { e.stopPropagation(); dispatch({ type: 'OPEN_PANEL', panel: 'warehouse' }); }}
+        onClick={e => { e.stopPropagation(); dispatch({ type: 'OPEN_PANEL', panel: 'warehouse' }); void fetch('/api/farm-backend/farm/v2/daily-activity/warehouse-open', { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => undefined); }}
         aria-label="氣運倉庫"
       />
 
