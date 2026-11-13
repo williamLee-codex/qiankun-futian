@@ -14,13 +14,13 @@ describe("Farm V2 daily activity rules", () => {
   });
   it("scores only completed server events and gates the 30/60/100 milestones", () => {
     const tasks = selectDailyActivityTasks("player-b", "2026-11-14");
-    const counters = { sow: 99, harvest: 99, seed_purchase: 99, signin: 99, cave_visit: 99 };
+    const counters = { plant: 99, harvest: 99, buy_seeds: 99, open_warehouse: 99, view_pet: 99, visit_friend: 99, friend_interaction: 99 };
     const full = activitySnapshot(tasks, counters);
     expect(full.points).toBe(120);
     expect(full.milestones.map(m => m.eligible)).toEqual([true,true,true]);
     const empty = activitySnapshot(tasks, {});
     expect(empty.points).toBe(0);
     expect(empty.milestones.map(m => m.eligible)).toEqual([false,false,false]);
-    expect(activitySnapshot(tasks, { sow: -1 })).toThrow("INVALID_ACTIVITY_COUNTER");
+    expect(activitySnapshot(tasks, { plant: -1 })).toThrow("INVALID_ACTIVITY_COUNTER");
   });
 });
