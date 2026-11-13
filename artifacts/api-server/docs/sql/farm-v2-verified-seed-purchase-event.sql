@@ -25,6 +25,16 @@ begin
  insert into public.farm_v2_daily_activity_events(user_id,activity_day,transaction_id,event_type,quantity,species_id,occurred_at)
  values(p_user_id,d,p_request_id,'buy_seeds',qty,split_part(m.action,':',3),m.created_at)
  on conflict (user_id,transaction_id) do nothing;
+ -- A retry is idempotent only when its existing event exactly matches the
+ -- authoritative committed mutation; otherwise stop rather than hide drift.
+ if not exists (
+   select 1 from public.farm_v2_daily_activity_events e
+   where e.user_id=p_user_id and e.transaction_id=p_request_id
+     and e.activity_day=d and e.event_type='buy_seeds'
+     and e.quantity=qty and e.species_id=split_part(m.action,':',3)
+ ) then
+   raise exception 'FARM_DAILY_EVENT_CONFLICT' using errcode='23514';
+ end if;
  return true;
 end;
 $$;
