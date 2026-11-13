@@ -95,3 +95,26 @@ test('replay deduplicates retries and ignores unassigned tasks for points', () =
     events[0],{...events[0],quantity:10},
   ]), /CONFLICTING_TRANSACTION_EVENT/);
 });
+
+test('retry comparison ignores object property order but rejects changed payload', () => {
+  const assigned=DAILY_TASK_POOL.filter(t=>[
+    'plant_once','plant_5','harvest_5','buy_seeds_once','buy_seeds_5','open_warehouse',
+  ].includes(t.id));
+  const first={transactionId:'tx-order',event:'plant' as const,quantity:5,speciesId:'rice'};
+  const reordered={speciesId:'rice',quantity:5,event:'plant' as const,transactionId:'tx-order'};
+  const progress=projectDailyActivity(assigned,[first,reordered]);
+  assert.equal(progress.find(p=>p.taskId==='plant_5')?.count,5);
+  assert.throws(()=>projectDailyActivity(assigned,[first,{...first,speciesId:'other'}]),/CONFLICTING_TRANSACTION_EVENT/);
+  assert.throws(()=>projectDailyActivity(assigned,[{...first,speciesId:' '}]),/INVALID_VERIFIED_EVENT/);
+});
+
+test('daily replay rejects tampered assignments', () => {
+  const assigned=DAILY_TASK_POOL.filter(t=>[
+    'plant_once','plant_5','harvest_5','buy_seeds_once','buy_seeds_5','open_warehouse',
+  ].includes(t.id));
+  assert.throws(()=>projectDailyActivity(assigned.map((t,i)=>i===0?{...t,target:999}:t),[]),/ALTERED_ASSIGNED_TASK/);
+  const conflicting=DAILY_TASK_POOL.filter(t=>[
+    'plant_once','plant_5','plant_10','harvest_5','buy_seeds_once','open_warehouse',
+  ].includes(t.id));
+  assert.throws(()=>projectDailyActivity(conflicting,[]),/CONFLICTING_ASSIGNED_TASKS/);
+});
