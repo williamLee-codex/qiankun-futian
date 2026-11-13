@@ -23,7 +23,7 @@ begin
  select * into v_cycle from public.farm_v2_signin_cycles
  where user_id=p_user_id and cycle_number=p_cycle_number for update;
  if not found then return jsonb_build_object('status','cycle_not_found'); end if;
- v_current:=(now() at time zone 'Asia/Taipei')::date-v_cycle.cycle_start_day+1;
+ v_current:=(now() at time zone 'Asia/Taipei' - interval '5 hours')::date-v_cycle.cycle_start_day+1;
  if v_current not between 1 and 30 then return jsonb_build_object('status','cycle_inactive'); end if;
  if p_cycle_day>=v_current then return jsonb_build_object('status','not_past_day'); end if;
  if exists(select 1 from public.farm_v2_signin_days where user_id=p_user_id
