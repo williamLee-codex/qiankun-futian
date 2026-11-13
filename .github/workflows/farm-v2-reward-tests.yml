@@ -1,0 +1,27 @@
+name: Farm V2 reward tests
+on:
+  push:
+    branches:
+      - codex/farm-v2-coin-conversion-ui-20261113
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reward-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - name: Install workspace dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Check reward TypeScript
+        run: pnpm --filter @workspace/api-server run typecheck
+      - name: Test daily rewards
+        run: pnpm --filter @workspace/api-server run test:rewards
