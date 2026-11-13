@@ -87,12 +87,16 @@ export function projectDailyActivity(
   ))) throw new Error('CONFLICTING_ASSIGNED_TASKS');
   const transactions = new Map<string, VerifiedFarmEvent>();
   for (const event of committedEvents) {
-    if (!event.transactionId || !Number.isSafeInteger(event.quantity) || event.quantity <= 0) {
+    if (!event.transactionId || !Number.isSafeInteger(event.quantity) || event.quantity <= 0 ||
+      !['plant','harvest','buy_seeds','synthesize_pot','place_pot','open_warehouse','feed_pet','view_pet','friend_interaction','visit_friend'].includes(event.event) ||
+      (event.speciesId !== undefined && (typeof event.speciesId !== 'string' || !event.speciesId.trim()))) {
       throw new Error('INVALID_VERIFIED_EVENT');
     }
     if (transactions.has(event.transactionId)) {
       const previous = transactions.get(event.transactionId)!;
-      if (JSON.stringify(previous) !== JSON.stringify(event)) throw new Error('CONFLICTING_TRANSACTION_EVENT');
+      if (previous.event !== event.event || previous.quantity !== event.quantity || previous.speciesId !== event.speciesId) {
+        throw new Error('CONFLICTING_TRANSACTION_EVENT');
+      }
       continue;
     }
     transactions.set(event.transactionId, event);
