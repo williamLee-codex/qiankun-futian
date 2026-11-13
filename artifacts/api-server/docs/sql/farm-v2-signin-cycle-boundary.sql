@@ -5,7 +5,7 @@ create or replace function public.farm_v2_signin_cycle_summary(
 ) returns jsonb language plpgsql stable security invoker set search_path='' as $$
 declare
  v_cycle public.farm_v2_signin_cycles%rowtype;
- v_today date:=(((now() at time zone 'Asia/Taipei') - interval '5 hours') - interval '5 hours')::date;
+ v_today date:=((((now() at time zone 'Asia/Taipei') - interval '5 hours') - interval '5 hours') - interval '5 hours')::date;
  v_raw_day integer;
  v_day integer;
  v_signed integer[];
