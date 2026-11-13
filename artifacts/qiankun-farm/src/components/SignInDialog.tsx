@@ -5,8 +5,9 @@ export default function SignInDialog({bridge,onClose}:{bridge:SignInBridge;onClo
  const [data,setData]=useState<SignInSnapshot|null>(null);
  const [busy,setBusy]=useState(false);
  const [inventory,setInventory]=useState<ConsumableInventory|null>(null);
+ const [inventoryError,setInventoryError]=useState(false);
  const [error,setError]=useState('');
- useEffect(()=>{let active=true;bridge.loadConsumables().then(v=>{if(active)setInventory(v);}).catch(()=>{});return()=>{active=false;};},[bridge]);
+ useEffect(()=>{let active=true;bridge.loadConsumables().then(v=>{if(active){setInventory(v);setInventoryError(false);}}).catch(()=>{if(active)setInventoryError(true);});return()=>{active=false;};},[bridge]);
  useEffect(()=>{let active=true;bridge.load().then(v=>{if(active)setData(v);})
  .catch(()=>{if(active)setError('簽到資料暫時無法讀取');});return()=>{active=false;};},[bridge]);
  const errors:Record<string,string>={
@@ -28,7 +29,7 @@ export default function SignInDialog({bridge,onClose}:{bridge:SignInBridge;onClo
    if(result.status!=='claimed'&&result.status!=='already_claimed'&&result.status!=='already_signed')
     throw new Error(result.status);
    setData(await bridge.load());
-   try{setInventory(await bridge.loadConsumables());}catch{setInventory(null);}
+   try{setInventory(await bridge.loadConsumables());setInventoryError(false);}catch{setInventory(null);setInventoryError(true);}
   }catch(e){const code=e instanceof Error?e.message:'';
    setError(errors[code]??'操作未完成，請稍後再試；系統會防止重複發獎');}
   finally{setBusy(false);}
@@ -59,6 +60,7 @@ export default function SignInDialog({bridge,onClose}:{bridge:SignInBridge;onClo
     <button type="button" disabled={busy||!data.nextMakeupRewardSupported}
      onClick={()=>submit(()=>bridge.claimMakeup(data.nextMakeupDay!))}>
      補簽第 {data.nextMakeupDay} 天</button></p>}
+   {inventoryError&&<p role="status">道具庫存暫時無法讀取，獎勵請以伺服器紀錄為準。</p>}
    {inventory&&<div aria-label="功能道具庫存">
     <strong>目前功能道具庫存</strong>
     <p>瞬收符 ×{inventory.instant_harvest} · 收成雙倍符 ×{inventory.double_harvest} · 靈田保護（1小時）×{inventory.farm_protection_1h}</p>
