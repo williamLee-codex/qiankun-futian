@@ -1,4 +1,4 @@
--- Test all 29 makeup-eligible days through the actual dispatcher, rollback all rewards.
+-- Test makeup days 2-29 plus day-1 credit gating through the actual dispatcher, rollback all rewards.
 begin;
 do $test$
 declare
@@ -13,10 +13,10 @@ begin
  where public.farm_v2_resolve_verified_wallet_owner(p.user_id) is not null
  and jsonb_typeof(p.warehouse_state #> '{workshop,pots}')='array' limit 1;
  if v_user is null then raise exception 'TEST_SETUP: no verified player with workshop'; end if;
- for v_day in 1..29 loop
+ for v_day in 2..29 loop
   v_cycle:=994000+v_day;
   insert into public.farm_v2_signin_cycles(user_id,cycle_number,cycle_start_day)
-  values(v_user,v_cycle,v_today-greatest(v_day,2));
+  values(v_user,v_cycle,v_today-v_day);
   insert into public.farm_v2_signin_days(user_id,cycle_number,cycle_day,is_makeup)
   select v_user,v_cycle,d,false from pg_catalog.generate_series(1,v_day-1)d;
   insert into public.farm_v2_signin_makeup_grants(user_id,cycle_number,grant_day)
