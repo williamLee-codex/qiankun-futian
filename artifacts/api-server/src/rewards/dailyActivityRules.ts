@@ -3,16 +3,14 @@ import { DAILY_ACTIVITY } from "./farmV2Catalog";
 
 /** Tasks are counters of authoritative server-side events, never client-reported completion. */
 export const DAILY_ACTIVITY_TASK_POOL = [
-  { id: "sow_1", event: "sow", target: 1, label: "播種 1 株" },
-  { id: "sow_3", event: "sow", target: 3, label: "播種 3 株" },
-  { id: "sow_5", event: "sow", target: 5, label: "播種 5 株" },
-  { id: "harvest_1", event: "harvest", target: 1, label: "收成 1 株" },
-  { id: "harvest_3", event: "harvest", target: 3, label: "收成 3 株" },
+  { id: "plant_once", event: "plant", target: 1, label: "播種 1 次" },
+  { id: "plant_5", event: "plant", target: 5, label: "播種 5 株" },
   { id: "harvest_5", event: "harvest", target: 5, label: "收成 5 株" },
-  { id: "purchase_1", event: "seed_purchase", target: 1, label: "購買種子 1 次" },
-  { id: "purchase_2", event: "seed_purchase", target: 2, label: "購買種子 2 次" },
-  { id: "signin_1", event: "signin", target: 1, label: "完成今日簽到" },
-  { id: "cave_1", event: "cave_visit", target: 1, label: "進入洞府 1 次" },
+  { id: "buy_seeds_once", event: "buy_seeds", target: 1, label: "購買種子 1 次" },
+  { id: "open_warehouse", event: "open_warehouse", target: 1, label: "開啟倉庫" },
+  { id: "view_pet", event: "view_pet", target: 1, label: "查看靈寵" },
+  { id: "visit_friend", event: "visit_friend", target: 1, label: "拜訪好友" },
+  { id: "friend_interaction", event: "friend_interaction", target: 1, label: "好友互動 1 次" },
 ] as const;
 
 export type DailyActivityEvent = (typeof DAILY_ACTIVITY_TASK_POOL)[number]["event"];
@@ -31,7 +29,16 @@ export function selectDailyActivityTasks(userId: string, day: string) {
     score: createHash("sha256").update(JSON.stringify([userId, day, task.id])).digest("hex"),
   }));
   scored.sort((a, b) => a.score.localeCompare(b.score) || a.task.id.localeCompare(b.task.id));
-  return scored.slice(0, DAILY_ACTIVITY.tasksPerDay).map(({ task }) => task);
+  const selected: (typeof DAILY_ACTIVITY_TASK_POOL)[number][] = [];
+  for (const { task } of scored) {
+    if (selected.length >= DAILY_ACTIVITY.tasksPerDay) break;
+    // Existing SQL assignment validator forbids this combination.
+    if (selected.some(t => (t.id === "open_warehouse" && task.id === "view_pet") ||
+                           (t.id === "view_pet" && task.id === "open_warehouse"))) continue;
+    selected.push(task);
+  }
+  if (selected.length !== DAILY_ACTIVITY.tasksPerDay) throw new Error("INSUFFICIENT_ACTIVITY_TASKS");
+  return selected;
 }
 
 export function activitySnapshot(
