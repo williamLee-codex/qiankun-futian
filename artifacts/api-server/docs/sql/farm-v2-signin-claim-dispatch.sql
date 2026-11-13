@@ -1,5 +1,5 @@
--- Single server-side sign-in claim entrypoint for all implemented reward types.
--- Do not claim unsupported item days or manufacture unissued rewards.
+-- Single server-side sign-in claim entrypoint for all 30 reward days.
+-- Consumables are issued to server-owned balances, not yet usable in game.
 create or replace function public.farm_v2_signin_claim_day(
  p_user_id text,p_cycle_number integer,p_cycle_day integer
 ) returns jsonb language plpgsql volatile security invoker set search_path='' as $$
@@ -14,6 +14,8 @@ begin
    v_result:=public.farm_v2_signin_claim_crystal_day(p_user_id,p_cycle_number,p_cycle_day);
  elsif p_cycle_day in (15,20,30) then
    v_result:=public.farm_v2_signin_claim_pot_day(p_user_id,p_cycle_number,p_cycle_day);
+ elsif p_cycle_day in (3,5,8,9,13,14,18,19,23,26,28) then
+   v_result:=public.farm_v2_signin_claim_consumable_day(p_user_id,p_cycle_number,p_cycle_day);
  else
    return jsonb_build_object('status','unsupported_reward','cycleDay',p_cycle_day);
  end if;
