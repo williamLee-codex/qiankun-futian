@@ -8,7 +8,9 @@ export type SignInSnapshot = {
   perfectAttendanceReady?:boolean; perfectAttendanceClaimed?:boolean;
   pendingPerfectCycle?:number|null;
 };
+export type ConsumableInventory = {instant_harvest:number;double_harvest:number;farm_protection_1h:number;yellow_upgrade:number;mystic_upgrade:number};
 export type SignInBridge = {
+  loadConsumables:()=>Promise<ConsumableInventory>;
   load:()=>Promise<SignInSnapshot>;
   claimToday:()=>Promise<{status:string}>;
   claimMakeup:(cycleDay:number)=>Promise<{status:string}>;
@@ -33,6 +35,11 @@ async function request<T>(path:string,method:'GET'|'POST',body?:object):Promise<
 }
 export const signInBridge:SignInBridge={
   load:()=>request<SignInSnapshot>('','GET'),
+  loadConsumables:async()=>{
+    const response=await fetch('/api/farm-backend/farm/v2/consumables',{credentials:'same-origin',cache:'no-store'});
+    if(!response.ok)throw new Error('CONSUMABLES_UNAVAILABLE');
+    return response.json() as Promise<ConsumableInventory>;
+  },
   claimToday:()=>request('/claim','POST',{}),
   claimMakeup:(cycleDay)=>request('/makeup','POST',{cycleDay}),
   claimPerfect:()=>request('/perfect','POST',{}),
