@@ -15,6 +15,7 @@
  *   50  .resource-hud   — HUD（覆蓋底圖頂部留白區）
  *   200 PanelOverlay    — 全畫布 Modal
  */
+import advertisingIcon from './assets/advertising-center-icon.svg';
 import bgImage from '@assets/file_00000000095072069ef62748d273ae91_1783571778589.png';
 import { useState, useLayoutEffect, useEffect } from 'react';
 import CoinConversionDialog, { type CoinBalances, type CoinConversionReceipt, type CoinDirection } from './components/CoinConversionDialog';
@@ -135,6 +136,20 @@ function Game({ coinBridge }: { coinBridge?: CoinBridge }) {
         <InfoPanel />
         <QuickActions />
         <BottomMenu />
+
+        {/* 廣告中心沿用既有正式頁面；獨立連結，不複製廣告邏輯。 */}
+        <a
+          href="https://www.yuceluopan.com/advertising"
+          aria-label="廣告中心"
+          title="廣告中心"
+          onClick={event => event.stopPropagation()}
+          style={{
+            position: 'absolute', right: 8, top: 164, width: 56, height: 68,
+            zIndex: 45, display: 'block', cursor: 'pointer',
+          }}
+        >
+          <img src={advertisingIcon} alt="廣告中心" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        </a>
 
         {/* z:50 HUD：疊在底圖頂部留白區 */}
         <GameHeader
