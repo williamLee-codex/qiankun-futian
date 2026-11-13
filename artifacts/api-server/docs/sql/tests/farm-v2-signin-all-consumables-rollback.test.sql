@@ -26,7 +26,7 @@ begin
  loop
   v_cycle:=v_cycle+1;
   insert into public.farm_v2_signin_cycles(user_id,cycle_number,cycle_start_day)
-  values(v_user,v_cycle,(now() at time zone 'Asia/Taipei')::date-(v_day-1));
+  values(v_user,v_cycle,(now() at time zone 'Asia/Taipei' - interval '5 hours')::date-(v_day-1));
   select coalesce(quantity,0) into v_before
   from public.farm_v2_consumable_balances
   where user_id=v_user and item_id=v_item;
