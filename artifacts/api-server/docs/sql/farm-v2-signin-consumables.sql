@@ -27,7 +27,7 @@ create or replace function public.farm_v2_signin_claim_consumable_day(
 ) returns jsonb language plpgsql volatile security invoker set search_path='' as $$
 declare
  v_cycle public.farm_v2_signin_cycles%rowtype;
- v_today date:=(((now() at time zone 'Asia/Taipei') - interval '5 hours') - interval '5 hours')::date;
+ v_today date:=(now() at time zone 'Asia/Taipei' - interval '5 hours')::date;
  v_item text;
  v_qty integer;
  v_receipt uuid;
