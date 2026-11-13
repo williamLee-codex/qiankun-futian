@@ -1,0 +1,31 @@
+name: Farm V2 coin conversion UI checks
+
+on:
+  push:
+    branches:
+      - codex/farm-v2-coin-conversion-ui-20261113
+  pull_request:
+    paths:
+      - 'artifacts/qiankun-farm/**'
+      - '.github/workflows/farm-v2-coin-ui-checks.yml'
+
+jobs:
+  typecheck-and-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck Farm frontend
+        run: pnpm --filter @workspace/qiankun-farm run typecheck
+      - name: Build Farm frontend
+        run: pnpm --filter @workspace/qiankun-farm run build
