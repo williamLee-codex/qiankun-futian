@@ -28,4 +28,7 @@ jobs:
       - name: Typecheck Farm frontend
         run: pnpm --filter @workspace/qiankun-farm run typecheck
       - name: Build Farm frontend
+        env:
+          PORT: '4173'
+          BASE_PATH: '/'
         run: pnpm --filter @workspace/qiankun-farm run build
