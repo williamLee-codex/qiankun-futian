@@ -68,6 +68,32 @@ revoke all on public.farm_v2_daily_activity_days from anon, authenticated;
 revoke all on public.farm_v2_daily_activity_events from anon, authenticated;
 revoke all on public.farm_v2_daily_activity_claims from anon, authenticated;
 
+-- Canonical assignment guard, already verified on isolated Supabase.
+-- A six-task array must contain only official IDs, with no incompatible
+-- thresholds or more than one click-only task.
+create or replace function public.farm_v2_valid_daily_task_assignment(p_ids text[])
+returns boolean language sql immutable strict set search_path = ''
+as $
+select cardinality(p_ids)=6
+ and array_position(p_ids,null) is null
+ and (select count(distinct t) from unnest(p_ids) t)=6
+ and p_ids <@ array[
+ 'plant_once','buy_seeds_5','plant_5','plant_10','harvest_5','harvest_10',
+ 'buy_seeds_once','buy_seeds_10','synthesize_pot','place_pot','open_warehouse',
+ 'feed_pet','view_pet','friend_interaction','visit_friend','plant_distinct_2',
+ 'harvest_distinct_2']::text[]
+ and not ('plant_5'=any(p_ids) and 'plant_10'=any(p_ids))
+ and not ('harvest_5'=any(p_ids) and 'harvest_10'=any(p_ids))
+ and not ('buy_seeds_5'=any(p_ids) and 'buy_seeds_10'=any(p_ids))
+ and not ('open_warehouse'=any(p_ids) and 'view_pet'=any(p_ids))
+$;
+revoke all on function public.farm_v2_valid_daily_task_assignment(text[]) from public, anon, authenticated;
+alter table public.farm_v2_daily_activity_days
+ drop constraint if exists farm_v2_daily_activity_canonical_assignment;
+alter table public.farm_v2_daily_activity_days
+ add constraint farm_v2_daily_activity_canonical_assignment
+ check (public.farm_v2_valid_daily_task_assignment(assigned_task_ids));
+
 -- The service-side transaction must:
 -- (1) verify player session; (2) lock owner/day; (3) assign six tasks once;
 -- (4) accept events only from committed authoritative farm operations;
