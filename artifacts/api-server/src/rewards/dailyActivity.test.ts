@@ -5,7 +5,7 @@ import { applyVerifiedEvent, claimableMilestones, dailyActivityPoints, taipeiAct
 
 test('17 candidate tasks are defined', () => {
   assert.equal(DAILY_TASK_POOL.length, 17);
-  assert.equal(new Set(DAILY_TASK_POOL.map(t => t.id)).size, 15);
+  assert.equal(new Set(DAILY_TASK_POOL.map(t => t.id)).size, 17);
 });
 
 test('Taipei 05:00 boundary', () => {
@@ -50,4 +50,29 @@ test('verified quantity and distinct species progress', () => {
   assert.equal(dailyActivityPoints(second),40);
   assert.deepEqual(claimableMilestones(40,[]),[30]);
   assert.deepEqual(claimableMilestones(120,[30,100]),[60]);
+});
+
+test('new player selection remains feasible across deterministic draw orders', () => {
+  const eligibility = {
+    pets:false, friends:false, synthesis:false, pots:false,
+    availablePlantSpecies:1, availableHarvestSpecies:1,
+  };
+  for (let seed=0; seed<100; seed++) {
+    let step=seed;
+    const tasks=selectDailyTasks(eligibility, n => (step++ * 7 + seed) % n);
+    assert.equal(tasks.length,6);
+    assert.equal(new Set(tasks.map(t=>t.id)).size,6);
+    assert.ok(tasks.filter(t=>t.clickOnly).length <= 1);
+    for (const group of ['plant_threshold','harvest_threshold','seed_quantity_threshold']) {
+      assert.ok(tasks.filter(t=>t.exclusiveGroup===group).length <= 1);
+    }
+  }
+});
+
+test('invalid random index is rejected', () => {
+  const eligibility = {
+    pets:false, friends:false, synthesis:false, pots:false,
+    availablePlantSpecies:1, availableHarvestSpecies:1,
+  };
+  assert.throws(() => selectDailyTasks(eligibility, () => -1), /INVALID_RANDOM_INDEX/);
 });
