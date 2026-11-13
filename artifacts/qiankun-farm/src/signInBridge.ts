@@ -21,8 +21,15 @@ async function request<T>(path:string,method:'GET'|'POST',body?:object):Promise<
     headers:method==='POST'?{'Content-Type':'application/json'}:undefined,
     body:body?JSON.stringify(body):undefined,
   });
-  if(!response.ok)throw new Error('SIGNIN_BACKEND_UNAVAILABLE');
-  return response.json() as Promise<T>;
+  const payload:unknown=await response.json().catch(()=>null);
+  if(!response.ok){
+    const code=payload && typeof payload==='object' && 'status' in payload
+      ? String((payload as {status:unknown}).status)
+      : payload && typeof payload==='object' && 'error' in payload
+        ? String((payload as {error:unknown}).error) : 'SIGNIN_BACKEND_UNAVAILABLE';
+    throw new Error(code);
+  }
+  return payload as T;
 }
 export const signInBridge:SignInBridge={
   load:()=>request<SignInSnapshot>('','GET'),
