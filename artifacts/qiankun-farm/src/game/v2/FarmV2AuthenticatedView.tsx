@@ -316,7 +316,7 @@ export function FarmV2AuthenticatedView(props: {
       <Dialog open={signInOpen} onOpenChange={setSignInOpen}>
         <DialogContent style={{maxHeight:"85dvh",overflowY:"auto",background:"#12251f",color:"#f8f1df"}}>
           <DialogTitle>30 日簽到</DialogTitle>
-          <p>補簽可領回當日獎勵，但不計入全勤；每日以台灣時間 05:00 換日。</p>
+          <p>補簽可領回當日獎勵，並計入全勤；每日以台灣時間 05:00 換日。</p>
           {signInData && <>
             <p>第 {signInData.cycleNumber} 輪，第 {signInData.cycleDay} 天；補簽額度 {signInData.makeupCreditsAvailable ?? 0}</p>
             <div style={{display:"grid",gridTemplateColumns:"repeat(6,minmax(0,1fr))",gap:4}}>
