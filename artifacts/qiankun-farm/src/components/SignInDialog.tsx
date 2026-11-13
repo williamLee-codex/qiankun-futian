@@ -43,7 +43,7 @@ export default function SignInDialog({bridge,onClose}:{bridge:SignInBridge;onClo
   <section className="coin-conversion-dialog" role="dialog" aria-modal="true" aria-label="30日簽到"
    style={{maxHeight:'82%',overflowY:'auto'}}>
    <h2>30 日簽到</h2>
-   <p>依序簽到，補簽可領回當日獎勵，但不計入全勤。30 日週期結束後重置。</p>
+   <p>依序簽到，補簽可領回當日獎勵，並計入全勤。30 日週期結束後重置。</p>
    {data?.cycleNumber!=null&&<p>第 {data.cycleNumber} 輪 · 今日第 {data.cycleDay??'—'} 天 · 補簽額度 {data.makeupCreditsAvailable??0}</p>}
    <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:5}}>
     {Array.from({length:30},(_,i)=>i+1).map(day=>
