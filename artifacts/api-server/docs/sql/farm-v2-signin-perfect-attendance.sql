@@ -30,6 +30,12 @@ begin
  select count(*) into v_count from public.farm_v2_signin_days
  where user_id=p_user_id and cycle_number=p_cycle_number;
  if v_count<>30 then return jsonb_build_object('status','incomplete','signedDays',v_count); end if;
+ -- Makeup restores the day's reward but never qualifies as perfect attendance.
+ if exists (
+  select 1 from public.farm_v2_signin_days
+  where user_id=p_user_id and cycle_number=p_cycle_number
+  and is_makeup = true
+ ) then return jsonb_build_object('status','incomplete','reason','makeup_not_perfect'); end if;
  v_owner:=public.farm_v2_resolve_verified_wallet_owner(p_user_id);
  if v_owner is null then return jsonb_build_object('status','unverified_identity'); end if;
  select warehouse_state into v_state from public.farm_v2_player_state where user_id=p_user_id for update;
