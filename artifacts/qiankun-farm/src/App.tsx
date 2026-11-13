@@ -75,6 +75,19 @@ function Game({ coinBridge }: { coinBridge?: CoinBridge }) {
   const [balances, setBalances] = useState<CoinBalances | null>(null);
   const [conversionOpen, setConversionOpen] = useState(false);
   const [balanceError, setBalanceError] = useState(false);
+  const [showWalletGuide, setShowWalletGuide] = useState(false);
+  useEffect(() => {
+    if (!coinBridge) return;
+    try {
+      setShowWalletGuide(window.localStorage.getItem('farm-v2-coin-wallet-guide-seen') !== '1');
+    } catch {
+      setShowWalletGuide(true);
+    }
+  }, [coinBridge]);
+  function dismissWalletGuide() {
+    try { window.localStorage.setItem('farm-v2-coin-wallet-guide-seen', '1'); } catch { /* private mode */ }
+    setShowWalletGuide(false);
+  }
   useEffect(() => {
     if (!coinBridge) return;
     let active = true;
@@ -127,11 +140,27 @@ function Game({ coinBridge }: { coinBridge?: CoinBridge }) {
         <GameHeader
           onOpenConversion={coinBridge ? openConversion : undefined}
           farmCoinBalance={balances?.farmBalance}
+          centralCoinBalance={balances?.centralBalance}
         />
         {balanceError && coinBridge && (
           <p className="farm-coin-error" role="alert">金幣餘額暫時無法讀取</p>
         )}
-        {conversionOpen && balances && coinBridge && (
+        {coinBridge && (
+          <button type="button" className="farm-coin-help" aria-label="福田金幣說明"
+            onClick={event => { event.stopPropagation(); setShowWalletGuide(true); }}>?</button>
+        )}
+        {showWalletGuide && coinBridge && (
+          <div className="coin-conversion-backdrop" onClick={event => event.stopPropagation()}>
+            <section className="coin-conversion-dialog" role="dialog" aria-modal="true" aria-label="福田金幣說明">
+              <h2>歡迎來到乾坤福田</h2>
+              <p>福田設有專屬金幣錢包，供農田內各項活動使用。</p>
+              <p>點擊上方金幣旁的「⇄」圖示，即可將中央錢包的金幣轉入福田。</p>
+              <p>福田內獲得的金幣也可以回存中央錢包。金幣不會自動轉入或回存。</p>
+              <button type="button" onClick={dismissWalletGuide}>我知道了，開始耕種</button>
+            </section>
+          </div>
+        )}
+        {conversionOpen && !showWalletGuide && balances && coinBridge && (
           <CoinConversionDialog balances={balances}
             onConfirm={coinBridge.convert}
             onBalancesChange={setBalances}
