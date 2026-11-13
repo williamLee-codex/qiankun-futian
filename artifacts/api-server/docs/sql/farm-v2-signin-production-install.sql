@@ -1,3 +1,4 @@
+BEGIN;
 -- Farm-only sign-in capability boundary. No Agent database dependency.
 CREATE SCHEMA IF NOT EXISTS farm_v2_rewards;
 REVOKE ALL ON SCHEMA farm_v2_rewards FROM PUBLIC, anon, authenticated;
@@ -9,7 +10,7 @@ BEGIN
  IF v_owner IS NULL OR p_user_id<>v_owner::text THEN RETURN NULL; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.farm_v2_player_state WHERE user_id=p_user_id)
  OR NOT public.farm_v2_identity_active(v_owner)
- OR EXISTS(SELECT 1 FROM public.core_wallets WHERE owner_id=v_owner AND status<>'active')
+ OR NOT EXISTS(SELECT 1 FROM public.core_wallets WHERE owner_id=v_owner AND status='active')
  THEN RETURN NULL; END IF;
  RETURN v_owner;
 END; $$;
@@ -966,3 +967,16 @@ END; $$;
 REVOKE ALL ON FUNCTION farm_v2_rewards.signin(text,text,integer) FROM PUBLIC,anon,authenticated;
 GRANT USAGE ON SCHEMA farm_v2_rewards TO farm_v2_runtime;
 GRANT EXECUTE ON FUNCTION farm_v2_rewards.signin(text,text,integer) TO farm_v2_runtime;
+
+-- Replacing functions preserves old ACLs: explicitly remove any earlier runtime bypass.
+DO $acl$
+DECLARE f record; t text;
+BEGIN
+ FOR f IN SELECT p.oid FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+ WHERE n.nspname='public' AND p.proname LIKE 'farm_v2_signin_%'
+ LOOP EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION %s FROM farm_v2_runtime',f.oid::regprocedure); END LOOP;
+ FOREACH t IN ARRAY ARRAY['farm_v2_signin_cycles','farm_v2_signin_days','farm_v2_signin_makeup_grants','farm_v2_signin_perfect_badges','farm_v2_consumable_balances','farm_v2_consumable_ledger']
+ LOOP EXECUTE pg_catalog.format('REVOKE ALL ON TABLE public.%I FROM farm_v2_runtime',t); END LOOP;
+END $acl$;
+
+COMMIT;
