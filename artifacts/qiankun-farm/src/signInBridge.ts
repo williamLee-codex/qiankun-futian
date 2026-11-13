@@ -6,6 +6,7 @@ export type SignInSnapshot = {
   nextMakeupDay?:number|null; makeupClaimable?:boolean;
   nextMakeupRewardSupported?:boolean;
   perfectAttendanceReady?:boolean; perfectAttendanceClaimed?:boolean;
+  pendingPerfectCycle?:number|null;
 };
 export type SignInBridge = {
   load:()=>Promise<SignInSnapshot>;
