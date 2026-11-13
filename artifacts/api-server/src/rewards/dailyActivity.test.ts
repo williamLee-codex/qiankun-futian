@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { DAILY_TASK_POOL, selectDailyTasks } from './dailyTaskPool';
-import { applyVerifiedEvent, assignedDailyActivityPoints, claimableMilestones, dailyActivityPoints, projectDailyActivity, taipeiActivityDay } from './dailyActivity';
+import { applyVerifiedEvent, assignedDailyActivityPoints, claimableMilestones, dailyActivityPoints, projectDailyActivity, summarizeDailyActivity, taipeiActivityDay } from './dailyActivity';
 
 test('17 candidate tasks are defined', () => {
   assert.equal(DAILY_TASK_POOL.length, 17);
@@ -117,4 +117,20 @@ test('daily replay rejects tampered assignments', () => {
     'plant_once','plant_5','plant_10','harvest_5','buy_seeds_once','open_warehouse',
   ].includes(t.id));
   assert.throws(()=>projectDailyActivity(conflicting,[]),/CONFLICTING_ASSIGNED_TASKS/);
+});
+
+test('milestones are derived from committed events, never submitted points', () => {
+  const assigned=DAILY_TASK_POOL.filter(t=>[
+    'plant_once','plant_5','harvest_5','buy_seeds_once','buy_seeds_5','open_warehouse',
+  ].includes(t.id));
+  const events=[
+    {transactionId:'plant-1',event:'plant' as const,quantity:5,speciesId:'rice'},
+    {transactionId:'seed-1',event:'buy_seeds' as const,quantity:5},
+  ];
+  const summary=summarizeDailyActivity(assigned,events,[30]);
+  assert.equal(summary.points,80);
+  assert.deepEqual(summary.claimable,[60]);
+  assert.deepEqual(summarizeDailyActivity(assigned,[],[]).claimable,[]);
+  assert.throws(()=>summarizeDailyActivity(assigned,events,[30,30]),/INVALID_CLAIMED_MILESTONES/);
+  assert.throws(()=>summarizeDailyActivity(assigned,events,[120]),/INVALID_CLAIMED_MILESTONES/);
 });
