@@ -25,3 +25,8 @@ jobs:
         run: pnpm --filter @workspace/api-server run typecheck
       - name: Test daily rewards
         run: pnpm --filter @workspace/api-server run test:rewards
+
+      - name: Check farm frontend TypeScript
+        run: pnpm --filter @workspace/qiankun-farm run typecheck
+      - name: Build farm frontend
+        run: pnpm --filter @workspace/qiankun-farm run build
