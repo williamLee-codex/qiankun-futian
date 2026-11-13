@@ -79,7 +79,9 @@ export function projectDailyActivity(
   if (assignedTasks.some(task => !canonical.has(task.id))) throw new Error('UNKNOWN_ASSIGNED_TASK');
   if (assignedTasks.some(task => {
     const official = canonical.get(task.id)!;
-    return task.event !== official.event || task.target !== official.target || task.metric !== official.metric;
+    return task.event !== official.event || task.target !== official.target || task.metric !== official.metric ||
+      task.feature !== official.feature || task.exclusiveGroup !== official.exclusiveGroup ||
+      task.clickOnly !== official.clickOnly || task.category !== official.category || task.title !== official.title;
   })) throw new Error('ALTERED_ASSIGNED_TASK');
   if (assignedTasks.some((task, index) => assignedTasks.slice(index + 1).some(other =>
     (task.exclusiveGroup && task.exclusiveGroup === other.exclusiveGroup)
