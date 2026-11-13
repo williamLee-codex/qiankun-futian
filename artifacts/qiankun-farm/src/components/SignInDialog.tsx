@@ -1,10 +1,12 @@
 import {useEffect,useState} from 'react';
-import type {SignInBridge,SignInSnapshot} from '../signInBridge';
+import type {SignInBridge,SignInSnapshot,ConsumableInventory} from '../signInBridge';
 import {signInRewards} from '../signInRewards';
 export default function SignInDialog({bridge,onClose}:{bridge:SignInBridge;onClose:()=>void}){
  const [data,setData]=useState<SignInSnapshot|null>(null);
  const [busy,setBusy]=useState(false);
+ const [inventory,setInventory]=useState<ConsumableInventory|null>(null);
  const [error,setError]=useState('');
+ useEffect(()=>{let active=true;bridge.loadConsumables().then(v=>{if(active)setInventory(v);}).catch(()=>{});return()=>{active=false;};},[bridge]);
  useEffect(()=>{let active=true;bridge.load().then(v=>{if(active)setData(v);})
  .catch(()=>{if(active)setError('簽到資料暫時無法讀取');});return()=>{active=false;};},[bridge]);
  const errors:Record<string,string>={
@@ -26,6 +28,7 @@ export default function SignInDialog({bridge,onClose}:{bridge:SignInBridge;onClo
    if(result.status!=='claimed'&&result.status!=='already_claimed'&&result.status!=='already_signed')
     throw new Error(result.status);
    setData(await bridge.load());
+   try{setInventory(await bridge.loadConsumables());}catch{setInventory(null);}
   }catch(e){const code=e instanceof Error?e.message:'';
    setError(errors[code]??'操作未完成，請稍後再試；系統會防止重複發獎');}
   finally{setBusy(false);}
@@ -56,6 +59,11 @@ export default function SignInDialog({bridge,onClose}:{bridge:SignInBridge;onClo
     <button type="button" disabled={busy||!data.nextMakeupRewardSupported}
      onClick={()=>submit(()=>bridge.claimMakeup(data.nextMakeupDay!))}>
      補簽第 {data.nextMakeupDay} 天</button></p>}
+   {inventory&&<div aria-label="功能道具庫存">
+    <strong>目前功能道具庫存</strong>
+    <p>瞬收符 ×{inventory.instant_harvest} · 收成雙倍符 ×{inventory.double_harvest} · 靈田保護（1小時）×{inventory.farm_protection_1h}</p>
+    <p>黃級升級符 ×{inventory.yellow_upgrade} · 玄級升級符 ×{inventory.mystic_upgrade}</p>
+   </div>}
    <p>全勤獎勵：徽章 ×1、水晶 ×3、金幣 ×200、蘊靈砂 ×2、九霄玉髓 ×2</p>
    {pendingPriorCycle && <p>第 {data?.pendingPerfectCycle} 輪全勤獎勵尚未領取，可補領。</p>}
    <button type="button" disabled={busy||!canClaimPerfect}
