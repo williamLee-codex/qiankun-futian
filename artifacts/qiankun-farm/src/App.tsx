@@ -18,6 +18,7 @@
 import advertisingIcon from './assets/advertising-center-icon.svg';
 import bgImage from '@assets/file_00000000095072069ef62748d273ae91_1783571778589.png';
 import { useState, useLayoutEffect, useEffect } from 'react';
+import DailyActivityDialog, { type DailyActivityBridge } from './components/DailyActivityDialog';
 import CoinConversionDialog, { type CoinBalances, type CoinConversionReceipt, type CoinDirection } from './components/CoinConversionDialog';
 import { GameProvider, useGame } from './game/GameContext';
 import GameHeader       from './components/HUD';
@@ -70,11 +71,12 @@ type CoinBridge = {
 };
 
 /** Host supplies authenticated calls; never embed a bridge secret in browser code. */
-function Game({ coinBridge }: { coinBridge?: CoinBridge }) {
+function Game({ coinBridge, dailyActivityBridge }: { coinBridge?: CoinBridge; dailyActivityBridge?: DailyActivityBridge }) {
   const { dispatch } = useGame();
   const scale = useGameScale();
   const [balances, setBalances] = useState<CoinBalances | null>(null);
   const [conversionOpen, setConversionOpen] = useState(false);
+  const [dailyActivityOpen, setDailyActivityOpen] = useState(false);
   const [balanceError, setBalanceError] = useState(false);
   const [showWalletGuide, setShowWalletGuide] = useState(false);
   useEffect(() => {
@@ -151,6 +153,11 @@ function Game({ coinBridge }: { coinBridge?: CoinBridge }) {
           <img src={advertisingIcon} alt="廣告中心" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </a>
 
+        {dailyActivityBridge && <button type="button" aria-label="每日任務" title="每日任務"
+          onClick={event => { event.stopPropagation(); setDailyActivityOpen(true); }}
+          style={{position:'absolute',right:8,top:240,zIndex:46,cursor:'pointer'}}>
+          每日任務
+        </button>}
         {/* z:50 HUD：疊在底圖頂部留白區 */}
         <GameHeader
           onOpenConversion={coinBridge ? openConversion : undefined}
@@ -183,6 +190,8 @@ function Game({ coinBridge }: { coinBridge?: CoinBridge }) {
           />
         )}
 
+        {dailyActivityOpen && dailyActivityBridge && <DailyActivityDialog bridge={dailyActivityBridge}
+          onClose={() => setDailyActivityOpen(false)} />}
         {/* z:200 全畫布 Panel Modal */}
         <PanelOverlay />
       </div>
@@ -190,10 +199,10 @@ function Game({ coinBridge }: { coinBridge?: CoinBridge }) {
   );
 }
 
-export default function App({ coinBridge }: { coinBridge?: CoinBridge }) {
+export default function App({ coinBridge, dailyActivityBridge }: { coinBridge?: CoinBridge; dailyActivityBridge?: DailyActivityBridge }) {
   return (
     <GameProvider>
-      <Game coinBridge={coinBridge} />
+      <Game coinBridge={coinBridge} dailyActivityBridge={dailyActivityBridge} />
     </GameProvider>
   );
 }
