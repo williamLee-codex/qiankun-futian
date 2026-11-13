@@ -16,7 +16,7 @@ begin
  for v_day in 1..29 loop
   v_cycle:=994000+v_day;
   insert into public.farm_v2_signin_cycles(user_id,cycle_number,cycle_start_day)
-  values(v_user,v_cycle,v_today-v_day);
+  values(v_user,v_cycle,v_today-greatest(v_day,2));
   insert into public.farm_v2_signin_days(user_id,cycle_number,cycle_day,is_makeup)
   select v_user,v_cycle,d,false from pg_catalog.generate_series(1,v_day-1)d;
   insert into public.farm_v2_signin_makeup_grants(user_id,cycle_number,grant_day)
