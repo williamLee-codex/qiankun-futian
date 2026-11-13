@@ -39,6 +39,8 @@ export default function CoinConversionDialog({
     setAmount(Number.isFinite(next) ? Math.max(0, Math.min(MAX_TRANSFER, Math.trunc(next))) : 0);
     setError('');
     setSuccess(false);
+    // Changing the request parameters must create a fresh idempotency key.
+    requestRef.current = null;
   }
 
   async function confirm() {
@@ -83,7 +85,7 @@ export default function CoinConversionDialog({
         <p>福田金幣：{balances.farmBalance.toLocaleString()}</p>
         <label htmlFor="coin-direction">轉換方向</label>
         <select id="coin-direction" value={direction} disabled={pending}
-          onChange={event => { setDirection(event.target.value as CoinDirection); changeAmount(0); }}>
+          onChange={event => { setDirection(event.target.value as CoinDirection); changeAmount(0); requestRef.current = null; }}> 
           <option value="to_farm">轉入金幣（中央 → 福田）</option>
           <option value="to_central">回存金幣（福田 → 中央）</option>
         </select>
