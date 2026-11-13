@@ -66,11 +66,9 @@ export default function DailyActivityDialog({bridge,onClose}:{bridge:DailyActivi
       {rewards.map(({milestone,label})=>{
         const claimed=snapshot?.claimedMilestones.includes(milestone)??false;
         const available=snapshot?.claimableMilestones.includes(milestone)??false;
-        // Only the 30-point coin award has an authoritative claim endpoint.
-        const issuanceEnabled=milestone===30;
         return <p key={milestone}>{milestone} 分：{label}{' '}
-          <button type="button" disabled={!issuanceEnabled||!available||claimed||busy!==null}
-            onClick={()=>claim(milestone)}>{claimed?'已領取':!issuanceEnabled?'待開放':busy===milestone?'領取中…':'領取'}</button>
+          <button type="button" disabled={!available||claimed||busy!==null}
+            onClick={()=>claim(milestone)}>{claimed?'已領取':busy===milestone?'領取中…':'領取'}</button>
         </p>;
       })}
       {error && <p role="alert">{error}</p>}
