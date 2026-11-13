@@ -120,3 +120,26 @@ export function assignedDailyActivityPoints(
   if (assigned.size !== 6) throw new Error('INVALID_ASSIGNED_TASKS');
   return Math.min(120, new Set(progress.filter(p => assigned.has(p.taskId) && p.completed).map(p => p.taskId)).size * 20);
 }
+
+/**
+ * Authoritative daily summary. Never accept a client-supplied points or
+ * completed-task count when determining which rewards can be claimed.
+ * Call only with this player's persisted assignment and committed events.
+ */
+export function summarizeDailyActivity(
+  assignedTasks: readonly DailyTask[],
+  committedEvents: readonly VerifiedFarmEvent[],
+  claimedMilestones: readonly number[],
+): Readonly<{
+  progress: readonly TaskProgress[];
+  points: number;
+  claimable: readonly number[];
+}> {
+  if (claimedMilestones.some(m => ![30, 60, 100].includes(m)) ||
+      new Set(claimedMilestones).size !== claimedMilestones.length) {
+    throw new Error('INVALID_CLAIMED_MILESTONES');
+  }
+  const progress = projectDailyActivity(assignedTasks, committedEvents);
+  const points = assignedDailyActivityPoints(assignedTasks, progress);
+  return { progress, points, claimable: claimableMilestones(points, claimedMilestones) };
+}
