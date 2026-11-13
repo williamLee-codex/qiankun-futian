@@ -38,7 +38,7 @@ begin
  (select coalesce(to_jsonb(array_agg(d order by d)),'[]'::jsonb)
  from pg_catalog.generate_series(1,v_raw_day-1) d where d=any(v_missing))
  else '[]'::jsonb end,
- 'perfectAttendanceReady',(coalesce(array_length(v_signed,1),0)=30 and v_cycle.perfect_reward_claimed_at is null),
+ 'perfectAttendanceReady',(coalesce(array_length(v_signed,1),0)=30 and coalesce(array_length(v_makeup,1),0)=0 and v_cycle.perfect_reward_claimed_at is null),
  'perfectAttendanceClaimed',(v_cycle.perfect_reward_claimed_at is not null));
 end; $$;
 revoke all on function public.farm_v2_signin_cycle_summary(text,integer) from public,anon,authenticated;
