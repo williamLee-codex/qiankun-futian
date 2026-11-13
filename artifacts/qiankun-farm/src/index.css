@@ -1920,3 +1920,56 @@ body {
   padding: 3px 10px;
   border-radius: 6px;
 }
+
+/* Farm V2 coin conversion: mounted only with an authenticated host bridge. */
+.farm-conversion-trigger {
+  position: absolute; top: 4px; left: 74px; z-index: 55;
+  pointer-events: auto; cursor: pointer; border: 1px solid #a78b45;
+  border-radius: 7px; background: #211b12; color: #f9d779;
+  font-size: 18px; line-height: 23px; width: 27px; height: 27px;
+}
+.farm-coin-balance {
+  position: absolute; top: 42px; left: 8px; z-index: 55;
+  padding: 3px 8px; border: 1px solid rgba(211,175,89,.65);
+  border-radius: 7px; background: rgba(22,18,11,.9);
+  color: #ffe4a2; font-size: 12px; font-weight: 700;
+  pointer-events: none;
+}
+.farm-coin-error {
+  position: absolute; top: 72px; left: 8px; z-index: 210;
+  background: #381c1c; color: #ffe1c8; padding: 6px 9px;
+  border-radius: 6px; font-size: 12px;
+}
+.coin-conversion-backdrop {
+  position: absolute; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.76); display: flex;
+  align-items: center; justify-content: center;
+  pointer-events: auto;
+}
+.coin-conversion-dialog {
+  box-sizing: border-box; width: 342px; max-height: 760px;
+  overflow-y: auto; padding: 20px; border-radius: 14px;
+  border: 1px solid #ad8b43; background: #211a14;
+  color: #ffe4ae; display: flex; flex-direction: column; gap: 11px;
+  box-shadow: 0 12px 50px #000b;
+}
+.coin-conversion-dialog h2 { font-size: 22px; font-weight: 700; text-align: center; }
+.coin-conversion-dialog p { font-size: 15px; }
+.coin-conversion-dialog label { font-size: 14px; }
+.coin-conversion-dialog select,
+.coin-conversion-dialog input {
+  min-width: 0; padding: 8px; border: 1px solid #9d7b41;
+  border-radius: 6px; color: #ffe4ae; background: #34281b;
+}
+.coin-conversion-dialog button {
+  padding: 7px 10px; border-radius: 6px; border: 1px solid #9d7b41;
+  background: #45321c; color: #ffe4ae; cursor: pointer;
+}
+.coin-conversion-dialog button:disabled { opacity: .45; cursor: not-allowed; }
+.coin-conversion-controls, .coin-conversion-steps,
+.coin-conversion-actions { display: flex; gap: 7px; }
+.coin-conversion-controls input { flex: 1; width: 100px; }
+.coin-conversion-steps button { flex: 1; }
+.coin-conversion-actions { justify-content: flex-end; }
+.coin-conversion-dialog [role="alert"] { color: #ffb3a3; }
+.coin-conversion-dialog [role="status"] { color: #b7edab; }
