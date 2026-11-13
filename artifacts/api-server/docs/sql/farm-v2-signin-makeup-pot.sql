@@ -16,7 +16,7 @@ declare
  v_pot jsonb;
 begin
  v_grade:=case p_cycle_day when 15 then '黃' when 20 then '玄' when 30 then '地' else null end;
- if v_grade is null then return jsonb_build_object('status','unsupported_reward'); end if; end if;
+ if v_grade is null then return jsonb_build_object('status','unsupported_reward'); end if;
  select * into v_cycle from public.farm_v2_signin_cycles
   where user_id=p_user_id and cycle_number=p_cycle_number for update;
  if not found then return jsonb_build_object('status','cycle_not_found'); end if;
