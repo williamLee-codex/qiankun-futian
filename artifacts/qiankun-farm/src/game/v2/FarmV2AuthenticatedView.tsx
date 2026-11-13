@@ -160,8 +160,11 @@ export function FarmV2AuthenticatedView(props: {
     setSignInBusy(true); setSignInError(null);
     try {
       const result=await action();
-      if (result.status!=="claimed" && result.status!=="already_claimed" && result.status!=="already_signed")
+      if (result.status !== "claimed") {
+        // Duplicate claims are not successful new rewards; refresh authoritative state.
+        setSignInData(await readSignIn());
         throw new Error(result.status);
+      }
       setSignInData(await readSignIn());
     } catch (error) {
       setSignInError(signInMessage(error));
