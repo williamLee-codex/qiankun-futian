@@ -130,12 +130,30 @@ export function FarmV2AuthenticatedView(props: {
     }
   }
 
+  const signInMessages: Record<string,string> = {
+    not_today: "今日尚未到簽到日期，或今天已完成簽到",
+    already_signed: "該日已完成簽到",
+    already_claimed: "獎勵已領取",
+    no_makeup_credit: "補簽額度不足",
+    earlier_day_missing: "請依日期順序補簽",
+    not_past_day: "只能補簽今天以前的日期",
+    cycle_inactive: "本輪簽到已結束，請重新開啟日曆",
+    incomplete: "尚未完成本輪 30 天簽到",
+    unverified_identity: "帳號身分尚未完成驗證",
+    invalid_inventory: "獎勵庫存資料異常，請聯絡客服",
+    FARM_SESSION_NOT_ACTIVE: "登入已失效，請重新登入",
+  };
+  function signInMessage(error: unknown) {
+    const code=error instanceof Error?error.message:String(error);
+    return signInMessages[code] ?? "簽到操作未完成，請稍後重試";
+  }
+
   async function openSignIn() {
     setSignInOpen(true);
     setSignInError(null);
     setSignInData(null);
     try { setSignInData(await readSignIn()); }
-    catch (error) { setSignInError(error instanceof Error ? error.message : "SIGNIN_UNAVAILABLE"); }
+    catch (error) { setSignInError(signInMessage(error)); }
   }
   async function runSignInAction(action:()=>Promise<{status:string}>) {
     if (signInBusy) return;
@@ -146,7 +164,7 @@ export function FarmV2AuthenticatedView(props: {
         throw new Error(result.status);
       setSignInData(await readSignIn());
     } catch (error) {
-      setSignInError(error instanceof Error ? error.message : "SIGNIN_ACTION_FAILED");
+      setSignInError(signInMessage(error));
     } finally { setSignInBusy(false); }
   }
 
