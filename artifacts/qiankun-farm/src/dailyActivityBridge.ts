@@ -37,10 +37,10 @@ export const dailyActivityBridge: DailyActivityBridge = {
     return data;
   },
   async claim(milestone) {
-    if (milestone !== 30) throw new Error("DAILY_REWARD_NOT_AVAILABLE");
-    const data = await requestDailyActivity("/claim", {
+    if (milestone !== 30 && milestone !== 60 && milestone !== 100) throw new Error("DAILY_REWARD_NOT_AVAILABLE");
+    const data = await requestDailyActivity(milestone === 30 ? "/claim" : "/item-claim", {
       method: "POST",
-      body: JSON.stringify({ milestone: 30 }),
+      body: JSON.stringify({ milestone }),
     });
     if (!data || typeof data !== "object" || Array.isArray(data) ||
         typeof (data as { status?: unknown }).status !== "string")
