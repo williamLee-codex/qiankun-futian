@@ -21,10 +21,10 @@ test('makeup only past days, chronological, and within earned credits', () => {
   assert.equal(evaluateSignInAction(state([1]), 2, {kind:'makeup',day:1}).reason,'ALREADY_SIGNED');
 });
 
-test('only 30 natural sign-ins qualify once for full attendance', () => {
+test('30 completed sign-ins including makeup qualify once for full attendance', () => {
   const days=Array.from({length:30},(_,i)=>i+1);
   assert.equal(evaluateSignInAction(state(days),30,{kind:'claim_perfect'}).accepted,true);
-  assert.equal(evaluateSignInAction(state(days,[2]),30,{kind:'claim_perfect'}).reason,'NOT_COMPLETE');
+  assert.equal(evaluateSignInAction(state(days,[2]),30,{kind:'claim_perfect'}).accepted,true);
   assert.equal(evaluateSignInAction(state(days,[2],1,true),30,{kind:'claim_perfect'}).reason,'ALREADY_CLAIMED');
   assert.equal(evaluateSignInAction(state(days.slice(1)),30,{kind:'claim_perfect'}).reason,'NOT_COMPLETE');
 });
