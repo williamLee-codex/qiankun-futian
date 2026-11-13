@@ -45,7 +45,7 @@ export function evaluateSignInAction(
   }
   if (action.kind === 'claim_perfect') {
     if (cycle.perfectAttendanceClaimed) return { accepted: false, reason: 'ALREADY_CLAIMED' };
-    if (signed.size !== 30 || makeup.size > 0) return { accepted: false, reason: 'NOT_COMPLETE' };
+    if (signed.size !== 30) return { accepted: false, reason: 'NOT_COMPLETE' };
     return { accepted: true, reason: 'READY', reward: [...SIGN_IN_PERFECT_ATTENDANCE] };
   }
   return { accepted: false, reason: 'UNKNOWN_ACTION' };
