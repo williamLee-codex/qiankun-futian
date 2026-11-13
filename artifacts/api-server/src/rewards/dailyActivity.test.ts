@@ -26,13 +26,19 @@ test('six unique eligible tasks and mutually exclusive thresholds', () => {
   }
 });
 
-test('pet/friend/plant diversity eligibility', () => {
-  const tasks = selectDailyTasks(
-    {pets:false,friends:false,synthesis:false,pots:false,availablePlantSpecies:1,availableHarvestSpecies:1},
-    () => 0,
+test('new player with only first plot cannot be assigned six legal tasks', () => {
+  const eligibility = {
+    pets:false, friends:false, synthesis:false, pots:false,
+    availablePlantSpecies:1, availableHarvestSpecies:1,
+  };
+  assert.throws(
+    () => selectDailyTasks(eligibility, () => 0),
+    /INSUFFICIENT_ELIGIBLE_DAILY_TASKS/,
   );
-  assert.equal(tasks.length,6);
-  assert.ok(tasks.every(t=>!t.feature && t.metric!=='distinct_species'));
+  // With two threshold pairs mutually exclusive and one click task,
+  // the base pool only has five simultaneously selectable tasks.
+  const base = DAILY_TASK_POOL.filter(t => !t.feature && t.metric !== 'distinct_species');
+  assert.equal(base.length,7);
 });
 
 test('verified quantity and distinct species progress', () => {
