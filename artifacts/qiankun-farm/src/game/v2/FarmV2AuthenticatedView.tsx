@@ -52,6 +52,10 @@ export function FarmV2AuthenticatedView(props: {
     pendingWorkshop,
     readFriends,
     readWallet,
+    readSignIn,
+    claimSignInToday,
+    claimSignInMakeup,
+    claimSignInPerfect,
     readSeedRecoveries,
     resumeSeedPurchase,
     transferCoins,
@@ -63,6 +67,10 @@ export function FarmV2AuthenticatedView(props: {
   const [seedRecoveries,setSeedRecoveries]=useState<FarmSeedRecovery[]>([]);
   const [checkingSeeds,setCheckingSeeds]=useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
+  const [signInData, setSignInData] = useState<Awaited<ReturnType<typeof readSignIn>> | null>(null);
+  const [signInBusy, setSignInBusy] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
   const [warehouseTab, setWarehouseTab] = useState<"crops" | "items">("crops");
   const [visited, setVisited] = useState<FarmV2PublicCave | null>(null);
   const [panelTab, setPanelTab] = useState("盆栽");
@@ -119,6 +127,26 @@ export function FarmV2AuthenticatedView(props: {
       setBuySeedsOnOpen(plot.unlocked && plot.state === "empty" && plot.id < 5);
       setSelectedLand(id);
     }
+  }
+
+  async function openSignIn() {
+    setSignInOpen(true);
+    setSignInError(null);
+    setSignInData(null);
+    try { setSignInData(await readSignIn()); }
+    catch (error) { setSignInError(error instanceof Error ? error.message : "SIGNIN_UNAVAILABLE"); }
+  }
+  async function runSignInAction(action:()=>Promise<{status:string}>) {
+    if (signInBusy) return;
+    setSignInBusy(true); setSignInError(null);
+    try {
+      const result=await action();
+      if (result.status!=="claimed" && result.status!=="already_claimed" && result.status!=="already_signed")
+        throw new Error(result.status);
+      setSignInData(await readSignIn());
+    } catch (error) {
+      setSignInError(error instanceof Error ? error.message : "SIGNIN_ACTION_FAILED");
+    } finally { setSignInBusy(false); }
   }
 
   async function refreshManually() {
@@ -285,6 +313,34 @@ export function FarmV2AuthenticatedView(props: {
       aria-label="乾坤福田正式農田"
       style={{ maxWidth: 1200, margin: "0 auto" }}
     >
+      <Dialog open={signInOpen} onOpenChange={setSignInOpen}>
+        <DialogContent style={{maxHeight:"85dvh",overflowY:"auto",background:"#12251f",color:"#f8f1df"}}>
+          <DialogTitle>30 日簽到</DialogTitle>
+          <p>補簽可領回當日獎勵，但不計入全勤；每日以台灣時間 05:00 換日。</p>
+          {signInData && <>
+            <p>第 {signInData.cycleNumber} 輪，第 {signInData.cycleDay} 天；補簽額度 {signInData.makeupCreditsAvailable ?? 0}</p>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(6,minmax(0,1fr))",gap:4}}>
+              {Array.from({length:30},(_,i)=>i+1).map(day=><div key={day}
+                style={{padding:5,border:"1px solid #bda365",borderRadius:4,textAlign:"center",background:signInData.signedDays?.includes(day)?"#335b42":"transparent"}}
+                aria-label={`第${day}天，${signInData.makeupDays?.includes(day)?"已補簽":signInData.signedDays?.includes(day)?"已簽到":"未簽到"}`}>
+                {day}{signInData.makeupDays?.includes(day)?"補":signInData.signedDays?.includes(day)?"✓":""}
+              </div>)}
+            </div>
+            <button type="button" disabled={signInBusy||!signInData.todayClaimable}
+              onClick={()=>void runSignInAction(claimSignInToday)}>領取今日簽到</button>
+            <button type="button" disabled={signInBusy||!signInData.makeupClaimable||signInData.nextMakeupDay==null}
+              onClick={()=>void runSignInAction(()=>claimSignInMakeup(signInData.nextMakeupDay!))}>
+              補簽第 {signInData.nextMakeupDay ?? "—"} 天
+            </button>
+            <p>全勤獎勵：徽章 ×1、水晶 ×3、金幣 ×200、蘊靈砂 ×2、九霄玉髓 ×2</p>
+            <button type="button" disabled={signInBusy||!signInData.perfectAttendanceReady}
+              onClick={()=>void runSignInAction(claimSignInPerfect)}>領取全勤獎勵</button>
+          </>}
+          {signInError && <p role="alert">{signInError}</p>}
+          {!signInData && !signInError && <p>正在讀取簽到資料…</p>}
+        </DialogContent>
+      </Dialog>
+      <button type="button" disabled={busy||loading} onClick={()=>void openSignIn()}>📅 30 日簽到</button>
       {data.localCoins && (
         <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
           <DialogContent style={{ background: "#12251f", color: "#f8f1df", border: "1px solid #bda365", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(32rem, calc(100vw - 2rem))", maxHeight: "calc(100dvh - 2rem)", overflowY: "auto", lineHeight: 1.6 }}>
