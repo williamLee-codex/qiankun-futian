@@ -575,28 +575,13 @@ router.post(
 // The player identity and cycle are always resolved on the server.
 router.get("/farm/v2/signin", async (_req, res, next) => {
   try {
-    const userId = String(res.locals.authenticatedUserId);
-    const initialized = await pool.query(
-      "select public.farm_v2_signin_initialize($1) as result", [userId],
+    const result = await pool.query(
+      "select farm_v2_rewards.signin($1,'status',null) as result",
+      [String(res.locals.authenticatedUserId)],
     );
-    if (initialized.rows[0]?.result?.status !== "ready") {
-      res.status(409).json(initialized.rows[0]?.result ?? { status: "not_initialized" });
-      return;
-    }
-    const status = await pool.query(
-      "select public.farm_v2_signin_status($1) as result", [userId],
-    );
-    const pending = await pool.query(
-      "select public.farm_v2_signin_pending_perfect_cycle($1) as cycle",
-      [userId],
-    );
-    const pendingCycle = pending.rows[0]?.cycle ?? null;
+    const data = result.rows[0]?.result ?? { status: "not_initialized" };
     res.setHeader("Cache-Control", "no-store");
-    res.json({
-      ...status.rows[0].result,
-      pendingPerfectCycle: pendingCycle,
-      perfectAttendanceReady: pendingCycle !== null,
-    });
+    res.status(data.status === "ready" ? 200 : 409).json(data);
   } catch (error) { next(error); }
 });
 
@@ -606,47 +591,17 @@ router.post("/farm/v2/signin/:action", async (req, res, next) => {
     if (!["claim", "makeup", "perfect"].includes(action)) {
       res.status(404).json({ status: "unknown_action" }); return;
     }
-    const userId = String(res.locals.authenticatedUserId);
-    const initialized = await pool.query(
-      "select public.farm_v2_signin_initialize($1) as result", [userId],
+    const day = action === "makeup" ? req.body?.cycleDay : null;
+    if (action === "makeup" && (!Number.isInteger(day) || day < 1 || day > 30)) {
+      res.status(400).json({ status: "invalid_cycle_day" }); return;
+    }
+    const result = await pool.query(
+      "select farm_v2_rewards.signin($1,$2,$3) as result",
+      [String(res.locals.authenticatedUserId), action, day],
     );
-    const current = initialized.rows[0]?.result;
-    if (current?.status !== "ready") {
-      res.status(409).json(current ?? { status: "not_initialized" }); return;
-    }
-    const cycle = Number(current.cycleNumber);
-    const today = Number(current.cycleDay);
-    let result;
-    if (action === "claim") {
-      result = await pool.query(
-        "select public.farm_v2_signin_claim_day($1,$2,$3) as result",
-        [userId, cycle, today],
-      );
-    } else if (action === "makeup") {
-      const day = req.body?.cycleDay;
-      if (!Number.isInteger(day) || day < 1 || day > 30) {
-        res.status(400).json({ status: "invalid_cycle_day" }); return;
-      }
-      result = await pool.query(
-        "select public.farm_v2_signin_makeup_day($1,$2,$3) as result",
-        [userId, cycle, day],
-      );
-    } else {
-      const pending = await pool.query(
-        "select public.farm_v2_signin_pending_perfect_cycle($1) as cycle",
-        [userId],
-      );
-      const awardCycle = pending.rows[0]?.cycle;
-      if (awardCycle == null) {
-        res.status(409).json({ status: "incomplete" }); return;
-      }
-      result = await pool.query(
-        "select public.farm_v2_signin_claim_perfect($1,$2) as result",
-        [userId, Number(awardCycle)],
-      );
-    }
+    const data = result.rows[0]?.result ?? { status: "not_initialized" };
     res.setHeader("Cache-Control", "no-store");
-    res.json(result.rows[0].result);
+    res.status(["unverified_identity", "player_not_found", "not_initialized", "incomplete"].includes(data.status) ? 409 : 200).json(data);
   } catch (error) { next(error); }
 });
 
