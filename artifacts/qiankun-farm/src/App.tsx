@@ -19,6 +19,8 @@ import advertisingIcon from './assets/advertising-center-icon.svg';
 import bgImage from '@assets/file_00000000095072069ef62748d273ae91_1783571778589.png';
 import { useState, useLayoutEffect, useEffect } from 'react';
 import DailyActivityDialog, { type DailyActivityBridge } from './components/DailyActivityDialog';
+import SignInDialog from './components/SignInDialog';
+import type { SignInBridge } from './signInBridge';
 import CoinConversionDialog, { type CoinBalances, type CoinConversionReceipt, type CoinDirection } from './components/CoinConversionDialog';
 import { GameProvider, useGame } from './game/GameContext';
 import GameHeader       from './components/HUD';
@@ -71,12 +73,13 @@ type CoinBridge = {
 };
 
 /** Host supplies authenticated calls; never embed a bridge secret in browser code. */
-function Game({ coinBridge, dailyActivityBridge }: { coinBridge?: CoinBridge; dailyActivityBridge?: DailyActivityBridge }) {
+function Game({ coinBridge, dailyActivityBridge, signInBridge }: { coinBridge?: CoinBridge; dailyActivityBridge?: DailyActivityBridge; signInBridge?: SignInBridge }) {
   const { dispatch } = useGame();
   const scale = useGameScale();
   const [balances, setBalances] = useState<CoinBalances | null>(null);
   const [conversionOpen, setConversionOpen] = useState(false);
   const [dailyActivityOpen, setDailyActivityOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
   const [balanceError, setBalanceError] = useState(false);
   const [showWalletGuide, setShowWalletGuide] = useState(false);
   useEffect(() => {
@@ -158,6 +161,9 @@ function Game({ coinBridge, dailyActivityBridge }: { coinBridge?: CoinBridge; da
           style={{position:'absolute',right:8,top:240,zIndex:46,cursor:'pointer'}}>
           每日任務
         </button>}
+        {signInBridge && <button type="button" aria-label="30日簽到" title="30日簽到"
+          onClick={event => {event.stopPropagation();setSignInOpen(true);}}
+          style={{position:'absolute',right:8,top:280,zIndex:46,cursor:'pointer'}}>30日簽到</button>}
         {/* z:50 HUD：疊在底圖頂部留白區 */}
         <GameHeader
           onOpenConversion={coinBridge ? openConversion : undefined}
@@ -192,6 +198,8 @@ function Game({ coinBridge, dailyActivityBridge }: { coinBridge?: CoinBridge; da
 
         {dailyActivityOpen && dailyActivityBridge && <DailyActivityDialog bridge={dailyActivityBridge}
           onClose={() => setDailyActivityOpen(false)} />}
+        {signInOpen && signInBridge && <SignInDialog bridge={signInBridge}
+          onClose={()=>setSignInOpen(false)} />}
         {/* z:200 全畫布 Panel Modal */}
         <PanelOverlay />
       </div>
@@ -199,10 +207,10 @@ function Game({ coinBridge, dailyActivityBridge }: { coinBridge?: CoinBridge; da
   );
 }
 
-export default function App({ coinBridge, dailyActivityBridge }: { coinBridge?: CoinBridge; dailyActivityBridge?: DailyActivityBridge }) {
+export default function App({ coinBridge, dailyActivityBridge, signInBridge }: { coinBridge?: CoinBridge; dailyActivityBridge?: DailyActivityBridge; signInBridge?: SignInBridge }) {
   return (
     <GameProvider>
-      <Game coinBridge={coinBridge} dailyActivityBridge={dailyActivityBridge} />
+      <Game coinBridge={coinBridge} dailyActivityBridge={dailyActivityBridge} signInBridge={signInBridge} />
     </GameProvider>
   );
 }
