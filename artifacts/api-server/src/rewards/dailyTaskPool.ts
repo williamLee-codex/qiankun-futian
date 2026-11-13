@@ -1,5 +1,5 @@
 /**
- * Farm V2 daily activity pool: 15 canonical tasks, eight categories.
+ * Farm V2 daily activity pool: 17 canonical tasks, eight categories.
  * The server must persist each player's six task IDs per Taipei 05:00 day.
  * This module only selects tasks; it never grants currency or items.
  */
@@ -16,17 +16,19 @@ export type DailyTask = Readonly<{
   target: number;
   metric: 'count' | 'quantity' | 'distinct_species';
   feature?: 'pets' | 'friends' | 'synthesis' | 'pots';
-  exclusiveGroup?: 'plant_threshold' | 'harvest_threshold';
+  exclusiveGroup?: 'plant_threshold' | 'harvest_threshold' | 'seed_quantity_threshold';
   clickOnly?: boolean;
 }>;
 
 export const DAILY_TASK_POOL: readonly DailyTask[] = [
+  { id:'plant_once', category:'播種', title:'初試耕耘', event:'plant', target:1, metric:'count' },
+  { id:'buy_seeds_5', category:'種子', title:'種子小補給', event:'buy_seeds', target:5, metric:'quantity', exclusiveGroup:'seed_quantity_threshold' },
   { id:'plant_5', category:'播種', title:'播種新手', event:'plant', target:5, metric:'quantity', exclusiveGroup:'plant_threshold' },
   { id:'plant_10', category:'播種', title:'勤勞耕種', event:'plant', target:10, metric:'quantity', exclusiveGroup:'plant_threshold' },
   { id:'harvest_5', category:'收成', title:'小小豐收', event:'harvest', target:5, metric:'quantity', exclusiveGroup:'harvest_threshold' },
   { id:'harvest_10', category:'收成', title:'豐收喜悅', event:'harvest', target:10, metric:'quantity', exclusiveGroup:'harvest_threshold' },
   { id:'buy_seeds_once', category:'種子', title:'種子補給', event:'buy_seeds', target:1, metric:'count' },
-  { id:'buy_seeds_10', category:'種子', title:'種子儲備', event:'buy_seeds', target:10, metric:'quantity' },
+  { id:'buy_seeds_10', category:'種子', title:'種子儲備', event:'buy_seeds', target:10, metric:'quantity', exclusiveGroup:'seed_quantity_threshold' },
   { id:'synthesize_pot', category:'盆栽', title:'靈植巧匠', event:'synthesize_pot', target:1, metric:'count', feature:'synthesis' },
   { id:'place_pot', category:'盆栽', title:'盆栽整理', event:'place_pot', target:1, metric:'count', feature:'pots' },
   { id:'open_warehouse', category:'倉庫', title:'倉庫巡查', event:'open_warehouse', target:1, metric:'count', clickOnly:true },
