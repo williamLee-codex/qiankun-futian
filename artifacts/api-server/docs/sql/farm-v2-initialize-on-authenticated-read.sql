@@ -1,3 +1,5 @@
+-- Only enable tasks with implemented, verified event sources.
+-- Pet actions have no trusted recorder; plot IDs are not plant species IDs.
 -- Trusted server RPC: initializes daily tasks on first authenticated read.
 -- Uses only persisted farm state; never accepts browser eligibility.
 create or replace function public.farm_v2_initialize_daily_activity_for_verified_user(p_user_id text)
@@ -11,9 +13,9 @@ begin
  select pet_state,access_state into s from public.farm_v2_player_state where user_id=p_user_id;
  if not found then return jsonb_build_object('status','player_not_found'); end if;
  eligibility:=jsonb_build_object(
-  'pets',coalesce(jsonb_array_length(case when jsonb_typeof(s.pet_state->'owned')='array' then s.pet_state->'owned' else '[]'::jsonb end),0)>0,
+  'pets',false,
   'friends',false,'synthesis',false,'pots',false,
-  'availablePlantSpecies',coalesce(jsonb_array_length(case when jsonb_typeof(s.access_state->'accessActive')='array' then s.access_state->'accessActive' else '[]'::jsonb end),0),
+  'availablePlantSpecies',0,
   'availableHarvestSpecies',0);
  tasks:=public.farm_v2_assign_random_daily_tasks(p_user_id,eligibility);
  return jsonb_build_object('status','ready','assignedTaskIds',tasks);
