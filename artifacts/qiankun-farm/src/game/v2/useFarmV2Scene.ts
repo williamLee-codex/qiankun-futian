@@ -247,6 +247,10 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     return api.readWallet();
   }, [api]);
   return {
+    readSignIn: () => { if (!api) throw new Error("AUTH_REQUIRED"); return api.readSignIn(); },
+    claimSignInToday: () => { if (!api) throw new Error("AUTH_REQUIRED"); return api.claimSignInToday(); },
+    claimSignInMakeup: (day: number) => { if (!api) throw new Error("AUTH_REQUIRED"); return api.claimSignInMakeup(day); },
+    claimSignInPerfect: () => { if (!api) throw new Error("AUTH_REQUIRED"); return api.claimSignInPerfect(); },
     readWallet,
     readSeedRecoveries: () => {if(!api) throw new Error("AUTH_REQUIRED"); return api.readSeedRecoveries();},
     resumeSeedPurchase: async (original:FarmSeedRecovery) => {
