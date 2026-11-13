@@ -5,7 +5,7 @@
 import { useGame } from '../game/GameContext';
 import { CROP_IDS } from '../game/types';
 
-export default function GameHeader({ onOpenConversion, farmCoinBalance }: { onOpenConversion?: () => void; farmCoinBalance?: number | null }) {
+export default function GameHeader({ onOpenConversion, farmCoinBalance, centralCoinBalance }: { onOpenConversion?: () => void; farmCoinBalance?: number | null; centralCoinBalance?: number | null }) {
   const { state } = useGame();
 
   /* 所有作物庫存加總 */
@@ -21,8 +21,8 @@ export default function GameHeader({ onOpenConversion, farmCoinBalance }: { onOp
       <div className="resource-cell">
         <span className="resource-icon">🪙</span>
         <div className="resource-text">
-          <span className="resource-value">{state.coins}</span>
-          <span className="resource-label">金幣</span>
+          <span className="resource-value">{centralCoinBalance == null ? '—' : centralCoinBalance.toLocaleString()}</span>
+          <span className="resource-label">中央金幣</span>
         </div>
       </div>
       {onOpenConversion && (
