@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { DAILY_TASK_POOL, selectDailyTasks } from './dailyTaskPool';
-import { applyVerifiedEvent, claimableMilestones, dailyActivityPoints, taipeiActivityDay } from './dailyActivity';
+import { applyVerifiedEvent, assignedDailyActivityPoints, claimableMilestones, dailyActivityPoints, projectDailyActivity, taipeiActivityDay } from './dailyActivity';
 
 test('17 candidate tasks are defined', () => {
   assert.equal(DAILY_TASK_POOL.length, 17);
@@ -75,4 +75,23 @@ test('invalid random index is rejected', () => {
     availablePlantSpecies:1, availableHarvestSpecies:1,
   };
   assert.throws(() => selectDailyTasks(eligibility, () => -1), /INVALID_RANDOM_INDEX/);
+});
+
+test('replay deduplicates retries and ignores unassigned tasks for points', () => {
+  const assigned = DAILY_TASK_POOL.filter(t => [
+    'plant_once','plant_5','harvest_5','buy_seeds_once','buy_seeds_5','open_warehouse',
+  ].includes(t.id));
+  const events = [
+    {transactionId:'a',event:'plant' as const,quantity:5,speciesId:'seed-a'},
+    {transactionId:'a',event:'plant' as const,quantity:5,speciesId:'seed-a'},
+    {transactionId:'b',event:'buy_seeds' as const,quantity:5},
+  ];
+  const progress=projectDailyActivity(assigned,events);
+  assert.equal(progress.find(p=>p.taskId==='plant_5')?.count,5);
+  assert.equal(progress.find(p=>p.taskId==='plant_once')?.count,1);
+  assert.equal(assignedDailyActivityPoints(assigned,progress),80);
+  assert.equal(assignedDailyActivityPoints(assigned,[...progress,{taskId:'harvest_10',count:10,species:[],completed:true}]),80);
+  assert.throws(() => projectDailyActivity(assigned,[
+    events[0],{...events[0],quantity:10},
+  ]), /CONFLICTING_TRANSACTION_EVENT/);
 });
