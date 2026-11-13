@@ -1,3 +1,5 @@
+-- Only enable tasks with implemented, verified event sources.
+-- Pet actions have no trusted recorder; plot IDs are not plant species IDs.
 create or replace function public.farm_v2_auto_initialize_activity_on_mutation()
 returns trigger language plpgsql security invoker set search_path=''
 as $$
@@ -11,9 +13,9 @@ begin
  select * into v_state from public.farm_v2_player_state where user_id=new.user_id;
  if not found then return new; end if;
  v_eligibility:=jsonb_build_object(
- 'pets',coalesce(jsonb_array_length(case when jsonb_typeof(v_state.pet_state->'owned')='array' then v_state.pet_state->'owned' else '[]'::jsonb end),0)>0,
+ 'pets',false,
  'friends',false,'synthesis',false,'pots',false,
- 'availablePlantSpecies',coalesce(jsonb_array_length(case when jsonb_typeof(v_state.access_state->'accessActive')='array' then v_state.access_state->'accessActive' else '[]'::jsonb end),0),
+ 'availablePlantSpecies',0,
  'availableHarvestSpecies',0);
  perform public.farm_v2_assign_random_daily_tasks(new.user_id,v_eligibility);
  return new;
