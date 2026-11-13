@@ -40,6 +40,9 @@ router.get("/healthz/ready", async (_req, res) => {
         CROSS JOIN unnest(ARRAY['SELECT','INSERT','UPDATE']) p)
       AND NOT has_table_privilege(current_user,to_regclass('public.core_wallets'),'INSERT,UPDATE,DELETE')
       AND NOT has_table_privilege(current_user,to_regclass('public.core_wallet_ledger'),'INSERT,UPDATE,DELETE')
+      AND to_regprocedure('farm_v2_rewards.signin(text,text,integer)') IS NOT NULL
+      AND has_function_privilege(current_user,to_regprocedure('farm_v2_rewards.signin(text,text,integer)'),'EXECUTE')
+      AND NOT has_function_privilege(current_user,to_regprocedure('public.core_wallet_apply_transaction(uuid,integer,text,text,text,text,text,text,uuid)'),'EXECUTE')
       AS ready`);
     const ready = result.rows[0]?.ready === true;
     if (!ready) console.warn("FARM_READINESS_DATABASE_REQUIREMENTS_FAILED");
