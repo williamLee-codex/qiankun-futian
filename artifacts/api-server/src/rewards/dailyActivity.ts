@@ -75,8 +75,16 @@ export function projectDailyActivity(
   if (assignedTasks.length !== 6 || new Set(assignedTasks.map(t => t.id)).size !== 6) {
     throw new Error('INVALID_ASSIGNED_TASKS');
   }
-  const known = new Set(DAILY_TASK_POOL.map(t => t.id));
-  if (assignedTasks.some(task => !known.has(task.id))) throw new Error('UNKNOWN_ASSIGNED_TASK');
+  const canonical = new Map(DAILY_TASK_POOL.map(t => [t.id, t]));
+  if (assignedTasks.some(task => !canonical.has(task.id))) throw new Error('UNKNOWN_ASSIGNED_TASK');
+  if (assignedTasks.some(task => {
+    const official = canonical.get(task.id)!;
+    return task.event !== official.event || task.target !== official.target || task.metric !== official.metric;
+  })) throw new Error('ALTERED_ASSIGNED_TASK');
+  if (assignedTasks.some((task, index) => assignedTasks.slice(index + 1).some(other =>
+    (task.exclusiveGroup && task.exclusiveGroup === other.exclusiveGroup)
+    || (task.clickOnly && other.clickOnly)
+  ))) throw new Error('CONFLICTING_ASSIGNED_TASKS');
   const transactions = new Map<string, VerifiedFarmEvent>();
   for (const event of committedEvents) {
     if (!event.transactionId || !Number.isSafeInteger(event.quantity) || event.quantity <= 0) {
