@@ -323,6 +323,11 @@ export function createFarmV2Api(input: {
       revoked = true;
       sessionPromise = null;
     },
+    readSignIn: () => request<import("../../signInBridge").SignInSnapshot>("farm/v2/signin", "GET"),
+    claimSignInToday: () => request<{status:string}>("farm/v2/signin/claim", "POST", {}),
+    claimSignInMakeup: (cycleDay: number) =>
+      request<{status:string}>("farm/v2/signin/makeup", "POST", {cycleDay}),
+    claimSignInPerfect: () => request<{status:string}>("farm/v2/signin/perfect", "POST", {}),
     claimChaosSeeds: () => request<unknown>("farm/v2/chaos/claim", "POST"),
     configureFarmer: (landId: number, enabled: boolean) =>
       request<unknown>(`farm/v2/farmer/${landId}`, "POST", { enabled }),
