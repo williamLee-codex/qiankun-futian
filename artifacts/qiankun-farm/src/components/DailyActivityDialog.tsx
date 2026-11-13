@@ -34,6 +34,15 @@ export default function DailyActivityDialog({bridge,onClose}:{bridge:DailyActivi
     bridge.load().then(v=>{if(active)setSnapshot(v);}).catch(()=>{if(active)setError('每日任務暫時無法讀取');});
     return ()=>{active=false;};
   },[bridge]);
+  useEffect(()=>{
+    let active=true;
+    const refresh=()=>{
+      bridge.load().then(v=>{if(active){setSnapshot(v);setError('');}})
+        .catch(()=>{if(active)setError('每日任務暫時無法更新');});
+    };
+    window.addEventListener('farm-v2-daily-activity-updated',refresh);
+    return ()=>{active=false;window.removeEventListener('farm-v2-daily-activity-updated',refresh);};
+  },[bridge]);
   async function claim(milestone:30|60|100) {
     setBusy(milestone);setError('');
     try {
