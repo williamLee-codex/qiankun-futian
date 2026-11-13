@@ -12,6 +12,8 @@ begin
    v_result:=public.farm_v2_signin_claim_material_day(p_user_id,p_cycle_number,p_cycle_day);
  elsif p_cycle_day in (10,25) then
    v_result:=public.farm_v2_signin_claim_crystal_day(p_user_id,p_cycle_number,p_cycle_day);
+ elsif p_cycle_day in (15,20,30) then
+   v_result:=public.farm_v2_signin_claim_pot_day(p_user_id,p_cycle_number,p_cycle_day);
  else
    return jsonb_build_object('status','unsupported_reward','cycleDay',p_cycle_day);
  end if;
