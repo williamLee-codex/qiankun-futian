@@ -16,7 +16,8 @@
  *   200 PanelOverlay    — 全畫布 Modal
  */
 import bgImage from '@assets/file_00000000095072069ef62748d273ae91_1783571778589.png';
-import { useState, useLayoutEffect } from 'react';
+import { useState, useLayoutEffect, useEffect } from 'react';
+import CoinConversionDialog, { type CoinBalances, type CoinConversionReceipt, type CoinDirection } from './components/CoinConversionDialog';
 import { GameProvider, useGame } from './game/GameContext';
 import GameHeader       from './components/HUD';
 import FarmScene        from './components/FarmScene';
@@ -62,9 +63,39 @@ function useGameScale() {
   return scale;
 }
 
-function Game() {
+type CoinBridge = {
+  loadBalances: () => Promise<CoinBalances>;
+  convert: (request: { conversionId: string; direction: CoinDirection; amount: number }) => Promise<CoinConversionReceipt>;
+};
+
+/** Host supplies authenticated calls; never embed a bridge secret in browser code. */
+function Game({ coinBridge }: { coinBridge?: CoinBridge }) {
   const { dispatch } = useGame();
   const scale = useGameScale();
+  const [balances, setBalances] = useState<CoinBalances | null>(null);
+  const [conversionOpen, setConversionOpen] = useState(false);
+  const [balanceError, setBalanceError] = useState(false);
+  useEffect(() => {
+    if (!coinBridge) return;
+    let active = true;
+    coinBridge.loadBalances().then(value => {
+      if (active) setBalances(value);
+    }).catch(() => {
+      if (active) setBalanceError(true);
+    });
+    return () => { active = false; };
+  }, [coinBridge]);
+  async function openConversion() {
+    if (!coinBridge) return;
+    setBalanceError(false);
+    try {
+      const latest = await coinBridge.loadBalances();
+      setBalances(latest);
+      setConversionOpen(true);
+    } catch {
+      setBalanceError(true);
+    }
+  }
 
   return (
     /* game-viewport：全螢幕外層，只負責置中，不縮放 */
@@ -93,7 +124,20 @@ function Game() {
         <BottomMenu />
 
         {/* z:50 HUD：疊在底圖頂部留白區 */}
-        <GameHeader />
+        <GameHeader
+          onOpenConversion={coinBridge ? openConversion : undefined}
+          farmCoinBalance={balances?.farmBalance}
+        />
+        {balanceError && coinBridge && (
+          <p className="farm-coin-error" role="alert">金幣餘額暫時無法讀取</p>
+        )}
+        {conversionOpen && balances && coinBridge && (
+          <CoinConversionDialog balances={balances}
+            onConfirm={coinBridge.convert}
+            onBalancesChange={setBalances}
+            onClose={() => setConversionOpen(false)}
+          />
+        )}
 
         {/* z:200 全畫布 Panel Modal */}
         <PanelOverlay />
@@ -102,10 +146,10 @@ function Game() {
   );
 }
 
-export default function App() {
+export default function App({ coinBridge }: { coinBridge?: CoinBridge }) {
   return (
     <GameProvider>
-      <Game />
+      <Game coinBridge={coinBridge} />
     </GameProvider>
   );
 }
