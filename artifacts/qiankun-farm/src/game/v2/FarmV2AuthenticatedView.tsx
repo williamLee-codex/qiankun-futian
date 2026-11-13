@@ -8,6 +8,7 @@ import { workshopState } from "./workshopRuntime";
 import { mapServerLands } from "./farmV2SceneAdapter";
 import type { FarmV2PublicCave } from "./publicCave";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { signInRewards } from "../../signInRewards";
 import { useFarmV2Scene } from "./useFarmV2Scene";
 import { CROP_DATA, type Plot } from "../types";
 import { FARM_V2_LANDS } from "./canonicalLandData";
@@ -319,12 +320,18 @@ export function FarmV2AuthenticatedView(props: {
           <p>補簽可領回當日獎勵，並計入全勤；每日以台灣時間 05:00 換日。</p>
           {signInData && <>
             <p>第 {signInData.cycleNumber} 輪，第 {signInData.cycleDay} 天；補簽額度 {signInData.makeupCreditsAvailable ?? 0}</p>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(6,minmax(0,1fr))",gap:4}}>
-              {Array.from({length:30},(_,i)=>i+1).map(day=><div key={day}
-                style={{padding:5,border:"1px solid #bda365",borderRadius:4,textAlign:"center",background:signInData.signedDays?.includes(day)?"#335b42":"transparent"}}
-                aria-label={`第${day}天，${signInData.makeupDays?.includes(day)?"已補簽":signInData.signedDays?.includes(day)?"已簽到":"未簽到"}`}>
-                {day}{signInData.makeupDays?.includes(day)?"補":signInData.signedDays?.includes(day)?"✓":""}
-              </div>)}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:6}}>
+              {signInRewards.map((reward,i)=>{
+                const day=i+1;
+                const madeUp=signInData.makeupDays?.includes(day)??false;
+                const claimed=signInData.signedDays?.includes(day)??false;
+                return <div key={day}
+                  style={{padding:"7px 4px",border:"1px solid #bda365",borderRadius:5,textAlign:"center",background:claimed?"#335b42":"transparent",minHeight:70}}
+                  aria-label={`第${day}天，${madeUp?"已補簽":claimed?"已簽到":"未簽到"}，${reward}`}>
+                  <strong>第 {day} 天 {madeUp?"補":claimed?"✓":""}</strong>
+                  <div style={{fontSize:12,marginTop:4,overflowWrap:"anywhere"}}>{reward}</div>
+                </div>;
+              })}
             </div>
             <button type="button" disabled={signInBusy||!signInData.todayClaimable}
               onClick={()=>void runSignInAction(claimSignInToday)}>領取今日簽到</button>
