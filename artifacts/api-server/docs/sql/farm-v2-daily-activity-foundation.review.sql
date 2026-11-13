@@ -5,6 +5,18 @@
 -- until the existing authoritative wallet / inventory RPC contract is verified.
 begin;
 
+-- Immutable helper prevents six repeated task IDs from passing the length check.
+create or replace function public.farm_v2_six_distinct_task_ids(p_ids text[])
+returns boolean
+language sql immutable strict
+set search_path = ''
+as $
+  select cardinality(p_ids) = 6
+     and array_position(p_ids, null) is null
+     and (select count(distinct item) from unnest(p_ids) as item) = 6
+$;
+revoke all on function public.farm_v2_six_distinct_task_ids(text[]) from public, anon, authenticated;
+
 create table if not exists public.farm_v2_daily_activity_days (
   user_id text not null,
   activity_day date not null,
@@ -13,8 +25,7 @@ create table if not exists public.farm_v2_daily_activity_days (
   created_at timestamptz not null default now(),
   primary key (user_id, activity_day),
   constraint farm_v2_daily_activity_six_tasks check (
-    cardinality(assigned_task_ids) = 6
-    and array_position(assigned_task_ids, null) is null
+    public.farm_v2_six_distinct_task_ids(assigned_task_ids)
   )
 );
 
@@ -22,7 +33,10 @@ create table if not exists public.farm_v2_daily_activity_events (
   user_id text not null,
   activity_day date not null,
   transaction_id text not null,
-  event_type text not null,
+  event_type text not null check (event_type in (
+    'plant','harvest','buy_seeds','synthesize_pot','place_pot',
+    'open_warehouse','feed_pet','view_pet','friend_interaction','visit_friend'
+  )),
   quantity integer not null check (quantity > 0),
   species_id text,
   occurred_at timestamptz not null default now(),
