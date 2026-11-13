@@ -571,6 +571,76 @@ router.post(
   }),
 );
 
+// Sign-in actions share the established farm launch identity middleware above.
+// The player identity and cycle are always resolved on the server.
+router.get("/farm/v2/signin", async (_req, res, next) => {
+  try {
+    const userId = String(res.locals.authenticatedUserId);
+    const initialized = await pool.query(
+      "select public.farm_v2_signin_initialize($1) as result", [userId],
+    );
+    if (initialized.rows[0]?.result?.status !== "ready") {
+      res.status(409).json(initialized.rows[0]?.result ?? { status: "not_initialized" });
+      return;
+    }
+    const status = await pool.query(
+      "select public.farm_v2_signin_status($1) as result", [userId],
+    );
+    res.setHeader("Cache-Control", "no-store");
+    res.json(status.rows[0].result);
+  } catch (error) { next(error); }
+});
+
+router.post("/farm/v2/signin/:action", async (req, res, next) => {
+  try {
+    const action = String(req.params.action);
+    if (!["claim", "makeup", "perfect"].includes(action)) {
+      res.status(404).json({ status: "unknown_action" }); return;
+    }
+    const userId = String(res.locals.authenticatedUserId);
+    const initialized = await pool.query(
+      "select public.farm_v2_signin_initialize($1) as result", [userId],
+    );
+    const current = initialized.rows[0]?.result;
+    if (current?.status !== "ready") {
+      res.status(409).json(current ?? { status: "not_initialized" }); return;
+    }
+    const cycle = Number(current.cycleNumber);
+    const today = Number(current.cycleDay);
+    let result;
+    if (action === "claim") {
+      result = await pool.query(
+        "select public.farm_v2_signin_claim_day($1,$2,$3) as result",
+        [userId, cycle, today],
+      );
+    } else if (action === "makeup") {
+      const day = req.body?.cycleDay;
+      if (!Number.isInteger(day) || day < 1 || day > 30) {
+        res.status(400).json({ status: "invalid_cycle_day" }); return;
+      }
+      result = await pool.query(
+        "select public.farm_v2_signin_makeup_day($1,$2,$3) as result",
+        [userId, cycle, day],
+      );
+    } else {
+      const pending = await pool.query(
+        "select public.farm_v2_signin_pending_perfect_cycle($1) as cycle",
+        [userId],
+      );
+      const awardCycle = pending.rows[0]?.cycle;
+      if (awardCycle == null) {
+        res.status(409).json({ status: "incomplete" }); return;
+      }
+      result = await pool.query(
+        "select public.farm_v2_signin_claim_perfect($1,$2) as result",
+        [userId, Number(awardCycle)],
+      );
+    }
+    res.setHeader("Cache-Control", "no-store");
+    res.json(result.rows[0].result);
+  } catch (error) { next(error); }
+});
+
 router.use("/farm/v2", farmV2ErrorHandler);
 
 export default router;
