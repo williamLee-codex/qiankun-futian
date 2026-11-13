@@ -3,8 +3,8 @@ import { test } from 'node:test';
 import { DAILY_TASK_POOL, selectDailyTasks } from './dailyTaskPool';
 import { applyVerifiedEvent, claimableMilestones, dailyActivityPoints, taipeiActivityDay } from './dailyActivity';
 
-test('15 candidate tasks are defined', () => {
-  assert.equal(DAILY_TASK_POOL.length, 15);
+test('17 candidate tasks are defined', () => {
+  assert.equal(DAILY_TASK_POOL.length, 17);
   assert.equal(new Set(DAILY_TASK_POOL.map(t => t.id)).size, 15);
 });
 
@@ -15,7 +15,7 @@ test('Taipei 05:00 boundary', () => {
 
 test('six unique eligible tasks and mutually exclusive thresholds', () => {
   const eligibility = { pets:true, friends:true, synthesis:true, pots:true, availablePlantSpecies:2, availableHarvestSpecies:2 };
-  for (let seed=0; seed<15; seed++) {
+  for (let seed=0; seed<17; seed++) {
     let step=seed;
     const tasks = selectDailyTasks(eligibility, n => (step++ % n));
     assert.equal(tasks.length,6);
@@ -23,22 +23,21 @@ test('six unique eligible tasks and mutually exclusive thresholds', () => {
     assert.ok(tasks.filter(t=>t.clickOnly).length <= 1);
     assert.ok(tasks.filter(t=>t.exclusiveGroup==='plant_threshold').length <= 1);
     assert.ok(tasks.filter(t=>t.exclusiveGroup==='harvest_threshold').length <= 1);
+    assert.ok(tasks.filter(t=>t.exclusiveGroup==='seed_quantity_threshold').length <= 1);
   }
 });
 
-test('new player with only first plot cannot be assigned six legal tasks', () => {
+test('new player with only first plot receives six legal tasks', () => {
   const eligibility = {
     pets:false, friends:false, synthesis:false, pots:false,
     availablePlantSpecies:1, availableHarvestSpecies:1,
   };
-  assert.throws(
-    () => selectDailyTasks(eligibility, () => 0),
-    /INSUFFICIENT_ELIGIBLE_DAILY_TASKS/,
-  );
-  // With two threshold pairs mutually exclusive and one click task,
-  // the base pool only has five simultaneously selectable tasks.
-  const base = DAILY_TASK_POOL.filter(t => !t.feature && t.metric !== 'distinct_species');
-  assert.equal(base.length,7);
+  const tasks = selectDailyTasks(eligibility, () => 0);
+  assert.equal(tasks.length, 6);
+  assert.equal(new Set(tasks.map(t=>t.id)).size, 6);
+  assert.ok(tasks.every(t=>!t.feature && t.metric!=='distinct_species'));
+  assert.ok(tasks.filter(t=>t.clickOnly).length <= 1);
+  assert.ok(tasks.filter(t=>t.exclusiveGroup==='seed_quantity_threshold').length <= 1);
 });
 
 test('verified quantity and distinct species progress', () => {
