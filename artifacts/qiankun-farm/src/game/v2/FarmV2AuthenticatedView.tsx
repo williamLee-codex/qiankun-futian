@@ -335,13 +335,22 @@ export function FarmV2AuthenticatedView(props: {
             </div>
             <button type="button" disabled={signInBusy||!signInData.todayClaimable}
               onClick={()=>void runSignInAction(claimSignInToday)}>領取今日簽到</button>
-            <button type="button" disabled={signInBusy||!signInData.makeupClaimable||signInData.nextMakeupDay==null}
+            <button type="button" disabled={signInBusy||!signInData.makeupClaimable||signInData.nextMakeupDay==null||signInData.nextMakeupRewardSupported===false}
               onClick={()=>void runSignInAction(()=>claimSignInMakeup(signInData.nextMakeupDay!))}>
               補簽第 {signInData.nextMakeupDay ?? "—"} 天
             </button>
             <p>全勤獎勵：徽章 ×1、水晶 ×3、金幣 ×200、蘊靈砂 ×2、九霄玉髓 ×2</p>
-            <button type="button" disabled={signInBusy||!signInData.perfectAttendanceReady}
-              onClick={()=>void runSignInAction(claimSignInPerfect)}>領取全勤獎勵</button>
+            {signInData.pendingPerfectCycle != null &&
+              signInData.pendingPerfectCycle !== signInData.cycleNumber &&
+              <p role="status">第 {signInData.pendingPerfectCycle} 輪全勤獎勵尚未領取，可在本輪補領。</p>}
+            <button type="button"
+              disabled={signInBusy||!signInData.perfectAttendanceReady}
+              onClick={()=>void runSignInAction(claimSignInPerfect)}>
+              {signInData.pendingPerfectCycle != null &&
+               signInData.pendingPerfectCycle !== signInData.cycleNumber
+                ? "補領上一輪全勤獎勵" : signInData.perfectAttendanceClaimed
+                  ? "本輪全勤已領取" : "領取全勤獎勵"}
+            </button>
           </>}
           {signInError && <p role="alert">{signInError}</p>}
           {!signInData && !signInError && <p>正在讀取簽到資料…</p>}
