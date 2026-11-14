@@ -295,7 +295,8 @@ export function FarmSceneInteractionLayer(props: {
                 title={`${land.cropName} · ${pot ? pot.grade + "階" : "空位"}`}
                 disabled={props.busy || props.readOnly}
                 onClick={() => section("盆栽")}>
-                {pot && level > 0 ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/plants/${land.id}-${level}.webp`} alt="" /> : <span className="farm-v2-empty-pot-stand" aria-hidden="true" />}
+                <span className="farm-v2-approved-pedestal" aria-hidden="true" />
+                {pot && level > 0 && <img src={`${import.meta.env.BASE_URL ?? "/"}images/plants/${land.id}-${level}.webp`} alt="" />}
                 {pot && <small>{land.cropName}</small>}
               </button>;
             })}
