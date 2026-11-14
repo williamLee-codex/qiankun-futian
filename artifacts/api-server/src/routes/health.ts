@@ -44,6 +44,9 @@ router.get("/healthz/ready", async (_req, res) => {
       AND has_function_privilege(current_user,to_regprocedure('farm_v2_rewards.signin(text,text,integer)'),'EXECUTE')
       AND NOT has_function_privilege(current_user,to_regprocedure('public.core_wallet_apply_transaction(uuid,integer,text,text,text,text,text,text,uuid)'),'EXECUTE')
       AND farm_v2_rewards.signin(NULL,'status',NULL)->>'status'='unverified_identity'
+      AND to_regprocedure('farm_v2_rewards.activity(text,text,integer)') IS NOT NULL
+      AND has_function_privilege(current_user,to_regprocedure('farm_v2_rewards.activity(text,text,integer)'),'EXECUTE')
+      AND farm_v2_rewards.activity(NULL,'status',NULL)->>'status'='unverified_identity'
       AS ready`);
     const ready = result.rows[0]?.ready === true;
     if (!ready) console.warn("FARM_READINESS_DATABASE_REQUIREMENTS_FAILED");
@@ -80,3 +83,4 @@ router.get("/healthz/ready", async (_req, res) => {
 });
 
 export default router;
+

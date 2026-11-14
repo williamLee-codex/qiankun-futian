@@ -2,7 +2,7 @@ import { PotSynthesisGrid } from "./PotSynthesisGrid";
 const unavailableWallet = async (): Promise<{ coins: number }> => { throw new Error("WALLET_UNAVAILABLE"); };
 import { FORMATION_NAMES } from "./formationSourcesRuntime";
 import { nextFarmMonthReset } from "./timeRuntime";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   workshopState,
   workshopPublicState,
@@ -26,6 +26,7 @@ export function FarmWorkshopPanel(props: {
   readWallet?: () => Promise<{ coins: number }>;
   warehouse: WorkshopWarehouse;
   missions?: MissionState;
+  dailyActivity?: ReactNode;
   pets?: {
     owned: string[];
     activePetId: string | null;
@@ -157,8 +158,9 @@ export function FarmWorkshopPanel(props: {
         )}
         {tab === "任務" && (
           <>
-            <h3>任務・主動領取</h3>
-            {FARM_V2_MISSIONS.map((m) => (
+            {props.dailyActivity}
+            <h3>{props.dailyActivity ? "每週任務・主動領取" : "任務・主動領取"}</h3>
+            {FARM_V2_MISSIONS.filter(m => !props.dailyActivity || m.period === "WEEKLY").map((m) => (
               <article key={m.id}>
                 {
                   (
@@ -396,4 +398,5 @@ export function FarmWorkshopPanel(props: {
     </section>
   );
 }
+
 

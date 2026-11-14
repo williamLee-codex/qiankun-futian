@@ -16,6 +16,19 @@ function fetchWithSession(response: object) {
 }
 
 describe("Farm V2 API contract", () => {
+  it("reads activity and sends only the selected server milestone or inspection", async () => {
+    const activity = {status:"ready",day:"2026-11-14",tasks:[],points:0,maximum:120,milestones:[]};
+    const fetchMock = vi.fn().mockResolvedValueOnce(Response.json(session))
+      .mockImplementation(async () => Response.json(activity));
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createFarmV2Api({baseUrl:"https://example.test/api",launchToken:"token"});
+    expect(await api.readDailyActivity()).toEqual(activity);
+    await api.claimDailyActivity(30);
+    await api.inspectDailyActivity("warehouse");
+    expect(String(fetchMock.mock.calls[1][0])).toBe("https://example.test/api/farm/v2/activity");
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({milestone:30});
+    expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toEqual({kind:"warehouse"});
+  });
   it('waits for an authoritative state response taking 21 seconds without overlapping retries', async () => {
     vi.useFakeTimers();
     vi.spyOn(AbortSignal,'timeout').mockImplementation(ms=>{const c=new AbortController();setTimeout(()=>c.abort(new DOMException('timeout','TimeoutError')),ms);return c.signal;});
@@ -317,5 +330,6 @@ it("friend lost response keeps the original target/body/key for explicit recover
   expect(new Set(keys).size).toBe(1);
   expect(api.pendingFriends()).toEqual([]);
 });
+
 
 

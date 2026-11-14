@@ -277,17 +277,30 @@ router.get(
   "/farm/v2/friends/:targetId/cave",
   authorizedRoute(async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
-    res.json(
-      await visitFarmV2Cave({
+    const view = await visitFarmV2Cave({
         launchToken: String(res.locals.launchToken),
         targetId: String(req.params.targetId),
-      }),
+      });
+    await pool.query(
+      "select farm_v2_rewards.activity_visit($1,$2) as result",
+      [String(res.locals.authenticatedUserId), String(req.params.targetId)],
     );
+    res.json(view);
   }),
 );
 router.post(
   "/farm/v2/workshop",
   authorizedRoute(async (req, res) => {
+    if (req.body?.kind === "claimMission" && /^MISSION_D/.test(String(req.body?.missionId))) {
+      const original = await pool.query(
+        "select 1 from public.farm_v2_mutation where user_id=$1 and request_id=$2 and action=$3 limit 1",
+        [String(res.locals.authenticatedUserId), String(req.header("x-request-id")), "WORKSHOP:" + JSON.stringify(req.body)],
+      );
+      if (!original.rows.length) {
+        res.status(409).json({error:"DAILY_ACTIVITY_REPLACED"});
+        return;
+      }
+    }
     res.json(
       await mutateFarmV2Workshop({
         userId: String(res.locals.authenticatedUserId),
@@ -573,6 +586,37 @@ router.post(
 
 // Sign-in actions share the established farm launch identity middleware above.
 // The player identity and cycle are always resolved on the server.
+router.get("/farm/v2/activity", async (_req, res, next) => {
+  try {
+    const result = await pool.query("select farm_v2_rewards.activity($1,'status',null) as result", [String(res.locals.authenticatedUserId)]);
+    res.setHeader("Cache-Control", "no-store");
+    const data = result.rows[0]?.result ?? {status:"not_ready"};
+    res.status(data.status === "unverified_identity" ? 409 : 200).json(data);
+  } catch (error) { next(error); }
+});
+router.post("/farm/v2/activity/claim", async (req, res, next) => {
+  try {
+    const milestone = req.body?.milestone;
+    if (![30,60,100].includes(milestone)) {
+      res.status(400).json({error:"INVALID_ACTIVITY_MILESTONE"}); return;
+    }
+    const result = await pool.query("select farm_v2_rewards.activity($1,'claim',$2) as result", [String(res.locals.authenticatedUserId),milestone]);
+    res.setHeader("Cache-Control", "no-store");
+    res.json(result.rows[0]?.result ?? {status:"not_ready"});
+  } catch (error) { next(error); }
+});
+router.post("/farm/v2/activity/inspect", async (req, res, next) => {
+  try {
+    const kind = req.body?.kind;
+    if (kind !== "warehouse" && kind !== "pet") {
+      res.status(400).json({error:"INVALID_ACTIVITY_INSPECTION"}); return;
+    }
+    const result = await pool.query("select farm_v2_rewards.activity($1,$2,null) as result", [String(res.locals.authenticatedUserId),kind === "warehouse" ? "inspect_warehouse" : "inspect_pet"]);
+    res.setHeader("Cache-Control", "no-store");
+    res.json(result.rows[0]?.result ?? {status:"not_ready"});
+  } catch (error) { next(error); }
+});
+
 router.get("/farm/v2/signin", async (_req, res, next) => {
   try {
     const result = await pool.query(
@@ -608,3 +652,4 @@ router.post("/farm/v2/signin/:action", async (req, res, next) => {
 router.use("/farm/v2", farmV2ErrorHandler);
 
 export default router;
+

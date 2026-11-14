@@ -246,7 +246,22 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     if (!api) throw new Error("AUTH_REQUIRED");
     return api.readWallet();
   }, [api]);
+  const readDailyActivity = useCallback(() => {
+    if (!api) throw new Error("AUTH_REQUIRED");
+    return api.readDailyActivity();
+  }, [api]);
+  const claimDailyActivity = useCallback((milestone: number) => {
+    if (!api) throw new Error("AUTH_REQUIRED");
+    return api.claimDailyActivity(milestone);
+  }, [api]);
+  const inspectDailyActivity = useCallback((kind: "warehouse" | "pet") => {
+    if (!api) throw new Error("AUTH_REQUIRED");
+    return api.inspectDailyActivity(kind);
+  }, [api]);
   return {
+    readDailyActivity,
+    claimDailyActivity,
+    inspectDailyActivity,
     readSignIn: () => { if (!api) throw new Error("AUTH_REQUIRED"); return api.readSignIn(); },
     claimSignInToday: () => { if (!api) throw new Error("AUTH_REQUIRED"); return api.claimSignInToday(); },
     claimSignInMakeup: (day: number) => { if (!api) throw new Error("AUTH_REQUIRED"); return api.claimSignInMakeup(day); },
@@ -295,3 +310,4 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     reauthenticateUrl,
   };
 }
+

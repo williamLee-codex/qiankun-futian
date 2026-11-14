@@ -3,6 +3,7 @@ import { FarmCoinWallet } from "./FarmCoinWallet";
 import { farmV2ErrorMessage } from "./farmV2ErrorMessage";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
+import { FarmDailyActivityPanel } from "./FarmDailyActivityPanel";
 import { FarmSceneInteractionLayer } from "./FarmSceneInteractionLayer";
 import { workshopState } from "./workshopRuntime";
 import { mapServerLands } from "./farmV2SceneAdapter";
@@ -54,6 +55,9 @@ export function FarmV2AuthenticatedView(props: {
     readFriends,
     readWallet,
     readSignIn,
+    readDailyActivity,
+    claimDailyActivity,
+    inspectDailyActivity,
     claimSignInToday,
     claimSignInMakeup,
     claimSignInPerfect,
@@ -75,6 +79,15 @@ export function FarmV2AuthenticatedView(props: {
   const [warehouseTab, setWarehouseTab] = useState<"crops" | "items">("crops");
   const [visited, setVisited] = useState<FarmV2PublicCave | null>(null);
   const [panelTab, setPanelTab] = useState("盆栽");
+  const [activityNotice, setActivityNotice] = useState("");
+  function openPanel(tab: string) {
+    setPanelTab(tab);
+    setPanelOpen(true);
+    const inspection = tab === "福田倉庫" ? "warehouse" : tab === "靈寵" ? "pet" : null;
+    if (inspection && inspectDailyActivity) {
+      void inspectDailyActivity(inspection).then(() => setActivityNotice(""), () => setActivityNotice("每日活躍紀錄未更新，請重新開啟視窗重試"));
+    }
+  }
   const [panelOpen, setPanelOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
@@ -131,6 +144,7 @@ export function FarmV2AuthenticatedView(props: {
   }
 
   const signInMessages: Record<string,string> = {
+    recovery_required: "尚有未完成交易，請先重試原交易，再領取簽到獎勵",
     not_today: "今日尚未到簽到日期，或今天已完成簽到",
     already_signed: "該日已完成簽到",
     already_claimed: "獎勵已領取",
@@ -456,10 +470,7 @@ export function FarmV2AuthenticatedView(props: {
             : undefined
         }
         onPlotClick={handlePlotClick}
-        onSection={(tab) => {
-          setPanelTab(tab);
-          setPanelOpen(true);
-        }}
+        onSection={openPanel}
       />
       <button
         type="button"
@@ -556,7 +567,7 @@ export function FarmV2AuthenticatedView(props: {
           ) : (
             <FarmWorkshopPanel
               tab={panelTab}
-              onTabChange={setPanelTab}
+              onTabChange={openPanel}
               readFriends={readFriends}
               visitCave={async (id) => {
                 const view = await visitCave(id);
@@ -566,6 +577,7 @@ export function FarmV2AuthenticatedView(props: {
               readWallet={readWallet}
               warehouse={data.warehouse}
               missions={data.missions}
+              dailyActivity={<FarmDailyActivityPanel read={readDailyActivity} claim={claimDailyActivity} onReward={refresh} />}
               pets={data.pets}
               busy={busy || loading}
               transact={workshop}
@@ -586,15 +598,13 @@ export function FarmV2AuthenticatedView(props: {
         ].map((tab) => (
           <button
             key={tab}
-            onClick={() => {
-              setPanelTab(tab);
-              setPanelOpen(true);
-            }}
+            onClick={() => openPanel(tab)}
           >
             {tab}
           </button>
         ))}
       </nav>
+      {activityNotice && <p role="alert">{activityNotice}</p>}
       {pendingWorkshop.map((command, index) => (
         <button
           key={index}
@@ -803,3 +813,4 @@ export function FarmV2AuthenticatedView(props: {
     </section>
   );
 }
+

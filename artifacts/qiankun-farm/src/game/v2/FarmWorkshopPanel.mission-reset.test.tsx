@@ -17,3 +17,4 @@ it("does not offer yesterday's completed mission after Taipei 05:00", () => {
   expect(within(sow).getByRole("button", {name:"領取"}).hasAttribute("disabled")).toBe(true);
   expect(missions.progress.MISSION_D01.completed).toBe(true);
 });
+

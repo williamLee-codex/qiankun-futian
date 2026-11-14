@@ -13,6 +13,8 @@ export function farmV2ErrorMessage(code: string): string {
     )
   )
     return "登入已失效或未獲授權，請重新登入後查核原操作。";
+  if (code === "DAILY_ACTIVITY_REPLACED")
+    return "每日任務已更新，請在每日活躍頁面領取獎勵。";
   if (code === "MISSION_NOT_COMPLETE")
     return "任務尚未完成或已跨過重置時間，請更新農田確認當期進度；保留原請求紀錄。";
   if (code === "MISSION_ALREADY_CLAIMED")
@@ -38,3 +40,4 @@ export function farmV2ErrorMessage(code: string): string {
     return "操作資料不完整或不符合規則，請確認後再操作。";
   return "暫時無法確認操作結果，請稍後查核狀態。";
 }
+
