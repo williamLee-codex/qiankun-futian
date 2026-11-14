@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type DailyActivitySnapshot = {
-  status: string;
-  day: string;
-  points: number;
-  maximum: number;
-  tasks: { id: string; label: string; target: number; progress: number; complete: boolean }[];
-  milestones: { activity: number; reward: string; eligible: boolean; claimed: boolean }[];
-};
+import type { DailyActivitySnapshot } from "./dailyActivityTypes";
+
 
 export function FarmDailyActivityPanel(props: {
   read: () => Promise<DailyActivitySnapshot>;
