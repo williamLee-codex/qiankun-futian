@@ -1938,3 +1938,8 @@ body {
 .farm-v2-corner-tools>button{aspect-ratio:1/1!important;min-height:0!important;max-width:none!important;max-height:none!important;overflow:hidden;}
 .farm-v2-corner-tools>button>img,.farm-v2-corner-tools>button>.farm-v2-tool-fallback{width:100%!important;height:100%!important;aspect-ratio:1/1;min-height:0;object-fit:contain;}
 .farm-v2-corner-tools>button[hidden]{display:none!important;}
+
+/* The farm scene anchor includes the shared platform header in its layout.
+   Reserve the header's height so action icons never cover its navigation. */
+.farm-v2-corner-tools{top:clamp(82px,6.5vw,104px)!important;right:clamp(14px,2vw,30px)!important;gap:clamp(8px,.85vw,12px)!important;width:clamp(112px,12vw,156px)!important;}
+@media(max-width:600px){.farm-v2-corner-tools{top:78px!important;right:10px!important;width:108px!important;gap:6px!important;}}
