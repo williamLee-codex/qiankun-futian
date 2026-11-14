@@ -1924,3 +1924,10 @@ body {
 /* Visible accessible fallback until the approved transfer icon is committed. */
 .farm-v2-tool-fallback {display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;min-height:54px;border:2px solid #cda85a;border-radius:16px;background:linear-gradient(145deg,#47341d,#201b18);color:#ffe4a1;font-size:clamp(20px,3vw,34px);font-family:'Microsoft JhengHei',system-ui,sans-serif;line-height:1.1;}
 .farm-v2-tool-fallback small {font-size:clamp(10px,1.2vw,13px);font-weight:700;margin-top:4px;white-space:nowrap;}
+
+/* Farm V2 scene tool layout: keep controls inside the artwork, below the platform header. */
+.farm-v2-scene-tools-anchor{position:relative;isolation:isolate;width:100%;}
+.farm-v2-corner-tools{position:absolute;top:clamp(8px,1.2vw,16px);right:clamp(8px,1.2vw,16px);z-index:30;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(4px,.6vw,9px);width:clamp(110px,13vw,164px);align-items:start;}
+.farm-v2-corner-tools button{position:relative!important;inset:auto!important;top:auto!important;right:auto!important;left:auto!important;bottom:auto!important;display:flex;align-items:center;justify-content:center;width:100%!important;height:auto!important;min-width:0;aspect-ratio:1;padding:0!important;margin:0!important;border:0;background:transparent;cursor:pointer;}
+.farm-v2-corner-tools button img{display:block;width:100%;height:100%;object-fit:contain;}
+@media(max-width:600px){.farm-v2-corner-tools{width:110px;gap:4px;}}
