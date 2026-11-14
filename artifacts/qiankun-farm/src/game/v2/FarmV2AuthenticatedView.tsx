@@ -391,7 +391,6 @@ export function FarmV2AuthenticatedView(props: {
           {!signInData && !signInError && <p>正在讀取簽到資料…</p>}
         </DialogContent>
       </Dialog>
-      <button type="button" disabled={busy||loading} onClick={()=>void openSignIn()}>📅 30 日簽到</button>
       {data.localCoins && (
         <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
           <DialogContent style={{ background: "#12251f", color: "#f8f1df", border: "1px solid #bda365", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(32rem, calc(100vw - 2rem))", maxHeight: "calc(100dvh - 2rem)", overflowY: "auto", lineHeight: 1.6 }}>
@@ -451,6 +450,7 @@ export function FarmV2AuthenticatedView(props: {
         onSection={openPanel}
       />
       <div className="farm-v2-corner-tools" aria-label="福田右上角工具" >
+        <button type="button" className="farm-v2-signin-launcher" aria-label="開啟30日簽到" title="30日簽到" disabled={busy||loading} onClick={()=>void openSignIn()}><span className="farm-v2-tool-fallback" aria-hidden="true">📅<small>30日簽到</small></span></button>
         {data.localCoins && <button type="button" className="farm-v2-coin-launcher" aria-label="金幣轉換：中央與福田金幣轉入回存" title="金幣轉換" disabled={busy||loading} onClick={()=>setWalletOpen(true)}><span className="farm-v2-tool-fallback" aria-hidden="true">🪙<small>金幣轉換</small></span></button>}
         <button type="button" className="farm-v2-bag-launcher" aria-label="開啟乾坤寶囊" title="乾坤寶囊" disabled={busy||loading} onClick={()=>openPanel("乾坤寶囊")}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`} alt="乾坤寶囊" /></button>
       </div>
