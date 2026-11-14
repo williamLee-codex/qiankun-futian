@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FarmDailyActivityPanel, type DailyActivitySnapshot } from "./FarmDailyActivityPanel";
 afterEach(cleanup);
 const snapshot = (points=0,claimed=false): DailyActivitySnapshot => ({status:"ready",day:"2026-11-14",points,maximum:120,
@@ -26,4 +26,14 @@ it("fails closed when authoritative activity cannot be read",async()=>{
  render(<FarmDailyActivityPanel read={async()=>{throw new Error("offline")}} claim={vi.fn()} onReward={vi.fn()}/>);
  await screen.findByRole("alert");
  expect(screen.queryByRole("button",{name:"領取 30 活躍獎勵"})).toBeNull();
+});
+it("ignores a pending read from a replaced API session",async()=>{
+ let finish!: (value: DailyActivitySnapshot) => void;
+ const oldRead=()=>new Promise<DailyActivitySnapshot>(resolve=>{finish=resolve;});
+ const view=render(<FarmDailyActivityPanel read={oldRead} claim={vi.fn()} onReward={vi.fn()}/>);
+ view.rerender(<FarmDailyActivityPanel read={async()=>snapshot(120)} claim={vi.fn()} onReward={vi.fn()}/>);
+ await screen.findByText("120 / 120");
+ await act(async()=>finish(snapshot(0)));
+ expect(screen.getByText("120 / 120")).toBeTruthy();
+ expect(screen.queryByText("0 / 120")).toBeNull();
 });

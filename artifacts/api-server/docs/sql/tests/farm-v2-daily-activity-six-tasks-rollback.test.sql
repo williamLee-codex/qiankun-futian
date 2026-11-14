@@ -2,7 +2,7 @@
 BEGIN;
 DO $test$
 DECLARE u uuid:=gen_random_uuid(); f uuid:=gen_random_uuid(); uid text; initial jsonb; again jsonb; summary jsonb; assignment jsonb;
- n integer; task record; milestone integer; coins_before integer; coin_count integer; w_before jsonb; pots_before integer; sand_before integer; test_day date; bad jsonb; error_seen boolean;
+ n integer; task record; coins_before integer; coin_count integer; w_before jsonb; pots_before integer; sand_before integer; test_day date; bad jsonb; error_seen boolean;
 BEGIN
  uid:=u::text;
  ASSERT public.farm_v2_activity_day_key('2026-11-14T20:59:59.999Z'::timestamptz)='2026-11-14'::date,'Taiwan04:59 stays yesterday';

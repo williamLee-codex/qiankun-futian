@@ -281,11 +281,15 @@ router.get(
         launchToken: String(res.locals.launchToken),
         targetId: String(req.params.targetId),
       });
-    await pool.query(
-      "select farm_v2_rewards.activity_visit($1,$2) as result",
-      [String(res.locals.authenticatedUserId), String(req.params.targetId)],
-    );
-    res.json(view);
+    let activityRecorded = false;
+    try {
+      const recorded = await pool.query(
+        "select farm_v2_rewards.activity_visit($1,$2) as result",
+        [String(res.locals.authenticatedUserId), String(req.params.targetId)],
+      );
+      activityRecorded = recorded.rows[0]?.result?.status === "ready";
+    } catch { console.warn("FARM_ACTIVITY_VISIT_RECORD_FAILED"); }
+    res.json({...view, activityRecorded});
   }),
 );
 router.post(

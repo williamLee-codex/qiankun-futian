@@ -85,7 +85,7 @@ export function FarmV2AuthenticatedView(props: {
     setPanelOpen(true);
     const inspection = tab === "福田倉庫" ? "warehouse" : tab === "靈寵" ? "pet" : null;
     if (inspection && inspectDailyActivity) {
-      void inspectDailyActivity(inspection).then(() => setActivityNotice(""), () => setActivityNotice("每日活躍紀錄未更新，請重新開啟視窗重試"));
+      void inspectDailyActivity(inspection).then(result => setActivityNotice(result.status === "ready" ? "" : "尚未符合這項活躍任務條件"), () => setActivityNotice("每日活躍紀錄未更新，請重新開啟視窗重試"));
     }
   }
   const [panelOpen, setPanelOpen] = useState(false);
@@ -571,6 +571,7 @@ export function FarmV2AuthenticatedView(props: {
               readFriends={readFriends}
               visitCave={async (id) => {
                 const view = await visitCave(id);
+                if (view.activityRecorded === false) setActivityNotice("好友拜訪已完成，但活躍紀錄未更新，請重新拜訪重試");
                 setVisited(view);
                 return view;
               }}

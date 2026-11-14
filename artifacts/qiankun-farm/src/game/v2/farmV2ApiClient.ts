@@ -363,7 +363,7 @@ export function createFarmV2Api(input: {
     readFriends: () =>
       request<{ friends: { id: string }[] }>("farm/v2/friends", "GET"),
     visitCave: (id: string) =>
-      request<import("./publicCave").FarmV2PublicCave>(
+      request<import("./publicCave").FarmV2PublicCave & {activityRecorded?: boolean}>(
         `farm/v2/friends/${encodeURIComponent(id)}/cave`,
         "GET",
       ),
