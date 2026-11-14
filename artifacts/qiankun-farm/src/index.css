@@ -1931,3 +1931,10 @@ body {
 .farm-v2-corner-tools button{position:relative!important;inset:auto!important;top:auto!important;right:auto!important;left:auto!important;bottom:auto!important;display:flex;align-items:center;justify-content:center;width:100%!important;height:auto!important;min-width:0;aspect-ratio:1;padding:0!important;margin:0!important;border:0;background:transparent;cursor:pointer;}
 .farm-v2-corner-tools button img{display:block;width:100%;height:100%;object-fit:contain;}
 @media(max-width:600px){.farm-v2-corner-tools{width:110px;gap:4px;}}
+
+/* All visible scene action icons occupy identical cells. Removed/expired actions
+   must be omitted from DOM so CSS grid automatically compacts the remaining icons. */
+.farm-v2-corner-tools{grid-auto-flow:row;grid-auto-rows:auto;align-content:start;justify-items:stretch;}
+.farm-v2-corner-tools>button{aspect-ratio:1/1!important;min-height:0!important;max-width:none!important;max-height:none!important;overflow:hidden;}
+.farm-v2-corner-tools>button>img,.farm-v2-corner-tools>button>.farm-v2-tool-fallback{width:100%!important;height:100%!important;aspect-ratio:1/1;min-height:0;object-fit:contain;}
+.farm-v2-corner-tools>button[hidden]{display:none!important;}
