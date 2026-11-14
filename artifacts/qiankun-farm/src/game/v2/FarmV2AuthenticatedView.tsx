@@ -405,29 +405,6 @@ export function FarmV2AuthenticatedView(props: {
           </DialogContent>
         </Dialog>
       )}
-      {data.localCoins && (
-        <button
-          type="button"
-          aria-label="開啟福田金幣錢包，轉入或回存金幣"
-          onClick={() => setWalletOpen(true)}
-          disabled={busy || loading}
-          style={{
-            position: "fixed",
-            left: "max(12px, env(safe-area-inset-left, 12px))",
-            bottom: "max(16px, env(safe-area-inset-bottom, 16px))",
-            zIndex: 45,
-            padding: "10px 14px",
-            borderRadius: 12,
-            border: "1px solid #bda365",
-            background: "#12251f",
-            color: "#f8f1df",
-            fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif',
-            cursor: "pointer",
-          }}
-        >
-          🪙 福田金幣・轉入／回存
-        </button>
-      )}
       {flight && (
         <span
           aria-hidden="true"
@@ -472,42 +449,10 @@ export function FarmV2AuthenticatedView(props: {
         onPlotClick={handlePlotClick}
         onSection={openPanel}
       />
-      <button
-        type="button"
-        className="farm-v2-bag-launcher"
-        aria-label="開啟乾坤寶囊"
-        title="乾坤寶囊"
-        disabled={busy || loading}
-        onClick={() => {
-          setPanelTab("乾坤寶囊");
-          setPanelOpen(true);
-        }}
-        style={{
-          position: "fixed",
-          top: "max(12px, env(safe-area-inset-top, 12px))",
-          right: "max(12px, env(safe-area-inset-right, 12px))",
-          zIndex: 40,
-          width: "clamp(54px, 6vw, 78px)",
-          aspectRatio: "1",
-          padding: 0,
-          border: 0,
-          borderRadius: 16,
-          background: "transparent",
-          cursor: "pointer",
-          filter: "drop-shadow(0 4px 8px rgba(0,0,0,.55))",
-        }}
-      >
-        <img
-          src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`}
-          alt=""
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            display: "block",
-          }}
-        />
-      </button>
+      <div className="farm-v2-corner-tools" aria-label="福田右上角工具" style={{position:"absolute",top:"calc(100% - 1px)",right:0,zIndex:30,display:"grid",gridTemplateColumns:"repeat(2, minmax(0, 1fr))",gap:8}}>
+        {data.localCoins && <button type="button" className="farm-v2-coin-launcher" aria-label="金幣轉換：中央與福田金幣轉入回存" title="金幣轉換" disabled={busy||loading} onClick={()=>setWalletOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-transfer.webp`} alt="金幣轉換" /></button>}
+        <button type="button" className="farm-v2-bag-launcher" aria-label="開啟乾坤寶囊" title="乾坤寶囊" disabled={busy||loading} onClick={()=>openPanel("乾坤寶囊")}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`} alt="乾坤寶囊" /></button>
+      </div>
       {friendRetries}
       <Dialog open={panelOpen} onOpenChange={setPanelOpen}>
         <DialogContent
