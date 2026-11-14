@@ -507,3 +507,13 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
   outline-offset: 2px;
   border-radius: 50%;
 }
+
+/* Restore a visible display base for all six pots without replacing the scene artwork. */
+.farm-v2-canvas.exterior .farm-v2-platform-pot .farm-v2-approved-pedestal {
+  position:absolute;inset:28% 0 4%;display:block;pointer-events:none;
+  border-radius:50% / 35%;border:2px solid #f7cb69;
+  background:radial-gradient(ellipse at 50% 30%,#fff4ae 0%,#f2bd45 18%,#ae7530 52%,#534634 78%,#231e19 100%);
+  box-shadow:0 3px 0 #75572e,0 5px 0 #3b3129,0 6px 8px #171510a0,inset 0 0 0 3px #ffdb7d;
+}
+.farm-v2-canvas.exterior .farm-v2-platform-pot img {position:relative;z-index:1}
+.farm-v2-canvas.exterior .farm-v2-platform-pot small {position:relative;z-index:2}
