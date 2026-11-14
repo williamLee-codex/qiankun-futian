@@ -326,9 +326,9 @@ export function createFarmV2Api(input: {
       revoked = true;
       sessionPromise = null;
     },
-    readDailyActivity: () => request<import("./FarmDailyActivityPanel").DailyActivitySnapshot>("farm/v2/activity", "GET"),
-    claimDailyActivity: (milestone: number) => request<import("./FarmDailyActivityPanel").DailyActivitySnapshot>("farm/v2/activity/claim", "POST", {milestone}),
-    inspectDailyActivity: (kind: "warehouse" | "pet") => request<import("./FarmDailyActivityPanel").DailyActivitySnapshot>("farm/v2/activity/inspect", "POST", {kind}),
+    readDailyActivity: () => request<import("./dailyActivityTypes").DailyActivitySnapshot>("farm/v2/activity", "GET"),
+    claimDailyActivity: (milestone: number) => request<import("./dailyActivityTypes").DailyActivitySnapshot>("farm/v2/activity/claim", "POST", {milestone}),
+    inspectDailyActivity: (kind: "warehouse" | "pet") => request<import("./dailyActivityTypes").DailyActivitySnapshot>("farm/v2/activity/inspect", "POST", {kind}),
     readSignIn: () => request<import("../../signInBridge").SignInSnapshot>("farm/v2/signin", "GET"),
     claimSignInToday: () => request<{status:string}>("farm/v2/signin/claim", "POST", {}),
     claimSignInMakeup: (cycleDay: number) =>
