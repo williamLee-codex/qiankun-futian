@@ -415,6 +415,7 @@ export function FarmV2AuthenticatedView(props: {
           {flight.icon}
         </span>
       )}
+      <div className="farm-v2-scene-tools-anchor">
       <FarmSceneInteractionLayer
         warehouseTargetRef={warehouseButton}
         plots={data.plots}
@@ -449,9 +450,10 @@ export function FarmV2AuthenticatedView(props: {
         onPlotClick={handlePlotClick}
         onSection={openPanel}
       />
-      <div className="farm-v2-corner-tools" aria-label="福田右上角工具" style={{position:"absolute",top:"calc(100% - 1px)",right:0,zIndex:30,display:"grid",gridTemplateColumns:"repeat(2, minmax(0, 1fr))",gap:8}}>
+      <div className="farm-v2-corner-tools" aria-label="福田右上角工具" >
         {data.localCoins && <button type="button" className="farm-v2-coin-launcher" aria-label="金幣轉換：中央與福田金幣轉入回存" title="金幣轉換" disabled={busy||loading} onClick={()=>setWalletOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-transfer.webp`} alt="金幣轉換" /></button>}
         <button type="button" className="farm-v2-bag-launcher" aria-label="開啟乾坤寶囊" title="乾坤寶囊" disabled={busy||loading} onClick={()=>openPanel("乾坤寶囊")}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`} alt="乾坤寶囊" /></button>
+      </div>
       </div>
       {friendRetries}
       <Dialog open={panelOpen} onOpenChange={setPanelOpen}>
