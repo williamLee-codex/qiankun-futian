@@ -492,3 +492,18 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
   border: 1px solid #e6cb8c88;
   background: #d0bc91;
 }
+
+/* The illustrated stone platform is the visual pedestal. Empty slots are
+   transparent, accessible hit areas; do not paint six artificial ovals. */
+.farm-v2-canvas.exterior .farm-v2-platform-pot:not(:has(img)),
+.farm-v2-canvas.exterior .farm-v2-platform-pot:not(:has(img)):hover {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+.farm-v2-canvas.exterior .farm-v2-platform-pot:not(:has(img)):focus-visible {
+  outline: 2px solid #f0d892;
+  outline-offset: 2px;
+  border-radius: 50%;
+}
