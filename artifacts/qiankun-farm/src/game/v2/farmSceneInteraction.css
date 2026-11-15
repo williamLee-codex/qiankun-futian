@@ -508,12 +508,33 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
   border-radius: 50%;
 }
 
-/* Restore a visible display base for all six pots without replacing the scene artwork. */
+/* User-approved transparent flower platform. Keep the six original hit areas
+   and synthesis behavior; only the decorative base is replaced. */
 .farm-v2-canvas.exterior .farm-v2-platform-pot .farm-v2-approved-pedestal {
-  position:absolute;inset:28% 0 4%;display:block;pointer-events:none;
-  border-radius:50% / 35%;border:2px solid #f7cb69;
-  background:radial-gradient(ellipse at 50% 30%,#fff4ae 0%,#f2bd45 18%,#ae7530 52%,#534634 78%,#231e19 100%);
-  box-shadow:0 3px 0 #75572e,0 5px 0 #3b3129,0 6px 8px #171510a0,inset 0 0 0 3px #ffdb7d;
+  position:absolute;
+  inset:-30% -20% -18%;
+  display:block;
+  pointer-events:none;
+  border:0;
+  border-radius:0;
+  background-color:transparent;
+  background-size:contain;
+  background-repeat:no-repeat;
+  background-position:center;
+  box-shadow:none;
+  filter:drop-shadow(0 3px 4px rgba(0,0,0,.35));
+}
+/* The authenticated platform supplies the canonical account, balance and
+   navigation header outside the embedded game frame. Keep cave exit visible. */
+.farm-v2-interaction.embedded > header {display:none;}
+.farm-v2-interaction.embedded.cave-open > header {
+  display:flex;
+  padding:8px 12px;
+}
+.farm-v2-interaction.embedded > header .farm-v2-platform-home,
+.farm-v2-interaction.embedded > header .farm-v2-shared-nav,
+.farm-v2-interaction.embedded > header .farm-v2-mobile-nav {
+  display:none!important;
 }
 .farm-v2-canvas.exterior .farm-v2-platform-pot img {position:relative;z-index:1}
 .farm-v2-canvas.exterior .farm-v2-platform-pot small {position:relative;z-index:2}
