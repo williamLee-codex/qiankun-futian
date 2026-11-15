@@ -1941,4 +1941,4 @@ body {
 
 /* Scene tool anchor starts below the scene's own navigation header; do not offset twice. */
 .farm-v2-corner-tools{top:clamp(8px,1.2vw,16px)!important;right:clamp(14px,2vw,30px)!important;gap:clamp(8px,.85vw,12px)!important;width:clamp(112px,12vw,156px)!important;}
-@media(max-width:600px){.farm-v2-corner-tools{top:78px!important;right:10px!important;width:108px!important;gap:6px!important;}}
+@media(max-width:600px){.farm-v2-corner-tools{top:8px!important;right:10px!important;width:108px!important;gap:6px!important;}}
