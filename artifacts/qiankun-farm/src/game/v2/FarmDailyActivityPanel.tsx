@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { DailyActivitySnapshot } from "./dailyActivityTypes";
+export type { DailyActivitySnapshot } from "./dailyActivityTypes";
 
 
 export function FarmDailyActivityPanel(props: {
