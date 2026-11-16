@@ -47,7 +47,7 @@ export const SCENE_LAYOUTS = {
       region(62.6, 60.5, 18.4, 10.3),
     ],
     cave: region(44.8, 12.4, 21.8, 12.2),
-    pots: [region(34, 28.1, 7, 7), region(38.5, 28.7, 7, 7), region(43, 29.1, 7, 7), region(56, 29.1, 7, 7), region(60.5, 28.7, 7, 7), region(65, 28.1, 7, 7)],
+    pots: [region(34, 32.1, 7, 7), region(38.5, 32.7, 7, 7), region(43, 33.1, 7, 7), region(56, 33.1, 7, 7), region(60.5, 32.7, 7, 7), region(65, 32.1, 7, 7)],
     potEntry: region(68.4, 23.7, 6.2, 5.8),
     pets: [
       region(5.5, 35.7, 10.5, 4.3),
