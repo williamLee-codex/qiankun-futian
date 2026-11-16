@@ -39,6 +39,61 @@ export const FIRST_PURCHASE_PLANS = {
   },
 } as const;
 
+/** First-purchase accounting contract. A, B and C may each be bought once, independently. */
+export const FIRST_PURCHASE_ACCOUNTING = {
+  planPurchaseLimitPerAccount: 1,
+  purchaseOrderIndependent: true,
+  baseCrystalsCredit: 'payment_confirmed',
+  baseCrystalsCountTowardPaidMilestones: true,
+  bonusCrystalsLedgerType: 'gift_crystals',
+  bonusCrystalsCountTowardPaidMilestones: false,
+  bonusDays: [1, 2, 3],
+  dayOneAvailable: 'payment_confirmed',
+  nextDayBoundary: 'Asia/Taipei 05:00',
+  unclaimedGiftsExpire: false,
+} as const;
+
+/** Day-one to day-three claimable bonuses; base crystals are NOT included here. */
+export const FIRST_PURCHASE_DAILY_GIFTS: Record<keyof typeof FIRST_PURCHASE_PLANS, readonly (readonly Reward[])[]> = {
+  A: [
+    [reward('gift_crystals',20), reward('spirit_sand',6), reward('random_mystic_pot',1)],
+    [reward('gift_crystals',20), reward('jade_marrow',3), reward('double_harvest',4)],
+    [reward('gift_crystals',20), reward('double_harvest',4), reward('random_earth_pot',1)],
+  ],
+  B: [
+    [reward('gift_crystals',60), reward('spirit_sand',18), reward('random_heaven_pot_distinct',1)],
+    [reward('gift_crystals',60), reward('jade_marrow',9), reward('double_harvest',12)],
+    [reward('gift_crystals',60), reward('double_harvest',12), reward('random_heaven_pot_distinct',1)],
+  ],
+  C: [
+    [reward('gift_crystals',120), reward('spirit_sand',36), reward('random_sacred_pot_distinct',1)],
+    [reward('gift_crystals',120), reward('jade_marrow',18), reward('double_harvest',24)],
+    [reward('gift_crystals',120), reward('double_harvest',24), reward('random_sacred_pot_distinct',1)],
+  ],
+};
+
+/** Paid milestones use purchased base crystals only, never gifted crystals. */
+export const PAID_CRYSTAL_MILESTONES = {
+  field4: 100, field5: 300, field6: 600, divinePet: 799, dedicatedFarmer: 999,
+} as const;
+
+for (const planId of Object.keys(FIRST_PURCHASE_PLANS) as (keyof typeof FIRST_PURCHASE_PLANS)[]) {
+  const plan = FIRST_PURCHASE_PLANS[planId];
+  const days = FIRST_PURCHASE_DAILY_GIFTS[planId];
+  if (days.length !== 3 || days.reduce((sum, gifts) => sum + gifts.filter(g => g.item === 'gift_crystals').reduce((n,g) => n + g.quantity,0),0) !== plan.bonusCrystals) {
+    throw new Error('INVALID_FIRST_PURCHASE_BONUS_DISTRIBUTION');
+  }
+  const totals = new Map<string,number>();
+  for (const gift of days.flat()) {
+    if (gift.item !== 'gift_crystals') totals.set(gift.item, (totals.get(gift.item) ?? 0) + gift.quantity);
+  }
+  for (const gift of plan.gifts) {
+    if (totals.get(gift.item) !== gift.quantity) throw new Error('INVALID_FIRST_PURCHASE_GIFT_TOTAL');
+    totals.delete(gift.item);
+  }
+  if (totals.size) throw new Error('UNEXPECTED_FIRST_PURCHASE_GIFT');
+}
+
 export const DAILY_ACTIVITY = {
   resetHourTaipei: 5,
   tasksPerDay: 6,
