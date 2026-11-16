@@ -359,31 +359,31 @@ export function FarmV2AuthenticatedView(props: {
       style={{ maxWidth: 1200, margin: "0 auto" }}
     >
       <Dialog open={signInOpen} onOpenChange={setSignInOpen}>
-        <DialogContent style={{maxHeight:"85dvh",overflowY:"auto",background:"#12251f",color:"#f8f1df"}}>
+        <DialogContent style={{maxHeight:"min(80dvh,760px)",overflowY:"auto",background:"#12251f",color:"#f8f1df",width:"min(820px,96vw)",maxWidth:"96vw",top:"calc(50% - 50px)"}}>
           <DialogTitle>30 日簽到</DialogTitle>
-          <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-panel.png`} alt="30 日簽到正式美術" style={{display:"block",width:"100%",height:"auto",maxHeight:220,objectFit:"contain"}} />
-          <p>補簽可領回當日獎勵，並計入全勤；每日以台灣時間 05:00 換日。</p>
+          <div style={{position:"relative",width:"100%",maxWidth:760,margin:"0 auto"}}>
+            <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-panel.png`} alt="30 日簽到日曆，點選當日格子簽到或補簽" style={{display:"block",width:"100%",height:"auto"}} />
+            {signInData && signInRewards.map((_,i)=>{
+              const day=i+1;
+              const signed=signInData.signedDays?.includes(day)??false;
+              const makeup=signInData.makeupDays?.includes(day)??false;
+              const today=day===signInData.cycleDay && signInData.todayClaimable;
+              const canMakeup=day===signInData.nextMakeupDay && signInData.makeupClaimable && signInData.nextMakeupRewardSupported!==false;
+              const active=!signInBusy && !signed && (today||canMakeup);
+              const column=i%6,row=Math.floor(i/6);
+              return <button type="button" key={day}
+                aria-label={`第${day}天：${signed?"已簽到":today?"領取今日簽到":canMakeup?"補簽":"尚未可領取"}`}
+                title={`第${day}天 ${signed?"已簽到":today?"點擊簽到":canMakeup?"點擊補簽":"尚未開放"}`}
+                disabled={!active}
+                onClick={()=>void runSignInAction(today?claimSignInToday:()=>claimSignInMakeup(day))}
+                style={{position:"absolute",left:`${6.3+column*11.45}%`,top:`${15.3+row*13.0}%`,width:"10.7%",height:"12.3%",border:active?"2px solid #ffe17b":"none",borderRadius:4,background:active?"#ffd25b22":"transparent",cursor:active?"pointer":"default",padding:0}}>
+                {(signed||makeup)&&<span aria-hidden="true" style={{position:"absolute",inset:0,display:"grid",placeItems:"center",fontSize:"clamp(20px,3vw,42px)",fontWeight:900,color:"#e71923",textShadow:"1px 2px 0 #ffcf4c,-1px -1px 0 #ffcf4c"}}>✕</span>}
+              </button>;
+            })}
+          </div>
+          <p style={{fontSize:13}}>補簽計入全勤，每日台灣時間 05:00 換日。點選大圖中的當日格子即可簽到；可補簽日期直接點選補簽。</p>
           {signInData && <>
-            <p>第 {signInData.cycleNumber} 輪，第 {signInData.cycleDay} 天；補簽額度 {signInData.makeupCreditsAvailable ?? 0}</p>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:6}}>
-              {signInRewards.map((reward,i)=>{
-                const day=i+1;
-                const madeUp=signInData.makeupDays?.includes(day)??false;
-                const claimed=signInData.signedDays?.includes(day)??false;
-                return <div key={day}
-                  style={{padding:"7px 4px",border:"1px solid #bda365",borderRadius:5,textAlign:"center",background:claimed?"#335b42":"transparent",minHeight:70}}
-                  aria-label={`第${day}天，${madeUp?"已補簽":claimed?"已簽到":"未簽到"}，${reward}`}>
-                  <strong>第 {day} 天 {madeUp?"補":claimed?"✓":""}</strong>
-                  <div style={{fontSize:12,marginTop:4,overflowWrap:"anywhere"}}>{reward}</div>
-                </div>;
-              })}
-            </div>
-            <button type="button" disabled={signInBusy||!signInData.todayClaimable}
-              onClick={()=>void runSignInAction(claimSignInToday)}>領取今日簽到</button>
-            <button type="button" disabled={signInBusy||!signInData.makeupClaimable||signInData.nextMakeupDay==null||signInData.nextMakeupRewardSupported===false}
-              onClick={()=>void runSignInAction(()=>claimSignInMakeup(signInData.nextMakeupDay!))}>
-              補簽第 {signInData.nextMakeupDay ?? "—"} 天
-            </button>
+            <p style={{fontSize:13}}>第 {signInData.cycleNumber} 輪，第 {signInData.cycleDay} 天；補簽額度 {signInData.makeupCreditsAvailable ?? 0}</p>
             <p>全勤獎勵：徽章 ×1、水晶 ×3、金幣 ×200、蘊靈砂 ×2、九霄玉髓 ×2</p>
             {signInData.pendingPerfectCycle != null &&
               signInData.pendingPerfectCycle !== signInData.cycleNumber &&
