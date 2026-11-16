@@ -63,3 +63,15 @@
 .farm-v2-operation-dialog .pot-result-image{height:100%;min-height:0;max-height:100%;align-self:stretch}
 .farm-v2-operation-dialog .pot-recipe-info{max-height:100%;min-height:0;overflow:auto;justify-content:safe center}
 }
+
+/* The display control is independent of the large recipe panel. */
+.pot-recipe-column{display:flex;flex-direction:column;min-width:0;gap:6px}
+.pot-recipe-column>.pot-placement-action{display:flex;align-items:center;gap:10px;min-height:36px}
+.pot-recipe-column>.pot-placement-action>button{flex:none;min-width:126px;min-height:36px;padding:6px 12px;border:1px solid #d3b76c;border-radius:7px;background:#b99c50;color:#17251d;font-weight:700}
+.pot-recipe-column>.pot-placement-action>button:disabled{background:#454a44;color:#999f95;border-color:#697069;opacity:.7;cursor:not-allowed}
+.pot-recipe-column>.pot-placement-action>small{font-size:12px;line-height:1.3;color:#c7d2c3}
+.pot-recipe-column>.pot-placement-action>p{font-size:12px}
+@media(min-width:761px){
+.farm-v2-operation-dialog .pot-recipe-column{height:calc(41px + var(--pot-row) * 7)}
+.farm-v2-operation-dialog .pot-recipe-column>.pot-recipe{height:calc(100% - 42px);min-height:0}
+}
