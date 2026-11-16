@@ -83,7 +83,7 @@ export function FarmWorkshopPanel(props: {
                 {([["蘊靈砂",state.materials.蘊靈砂 ?? 0],["九霄玉髓",state.materials.九霄玉髓 ?? 0]] as const).map(([name,count])=>(
                   <div role="listitem" key={name} style={{minHeight:100,border:"1px solid #a98c52",borderRadius:9,background:"linear-gradient(145deg,#284336,#152c23)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",padding:8}}>
                     <span style={{fontSize:13,color:"#f1dca4",textAlign:"center"}}>{name}</span>
-                    <span style={{fontSize:30,lineHeight:1.2,color:"#f1dca4"}} aria-hidden="true">◇</span>
+                    <span style={{fontSize:12,lineHeight:1.2,color:"#b3c2b4"}} aria-hidden="true">物品</span>
                     <strong style={{alignSelf:"flex-end",color:"#fff1c2"}}>×{count}</strong>
                   </div>
                 ))}
