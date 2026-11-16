@@ -96,6 +96,13 @@ export function PotSynthesisGrid(props: {
       <aside className={`pot-recipe ${stage === "working" ? "working" : ""}`} aria-label="選中配方">
         <img className="pot-result-image" src={imageFor(selected)} alt={`${land.cropName}${selected.level ? grade + "階盆栽" : "靈植"}`} width="128" height="192"/>
         <div className="pot-recipe-info"><h4>{land.cropName} · {selected.level ? grade + "階盆栽" : "靈植"}</h4>
+          <div className="pot-placement-action">
+            <button type="button" disabled={!selectedOwnedPot || !inventoryAvailable || props.busy || placementPending || stage === "working" || stage === "failed"} onClick={() => selectedOwnedPot && void changePlacement(selectedOwnedPot)}>
+              {placementPending ? "處理中…" : selectedOwnedPot?.displayed ? "取下盆栽" : "展示盆栽"}
+            </button>
+            <small>{selectedOwnedPot ? selectedOwnedPot.displayed ? "此盆栽目前展示中" : "按下後將此盆栽展示於洞府可用位置" : selected.level === 0 ? "靈植不能展示，請選擇已持有的盆栽" : "尚未持有此款盆栽，合成後即可展示"}</small>
+            {placementStatus && <p role="status" aria-live="polite">{placementStatus}</p>}
+          </div>
         {selected.level === 0 ? <>
           <p>持有 {props.warehouse.crops[selected.species]} 株靈植</p>
           <div className="pot-effects"><strong>來源與用途</strong>
@@ -113,13 +120,6 @@ export function PotSynthesisGrid(props: {
           <p>{yellowReady ? "黃階所需材料與金幣齊全" : "黃階尚缺上方標示的材料或金幣"}</p>
           <button type="button" onClick={() => select({ ...selected, level: 1 })}>查看黃階合成配方</button>
         </> : <>
-          <div className="pot-placement-action">
-            <button type="button" disabled={!selectedOwnedPot || !inventoryAvailable || props.busy || placementPending || stage === "working" || stage === "failed"} onClick={() => selectedOwnedPot && void changePlacement(selectedOwnedPot)}>
-              {placementPending ? "處理中…" : selectedOwnedPot?.displayed ? "取下盆栽" : "展示盆栽"}
-            </button>
-            <small>{selectedOwnedPot ? selectedOwnedPot.displayed ? "此盆栽目前展示中" : "按下後將此盆栽展示於洞府可用位置" : "尚未持有此款盆栽，合成後即可展示"}</small>
-            {placementStatus && <p role="status" aria-live="polite">{placementStatus}</p>}
-          </div>
           <div className="pot-effects" aria-label="盆栽作用">
             <strong>盆栽作用（展示後生效）</strong>
             <p>靈韻 +{potDisplayBonus(selected.species, grade)} · 好友上限 +{potDisplayBonus(selected.species, grade)}</p>
