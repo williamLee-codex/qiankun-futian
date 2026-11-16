@@ -91,6 +91,13 @@ export function FarmV2AuthenticatedView(props: {
     }
   }
   const [panelOpen, setPanelOpen] = useState(false);
+  useEffect(() => {
+    if (window.parent === window) return;
+    const notify = (visible: boolean) => window.parent.postMessage({ type: "qiankun-farm-v2:pot-synthesis-open", visible }, window.location.origin);
+    notify(panelOpen && panelTab === "盆栽");
+    return () => notify(false);
+  }, [panelOpen, panelTab]);
+
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedLand, setSelectedLand] = useState<number | null>(null);
   const [buySeedsOnOpen, setBuySeedsOnOpen] = useState(false);
