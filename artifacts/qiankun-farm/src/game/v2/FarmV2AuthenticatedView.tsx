@@ -467,7 +467,7 @@ export function FarmV2AuthenticatedView(props: {
         onSection={openPanel}
       />
       <div className="farm-v2-corner-tools" aria-label="福田右上角工具" >
-        {data.localCoins && <button type="button" className="farm-v2-coin-launcher" aria-label="金幣轉換：中央與福田金幣轉入回存" title="金幣轉換" disabled={busy||loading} onClick={()=>setWalletOpen(true)}><span className="farm-v2-tool-fallback" aria-hidden="true">🌾<small>中央</small></span></button>}
+        {data.localCoins && <button type="button" className="farm-v2-coin-launcher" aria-label="金幣轉換：中央與福田金幣轉入回存" title="金幣轉換" disabled={busy||loading} onClick={()=>setWalletOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-transfer-icon.png`} alt="金幣轉換" /></button>}
         <button type="button" className="farm-v2-bag-launcher" aria-label="開啟乾坤寶囊" title="乾坤寶囊" disabled={busy||loading} onClick={()=>openPanel("乾坤寶囊")}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`} alt="乾坤寶囊" /></button>
         <button type="button" className="farm-v2-signin-launcher" aria-label="開啟30日簽到" title="30日簽到" disabled={busy||loading} onClick={()=>void openSignIn()}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-icon.png`} alt="30日簽到" /></button>
         <button type="button" className="farm-v2-newcomer-launcher" aria-label="查看新手六倍公告" title="新手六倍" onClick={()=>setNewcomerNoticeOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/newcomer-6x-icon.png`} alt="新手六倍" /></button>
