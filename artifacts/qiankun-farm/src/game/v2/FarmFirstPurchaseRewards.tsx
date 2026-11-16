@@ -5,7 +5,7 @@ type Status={plans:{plan_id:Plan;paid_at:string;purchased_crystals:number;bonus_
 const plans:[Plan,string,number][]=[["A","NT$390",20],["B","NT$990",60],["C","NT$1,790",120]];
 function availableDay(paidAt:string){
  const day=(iso:string)=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Taipei",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",hourCycle:"h23"}).formatToParts(new Date(iso));
- const rewardDate=(iso:string)=>{const d=new Date(iso);d.setUTCHours(d.getUTCHours()-5);const parts=day(d.toISOString());const value=(key:string)=>parts.find(p=>p.type===key)?.value??"0";return Date.UTC(Number(value("year")),Number(value("month"))-1,Number(value("day")));};
+ const rewardDate=(iso:string)=>{const parts=day(iso);const value=(key:string)=>parts.find(p=>p.type===key)?.value??"0";return Date.UTC(Number(value("year")),Number(value("month"))-1,Number(value("day")))-(Number(value("hour"))<5?86400000:0);};
  if(Date.now()<Date.parse(paidAt))return 0;
  return Math.min(3,1+Math.floor((rewardDate(new Date().toISOString())-rewardDate(paidAt))/86400000));
 }
@@ -16,7 +16,7 @@ export function FarmFirstPurchaseRewards({apiBaseUrl,launchToken}:{apiBaseUrl:st
  useEffect(()=>{void refresh();},[api]);
  async function claim(planId:Plan,day:1|2|3){
   if(busy)return;setBusy(true);
-  try{const result=await api.claimFirstPurchase(planId,day);setMessage(result.status==="claimed"?"領取成功":"領取結果："+result.status);await refresh();}
+  try{const result=await api.claimFirstPurchase(planId,day);await refresh();setMessage(result.status==="claimed"?"領取成功":"領取結果："+result.status);}
   catch{setMessage("領取未確認，請重新查詢後再試，系統不會重複發獎");}
   finally{setBusy(false);}
  }
