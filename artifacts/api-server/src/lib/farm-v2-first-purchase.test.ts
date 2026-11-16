@@ -1,5 +1,5 @@
 import { beforeEach,describe,expect,it,vi } from "vitest";
-const fetchMock=vi.fn();
+const {fetchMock}=vi.hoisted(()=>({fetchMock:vi.fn()}));
 vi.mock("./farm-v2-platform-fetch",()=>({farmV2PlatformFetch:fetchMock}));
 vi.mock("./farm-v2-platform",()=>({
  farmV2PlatformConnection:()=>({base:new URL("https://platform.example"),secret:"server-only"}),
