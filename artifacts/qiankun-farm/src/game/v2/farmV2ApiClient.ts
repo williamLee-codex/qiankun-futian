@@ -382,6 +382,9 @@ export function createFarmV2Api(input: {
       if (!Number.isInteger(original.landId) || original.landId < 1 || original.landId > 5 || !Number.isSafeInteger(original.packs) || original.packs <= 0 || original.packs > 2147483647 || !/^[A-Za-z0-9._:-]{1,120}$/.test(original.requestId)) throw new Error("INVALID_FARM_SEED_RECOVERY");
       return request<unknown>(`farm/v2/seeds/${original.landId}/purchase?snapshot=1`,"POST",{packs:original.packs},false,original.requestId);
     },
+    readFirstPurchase: () => request<{plans:{plan_id:"A"|"B"|"C";paid_at:string;purchased_crystals:number;bonus_crystals_total:number}[];claimedDays:{plan_id:string;claim_day:number}[]}>("farm/v2/first-purchase","GET"),
+    claimFirstPurchase: (planId:"A"|"B"|"C",day:1|2|3) =>
+      request<{status:string}>("farm/v2/first-purchase/claim","POST",{planId,day}),
     readWallet: () => request<FarmCoinBalances>("farm/v2/wallet", "GET"),
     pendingTransfers,
     transferCoins: async (direction: "in" | "out", amount: number) => {
