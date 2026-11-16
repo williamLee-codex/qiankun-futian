@@ -363,6 +363,16 @@ export function FarmV2AuthenticatedView(props: {
           <DialogTitle>30 日簽到</DialogTitle>
           <div style={{position:"relative",width:"100%",maxWidth:760,margin:"0 auto"}}>
             <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-panel.png`} alt="30 日簽到日曆，點選當日格子簽到或補簽" style={{display:"block",width:"100%",height:"auto"}} />
+            {signInData && <>
+              <button type="button" aria-label="簽到" title={signInData.todayClaimable?"領取今日簽到":"今日已簽到或尚未開放"}
+                disabled={signInBusy||!signInData.todayClaimable}
+                onClick={()=>void runSignInAction(claimSignInToday)}
+                style={{position:"absolute",left:"58%",top:"82%",width:"19%",height:"15%",background:"transparent",border:0,cursor:signInData.todayClaimable?"pointer":"default"}} />
+              <button type="button" aria-label="補簽" title={signInData.makeupClaimable?"補簽下一個漏簽日期":"目前無法補簽"}
+                disabled={signInBusy||!signInData.makeupClaimable||signInData.nextMakeupDay==null||signInData.nextMakeupRewardSupported===false}
+                onClick={()=>void runSignInAction(()=>claimSignInMakeup(signInData.nextMakeupDay!))}
+                style={{position:"absolute",left:"78%",top:"82%",width:"19%",height:"15%",background:"transparent",border:0,cursor:signInData.makeupClaimable?"pointer":"default"}} />
+            </>}
             {signInData && signInRewards.map((_,i)=>{
               const day=i+1;
               const signed=signInData.signedDays?.includes(day)??false;
