@@ -79,16 +79,21 @@ export function FarmWorkshopPanel(props: {
           <section aria-label="乾坤寶囊分類物品">
             {!bagInventoryAvailable && <p role="alert">伺服器尚未提供乾坤寶囊庫存，無法確認物品數量；已停止寶囊操作。</p>}
             {bagInventoryAvailable && bagCategory === "材料" && (
-              <>
-                <p>蘊靈砂：{state.materials.蘊靈砂 ?? 0}</p>
-                <p>九霄玉髓：{state.materials.九霄玉髓 ?? 0}</p>
-              </>
+              <div role="list" aria-label="材料背包格子" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(94px,1fr))",gap:10,padding:"12px 0"}}>
+                {([["蘊靈砂",state.materials.蘊靈砂 ?? 0],["九霄玉髓",state.materials.九霄玉髓 ?? 0]] as const).map(([name,count])=>(
+                  <div role="listitem" key={name} style={{minHeight:100,border:"1px solid #a98c52",borderRadius:9,background:"linear-gradient(145deg,#284336,#152c23)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",padding:8}}>
+                    <span style={{fontSize:13,color:"#f1dca4",textAlign:"center"}}>{name}</span>
+                    <span style={{fontSize:30,lineHeight:1.2,color:"#f1dca4"}} aria-hidden="true">◇</span>
+                    <strong style={{alignSelf:"flex-end",color:"#fff1c2"}}>×{count}</strong>
+                  </div>
+                ))}
+              </div>
             )}
             {bagInventoryAvailable && bagCategory === "碎片" && <p>碎片庫存尚未接入。</p>}
             {bagInventoryAvailable && bagCategory === "傢俱" && <p>傢俱系統預定於下一版本開放，本版不提供傢俱操作。</p>}
             {bagInventoryAvailable && bagCategory === "外型" && <p>外型與稱號庫存尚未接入。</p>}
             {bagCategory === "盆栽" && <p>36 種盆栽的持有數量與合成操作統一在「盆栽合成」介面查看，不另設寶囊盆栽庫存。<button type="button" onClick={() => (props.onTabChange ?? setLocalTab)("盆栽")}>前往盆栽合成</button></p>}
-            {bagInventoryAvailable && bagCategory === "其他" && <p>靈獸飼料：{state.petFood ?? 0}</p>}
+            {bagInventoryAvailable && bagCategory === "其他" && <div role="list" aria-label="其他物品格子" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(94px,1fr))",gap:10,padding:"12px 0"}}><div role="listitem" style={{minHeight:100,border:"1px solid #a98c52",borderRadius:9,background:"#1b342a",padding:8,display:"flex",flexDirection:"column",justifyContent:"space-between"}}><span>靈獸飼料</span><strong style={{textAlign:"right"}}>×{state.petFood ?? 0}</strong></div></div>}
           </section>
         )}
         {tab === "盆栽" && <PotSynthesisGrid warehouse={props.warehouse} busy={props.busy} readWallet={props.readWallet ?? unavailableWallet} transact={props.transact} />}
