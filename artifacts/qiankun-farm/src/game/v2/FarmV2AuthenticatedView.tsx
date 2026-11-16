@@ -1,5 +1,6 @@
 import type { FarmSeedRecovery } from "./farmV2ApiClient";
 import { FarmCoinWallet } from "./FarmCoinWallet";
+import { FarmFirstPurchaseRewards } from "./FarmFirstPurchaseRewards";
 import { farmV2ErrorMessage } from "./farmV2ErrorMessage";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
@@ -426,6 +427,7 @@ export function FarmV2AuthenticatedView(props: {
              {[0,1,2].map(i=><a key={i} href="/top-up" target="_top" aria-label={`前往儲值，第${i+1}方案`} style={{position:"absolute",left:`${7.5+i*30.5}%`,top:"82%",width:"25%",height:"14%",borderRadius:20,background:"transparent"}} />)}
            </div>
           <p>獎勵是否符合領取資格，以正式儲值與伺服器紀錄為準。</p>
+          <FarmFirstPurchaseRewards apiBaseUrl={props.apiBaseUrl} launchToken={props.launchToken} />
         </DialogContent>
       </Dialog>
       {data.localCoins && (
