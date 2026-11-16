@@ -31,6 +31,7 @@ import { purchaseFarmV2SeedPacks as rawpurchaseFarmV2SeedPacks } from "../lib/fa
 import { exchangeFarmV2Crops as rawexchangeFarmV2Crops } from "../lib/farm-v2-crop-exchange";
 import { reconcileFarmV2PaidAccessFromCore as rawreconcileFarmV2PaidAccessFromCore } from "../lib/farm-v2-paid-access";
 import { requestFarmV2PlatformSession } from "../lib/farm-v2-platform";
+import { farmFirstPurchasePlatformRequest } from "../lib/farm-v2-first-purchase";
 
 const sowFarmV2Land = timeFarmV2Function("domain_sow", rawsowFarmV2Land);
 const harvestFarmV2Land = timeFarmV2Function(
@@ -172,6 +173,25 @@ router.post("/farm/v2/session", async (req, res, next) => {
 });
 
 router.use("/farm/v2", requireFarmV2LaunchIdentity);
+router.get("/farm/v2/first-purchase", async (_req,res,next) => {
+ try {
+  const result=await farmFirstPurchasePlatformRequest(String(res.locals.launchToken),"status");
+  res.setHeader("Cache-Control","no-store");
+  res.status(result.statusCode).json(result.body);
+ } catch(error){next(error);}
+});
+router.post("/farm/v2/first-purchase/claim", async (req,res,next) => {
+ try {
+  const {planId,day}=req.body ?? {};
+  if(!["A","B","C"].includes(planId)||![1,2,3].includes(day)){
+   res.status(400).json({error:"INVALID_PLAN_OR_DAY"});return;
+  }
+  const result=await farmFirstPurchasePlatformRequest(String(res.locals.launchToken),"claim",planId,day);
+  res.setHeader("Cache-Control","no-store");
+  res.status(result.statusCode).json(result.body);
+ } catch(error){next(error);}
+});
+
 router.get("/farm/v2/recovery/seeds", async (_req,res,next) => {
   try {
     const result = await pool.query(
