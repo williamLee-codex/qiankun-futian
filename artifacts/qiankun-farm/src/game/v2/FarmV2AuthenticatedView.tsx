@@ -255,6 +255,18 @@ export function FarmV2AuthenticatedView(props: {
       sessionStorage.setItem(key, "1");
     } catch { return; }
     const destination = new URL("/api/apps/qiankun-futian/launch?farmV2=1", window.location.origin);
+    // OAuth providers reject sign-in inside an iframe. Recover the platform
+    // session in the top-level window rather than navigating the farm frame.
+    if (window.top && window.top !== window) {
+      try {
+        if (window.top.location.origin === window.location.origin) {
+          window.top.location.assign(destination.toString());
+          return;
+        }
+      } catch {
+        // Cross-origin embeddings must not navigate their parent.
+      }
+    }
     window.location.assign(destination.toString());
   }, [loading, data, error, props.launchToken]);
 
