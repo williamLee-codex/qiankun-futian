@@ -15,6 +15,12 @@ export function availableFirstPurchaseDay(paidAt: string | number | Date, now: s
   return Math.max(0, Math.min(3, elapsed + 1)) as 0 | 1 | 2 | 3;
 }
 
+/** Each package has its own lifetime entitlement; different packages never block each other. */
+export function mayPurchaseFirstPurchasePlan(planId: FirstPurchasePlanId, purchasedPlanIds: readonly FirstPurchasePlanId[]): boolean {
+  if (!FIRST_PURCHASE_PLANS[planId]) throw new Error('INVALID_PLAN');
+  return !purchasedPlanIds.includes(planId);
+}
+
 export function evaluateFirstPurchaseClaim(
   purchase: { planId: FirstPurchasePlanId; paidAt: string; paymentConfirmed: boolean; claimedDays: readonly number[] },
   requestedDay: 1 | 2 | 3,
@@ -23,6 +29,7 @@ export function evaluateFirstPurchaseClaim(
   if (!FIRST_PURCHASE_PLANS[purchase.planId]) return { accepted:false, reason:'INVALID_PLAN' };
   if (!purchase.paymentConfirmed) return { accepted:false, reason:'PAYMENT_NOT_CONFIRMED' };
   if (![1,2,3].includes(requestedDay)) return { accepted:false, reason:'INVALID_DAY' };
+  if (new Date(now).getTime() < new Date(purchase.paidAt).getTime()) return { accepted:false, reason:'PAYMENT_IN_FUTURE' };
   if (purchase.claimedDays.includes(requestedDay)) return { accepted:false, reason:'ALREADY_CLAIMED' };
   if (requestedDay > availableFirstPurchaseDay(purchase.paidAt,now)) return { accepted:false, reason:'NOT_YET_AVAILABLE' };
   return { accepted:true, gifts:FIRST_PURCHASE_DAILY_GIFTS[purchase.planId][requestedDay-1] };
