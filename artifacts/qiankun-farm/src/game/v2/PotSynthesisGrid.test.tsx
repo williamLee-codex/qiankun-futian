@@ -26,8 +26,8 @@ describe('42-slot synthesis interaction',()=>{
   const transact=vi.fn(async()=>true);
   render(<PotSynthesisGrid warehouse={w} busy={false} readWallet={async()=>({coins:100})} transact={transact}/>);
   expect(screen.getByRole('button',{name:/曜金粟 黃階盆栽，持有 1/})).toBeTruthy();
-  fireEvent.click(screen.getByText('已持有盆栽與擺放管理'));
-  fireEvent.click(screen.getByRole('button',{name:'擺放／替換'}));
+  fireEvent.click(screen.getByText('已持有盆栽與展示管理'));
+  fireEvent.click(screen.getByRole('button',{name:'展示／替換'}));
   await waitFor(()=>expect(transact).toHaveBeenCalledWith({kind:'displayPot',potId:'pot-owned-1'}));
   await screen.findByText(/操作已確認/);
  });
@@ -37,7 +37,7 @@ describe('42-slot synthesis interaction',()=>{
   let finish!:(ok:boolean)=>void;
   const transact=vi.fn(()=>new Promise<boolean>(resolve=>{finish=resolve}));
   render(<PotSynthesisGrid warehouse={w} busy={false} readWallet={async()=>({coins:100})} transact={transact}/>);
-  fireEvent.click(screen.getByText('已持有盆栽與擺放管理'));
+  fireEvent.click(screen.getByText('已持有盆栽與展示管理'));
   const button=screen.getByRole('button',{name:'取下'});
   fireEvent.click(button);fireEvent.click(button);
   expect(transact).toHaveBeenCalledTimes(1);
