@@ -33,8 +33,8 @@ describe("Qiankun bag initial render", () => {
     for (const name of ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"]) {
       expect(html).toContain(`>${name}</button>`);
     }
-    expect(html).toContain("蘊靈砂：2");
-    expect(html).toContain("九霄玉髓：3");
+    expect(html).toMatch(/蘊靈砂<\/span>[\s\S]*?×2<\/strong>/);
+    expect(html).toMatch(/九霄玉髓<\/span>[\s\S]*?×3<\/strong>/);
     expect(html).not.toContain("洞府</button>");
   });
 
