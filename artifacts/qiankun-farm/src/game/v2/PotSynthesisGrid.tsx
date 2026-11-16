@@ -93,9 +93,7 @@ export function PotSynthesisGrid(props: {
           </button>;
         })]).flat()}
       </div></div>
-      <aside className={`pot-recipe ${stage === "working" ? "working" : ""}`} aria-label="選中配方">
-        <img className="pot-result-image" src={imageFor(selected)} alt={`${land.cropName}${selected.level ? grade + "階盆栽" : "靈植"}`} width="128" height="192"/>
-        <div className="pot-recipe-info"><h4>{land.cropName} · {selected.level ? grade + "階盆栽" : "靈植"}</h4>
+      <div className="pot-recipe-column">
           <div className="pot-placement-action">
             <button type="button" disabled={!selectedOwnedPot || !inventoryAvailable || props.busy || placementPending || stage === "working" || stage === "failed"} onClick={() => selectedOwnedPot && void changePlacement(selectedOwnedPot)}>
               {placementPending ? "處理中…" : selectedOwnedPot?.displayed ? "取下盆栽" : "展示盆栽"}
@@ -103,6 +101,9 @@ export function PotSynthesisGrid(props: {
             <small>{selectedOwnedPot ? selectedOwnedPot.displayed ? "此盆栽目前展示中" : "按下後將此盆栽展示於洞府可用位置" : selected.level === 0 ? "靈植不能展示，請選擇已持有的盆栽" : "尚未持有此款盆栽，合成後即可展示"}</small>
             {placementStatus && <p role="status" aria-live="polite">{placementStatus}</p>}
           </div>
+      <aside className={`pot-recipe ${stage === "working" ? "working" : ""}`} aria-label="選中配方">
+        <img className="pot-result-image" src={imageFor(selected)} alt={`${land.cropName}${selected.level ? grade + "階盆栽" : "靈植"}`} width="128" height="192"/>
+        <div className="pot-recipe-info"><h4>{land.cropName} · {selected.level ? grade + "階盆栽" : "靈植"}</h4>
         {selected.level === 0 ? <>
           <p>持有 {props.warehouse.crops[selected.species]} 株靈植</p>
           <div className="pot-effects"><strong>來源與用途</strong>
@@ -140,6 +141,7 @@ export function PotSynthesisGrid(props: {
         </>}
         </div>
       </aside>
+      </div>
     </div>
 
   </section>;
