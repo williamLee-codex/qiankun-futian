@@ -291,8 +291,8 @@ export function FarmSceneInteractionLayer(props: {
               const level = pot ? ["黃", "玄", "地", "天", "仙", "神"].indexOf(pot.grade) + 1 : 0;
               return <button key={land.id} className={"farm-v2-platform-pot" + (i === 5 ? " farm-v2-platform-pot-front" : "")}
                 style={position(layout.pots[i])}
-                aria-label={`${land.cropName}展示位，${pot ? pot.grade + "階盆栽" : "空位"}，開啟盆栽合成`}
-                title={`${land.cropName} · ${pot ? pot.grade + "階" : "空位"}`}
+                aria-label={`${land.cropName}展示位，${pot ? pot.grade + "階盆栽" : "空位"}，開啟盆栽展示管理`}
+                title={`${land.cropName} · ${pot ? pot.grade + "階" : "空位"} · 展示管理`}
                 disabled={props.busy || props.readOnly}
                 onClick={() => section("盆栽")}>
                 <span className="farm-v2-approved-pedestal" style={{ backgroundImage: `url("${import.meta.env.BASE_URL ?? "/"}images/farm/flower-pedestal.png")` }} aria-hidden="true" />

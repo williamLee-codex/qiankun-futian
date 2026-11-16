@@ -133,6 +133,6 @@ export function PotSynthesisGrid(props: {
         </div>
       </aside>
     </div>
-    <details><summary>已持有盆栽與擺放管理</summary><p>36 種盆栽統一在本介面統計與管理，合成所需靈植數量直接讀取福田倉庫。</p>{placementStatus && <p role="status" aria-live="polite">{placementStatus}</p>}{state.pots.length === 0 && <p>目前沒有盆栽。</p>}{state.pots.map(p => <div key={p.id} className="pot-owned-row">{FARM_V2_LANDS[p.species - 1].cropName} · {p.grade}階 · {p.displayed ? "已擺放" : "未擺放"} · 編號 {p.id}<button type="button" disabled={!inventoryAvailable || props.busy || placementPending || stage === "working" || stage === "failed"} onClick={() => void changePlacement(p)}>{p.displayed ? "取下" : "擺放／替換"}</button></div>)}</details>
+    <details><summary>已持有盆栽與展示管理</summary><p>36 種盆栽統一在本介面統計與管理，合成所需靈植數量直接讀取福田倉庫。</p>{placementStatus && <p role="status" aria-live="polite">{placementStatus}</p>}{state.pots.length === 0 && <p>目前沒有盆栽。</p>}{state.pots.map(p => <div key={p.id} className="pot-owned-row">{FARM_V2_LANDS[p.species - 1].cropName} · {p.grade}階 · {p.displayed ? "展示中" : "未展示"} · 編號 {p.id}<button type="button" disabled={!inventoryAvailable || props.busy || placementPending || stage === "working" || stage === "failed"} onClick={() => void changePlacement(p)}>{p.displayed ? "取下" : "展示／替換"}</button></div>)}</details>
   </section>;
 }
