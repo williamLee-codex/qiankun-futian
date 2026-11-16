@@ -546,6 +546,3 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
 .farm-v2-corner-tools button img {display:block;width:100%;height:100%;object-fit:contain;}
 .farm-v2-corner-tools button:focus-visible {outline:2px solid #f3cf77;outline-offset:2px;}
 @media(max-width:650px){.farm-v2-corner-tools{width:min(30%,132px);gap:4px;top:6px;right:6px;}}
-
-/* Blend away the approved coin artwork's black rectangular matte without changing its button behavior. */
-.farm-v2-corner-tools .farm-v2-coin-launcher > img { mix-blend-mode: screen; }
