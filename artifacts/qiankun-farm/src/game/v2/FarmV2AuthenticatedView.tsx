@@ -386,7 +386,7 @@ export function FarmV2AuthenticatedView(props: {
                 title={`第${day}天 ${signed?"已簽到":today?"點擊簽到":canMakeup?"點擊補簽":"尚未開放"}`}
                 disabled={!active}
                 onClick={()=>void runSignInAction(today?claimSignInToday:()=>claimSignInMakeup(day))}
-                style={{position:"absolute",left:`${6.3+column*11.45}%`,top:`${15.3+row*13.0}%`,width:"10.7%",height:"12.3%",border:active?"2px solid #ffe17b":"none",borderRadius:4,background:active?"#ffd25b22":"transparent",cursor:active?"pointer":"default",padding:0}}>
+                style={{position:"absolute",left:`${5.3+column*11.45}%`,top:`${12.8+row*12.8}%`,width:"11.2%",height:"11.8%",border:active?"2px solid #ffe17b":"none",borderRadius:4,background:active?"#ffd25b22":"transparent",cursor:active?"pointer":"default",padding:0}}>
                 {(signed||makeup)&&<span aria-hidden="true" style={{position:"absolute",inset:0,display:"grid",placeItems:"center",fontSize:"clamp(20px,3vw,42px)",fontWeight:900,color:"#e71923",textShadow:"1px 2px 0 #ffcf4c,-1px -1px 0 #ffcf4c"}}>✕</span>}
               </button>;
             })}
