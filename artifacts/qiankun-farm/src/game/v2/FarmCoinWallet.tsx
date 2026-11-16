@@ -63,13 +63,21 @@ export function FarmCoinWallet(props: {
   }
   return (
     <div aria-label="福田金幣錢包" style={{ display: "grid", gap: 12 }}>
-      <p>
-        福田金幣：{balances?.coins ?? "讀取中…"}　中央金幣：
-        {balances?.centralCoins ?? "讀取中…"}
-      </p>
-      <p>
-        福田買種子、盆栽合成及一般金幣消費使用福田金幣；金幣獎勵存入福田。需要時請手動轉入或回存中央，系統不會自動轉帳。水晶維持中央錢包。
-      </p>
+      <div aria-label="金幣餘額" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div style={{border:"1px solid #977b3e",borderRadius:8,padding:12,background:"#1b332a"}}>
+          <div style={{color:"#d4c6a5",fontSize:13}}>福田金幣</div>
+          <strong style={{color:"#f4d06f",fontSize:23}}>{balances?.coins ?? "讀取中…"}</strong>
+        </div>
+        <div style={{border:"1px solid #977b3e",borderRadius:8,padding:12,background:"#1b332a"}}>
+          <div style={{color:"#d4c6a5",fontSize:13}}>中央金幣</div>
+          <strong style={{color:"#f4d06f",fontSize:23}}>{balances?.centralCoins ?? "讀取中…"}</strong>
+        </div>
+      </div>
+      <div style={{display:"grid",gap:5,fontSize:14,lineHeight:1.5}}>
+        <p><strong style={{color:"#f1d27e"}}>中央 → 福田：</strong>手動轉入，用於買種子、盆栽合成與福田消費。</p>
+        <p><strong style={{color:"#9fe0b4"}}>福田 → 中央：</strong>將福田金幣手動回存中央錢包。</p>
+        <p style={{color:"#c6d3c9",fontSize:12}}>金幣獎勵存入福田；不自動轉帳。水晶仍使用中央錢包。</p>
+      </div>
       {pending ? (
         <p role="alert">
           原轉帳尚未確認：{pending.direction === "in" ? "轉入福田" : "回存中央"}{" "}
