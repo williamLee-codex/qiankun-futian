@@ -24,7 +24,7 @@ export const SCENE_LAYOUTS = {
       region(64.6, 64.3, 18.5, 7.2),
     ],
     cave: region(43.5, 27, 21.0, 10.5),
-    pots: [region(34, 36.5, 6, 4.8), region(38, 37.1, 6, 4.8), region(42, 37.5, 6, 4.8), region(60, 37.5, 6, 4.8), region(64, 37.1, 6, 4.8), region(68, 36.5, 6, 4.8)],
+    pots: [region(34, 41.5, 6, 4.8), region(38, 42.1, 6, 4.8), region(42, 42.5, 6, 4.8), region(60, 42.5, 6, 4.8), region(64, 42.1, 6, 4.8), region(68, 41.5, 6, 4.8)],
     potEntry: region(52, 37.5, 9, 5),
     pets: [
       region(3, 43.7, 13.5, 3.5),
@@ -47,7 +47,7 @@ export const SCENE_LAYOUTS = {
       region(62.6, 60.5, 18.4, 10.3),
     ],
     cave: region(44.8, 12.4, 21.8, 12.2),
-    pots: [region(34, 23.1, 7, 7), region(38.5, 23.7, 7, 7), region(43, 24.1, 7, 7), region(56, 24.1, 7, 7), region(60.5, 23.7, 7, 7), region(65, 24.2, 7, 7)],
+    pots: [region(34, 28.1, 7, 7), region(38.5, 28.7, 7, 7), region(43, 29.1, 7, 7), region(56, 29.1, 7, 7), region(60.5, 28.7, 7, 7), region(65, 28.1, 7, 7)],
     potEntry: region(68.4, 23.7, 6.2, 5.8),
     pets: [
       region(5.5, 35.7, 10.5, 4.3),
