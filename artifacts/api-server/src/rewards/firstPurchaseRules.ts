@@ -11,7 +11,11 @@ export function taipeiRewardDay(timestamp: string | number | Date): number {
 }
 
 export function availableFirstPurchaseDay(paidAt: string | number | Date, now: string | number | Date): 0 | 1 | 2 | 3 {
-  const elapsed = taipeiRewardDay(now) - taipeiRewardDay(paidAt);
+  const paymentMs = new Date(paidAt).getTime();
+  const currentMs = new Date(now).getTime();
+  if (!Number.isFinite(paymentMs) || !Number.isFinite(currentMs)) throw new Error('INVALID_TIMESTAMP');
+  if (currentMs < paymentMs) return 0;
+  const elapsed = taipeiRewardDay(currentMs) - taipeiRewardDay(paymentMs);
   return Math.max(0, Math.min(3, elapsed + 1)) as 0 | 1 | 2 | 3;
 }
 
