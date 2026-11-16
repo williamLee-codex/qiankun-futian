@@ -34,6 +34,7 @@ export function PotSynthesisGrid(props: {
   const required = selected.level === 1 ? 3 : selected.species === 6 ? 2 : 3;
   const sourceGrade = POT_GRADES[selected.level - 2];
   const displayed = state.pots.find(p => p.species === selected.species && p.displayed && p.grade === sourceGrade);
+  const selectedOwnedPot = selected.level > 0 ? state.pots.find(p => p.species === selected.species && p.grade === grade && p.displayed) ?? state.pots.find(p => p.species === selected.species && p.grade === grade && !p.displayed) : undefined;
   const available = selected.level === 1 ? props.warehouse.crops[selected.species] : state.pots.filter(p => p.species === selected.species && p.grade === sourceGrade && !p.displayed).length + (useDisplayed && displayed ? 1 : 0);
   const cost = POT_GRADE_COSTS[grade].coins;
   const exchange = getExchangeRate(selected.species);
@@ -112,6 +113,13 @@ export function PotSynthesisGrid(props: {
           <p>{yellowReady ? "黃階所需材料與金幣齊全" : "黃階尚缺上方標示的材料或金幣"}</p>
           <button type="button" onClick={() => select({ ...selected, level: 1 })}>查看黃階合成配方</button>
         </> : <>
+          <div className="pot-placement-action">
+            <button type="button" disabled={!selectedOwnedPot || !inventoryAvailable || props.busy || placementPending || stage === "working" || stage === "failed"} onClick={() => selectedOwnedPot && void changePlacement(selectedOwnedPot)}>
+              {placementPending ? "處理中…" : selectedOwnedPot?.displayed ? "取下盆栽" : "展示盆栽"}
+            </button>
+            <small>{selectedOwnedPot ? selectedOwnedPot.displayed ? "此盆栽目前展示中" : "按下後將此盆栽展示於洞府可用位置" : "尚未持有此款盆栽，合成後即可展示"}</small>
+            {placementStatus && <p role="status" aria-live="polite">{placementStatus}</p>}
+          </div>
           <div className="pot-effects" aria-label="盆栽作用">
             <strong>盆栽作用（展示後生效）</strong>
             <p>靈韻 +{potDisplayBonus(selected.species, grade)} · 好友上限 +{potDisplayBonus(selected.species, grade)}</p>
@@ -133,6 +141,6 @@ export function PotSynthesisGrid(props: {
         </div>
       </aside>
     </div>
-    <details><summary>已持有盆栽與擺放管理</summary><p>36 種盆栽統一在本介面統計與管理，合成所需靈植數量直接讀取福田倉庫。</p>{placementStatus && <p role="status" aria-live="polite">{placementStatus}</p>}{state.pots.length === 0 && <p>目前沒有盆栽。</p>}{state.pots.map(p => <div key={p.id} className="pot-owned-row">{FARM_V2_LANDS[p.species - 1].cropName} · {p.grade}階 · {p.displayed ? "已擺放" : "未擺放"} · 編號 {p.id}<button type="button" disabled={!inventoryAvailable || props.busy || placementPending || stage === "working" || stage === "failed"} onClick={() => void changePlacement(p)}>{p.displayed ? "取下" : "擺放／替換"}</button></div>)}</details>
+
   </section>;
 }
