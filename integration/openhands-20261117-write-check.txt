@@ -1,0 +1,1 @@
+OpenHands integration write-access verification. No production code changed.
