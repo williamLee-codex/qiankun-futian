@@ -3,6 +3,20 @@ import type { FarmCoinBalances } from "./farmV2ApiClient";
 import { farmV2ErrorMessage } from "./farmV2ErrorMessage";
 const controlStyle = { background: "#f8f3e7", color: "#14221c", border: "1px solid #bda365", borderRadius: 8, padding: "10px 12px", width: "100%", font: "inherit" };
 type Transfer = { direction: "in" | "out"; amount: number };
+function validatedBalances(value: FarmCoinBalances): FarmCoinBalances {
+  if (
+    !value ||
+    !Number.isSafeInteger(value.coins) ||
+    value.coins < 0 ||
+    !Number.isSafeInteger(value.centralCoins) ||
+    value.centralCoins < 0 ||
+    typeof value.localCoinsEnabled !== "boolean"
+  ) {
+    throw new Error("FARM_WALLET_INVALID_BALANCES");
+  }
+  return value;
+}
+
 export function FarmCoinWallet(props: {
   read: () => Promise<FarmCoinBalances>;
   transfer: (
@@ -28,7 +42,7 @@ export function FarmCoinWallet(props: {
       .read()
       .then((v) => {
         if (active) {
-          setBalances(v);
+          setBalances(validatedBalances(v));
           setReadError(null);
         }
       })
@@ -59,7 +73,7 @@ export function FarmCoinWallet(props: {
     setReadError(null);
     setMessage("");
     try {
-      setBalances(await props.read());
+      setBalances(validatedBalances(await props.read()));
     } catch (e) {
       setReadError(
         farmV2ErrorMessage(e instanceof Error ? e.message : String(e)),
@@ -73,7 +87,7 @@ export function FarmCoinWallet(props: {
     setWorking(true);
     setMessage("轉帳確認中…");
     try {
-      const v = await props.transfer(command.direction, command.amount);
+      const v = validatedBalances(await props.transfer(command.direction, command.amount));
       setBalances(v);
       setPending(null);
       setAmount("");
