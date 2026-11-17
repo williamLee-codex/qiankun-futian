@@ -37,3 +37,23 @@ it("uses the Farm bank ledger once local coins are enabled", async () => {
   expect(result).toEqual({ coins: 42, centralCoins: 6700, localCoinsEnabled: true });
   expect(query.mock.calls[0][0]).toContain("farm_v2_bank.read_balances");
 });
+
+it("rejects an incomplete Farm bank balance response", async () => {
+  process.env.FARM_V2_LOCAL_COINS_ENABLED = "1";
+  query.mockResolvedValue({
+    rows: [{ result: { coins: 6700, localCoinsEnabled: true } }],
+  });
+  await expect(readFarmCoinBalances("owner")).rejects.toThrow(
+    "FARM_WALLET_INVALID_BALANCES",
+  );
+});
+
+it("rejects a malformed central balance from the Farm bank", async () => {
+  process.env.FARM_V2_LOCAL_COINS_ENABLED = "1";
+  query.mockResolvedValue({
+    rows: [{ result: { coins: 6700, centralCoins: null, localCoinsEnabled: true } }],
+  });
+  await expect(readFarmCoinBalances("owner")).rejects.toThrow(
+    "FARM_WALLET_INVALID_BALANCES",
+  );
+});
