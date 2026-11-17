@@ -6,6 +6,11 @@ import { mapServerLands, mapServerWarehouse } from "./farmV2SceneAdapter";
 const { scene } = vi.hoisted(() => ({ scene: vi.fn() }));
 vi.mock("./useFarmV2Scene", () => ({ useFarmV2Scene: scene }));
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+function endFlight(element: HTMLElement, name = "farm-v2-fly-confirmed") {
+  const event = new Event("animationend", { bubbles: true });
+  Object.defineProperty(event, "animationName", { value: name });
+  fireEvent(element, event);
+}
 function show(mature = false, desktop = true) {
   vi.useFakeTimers();
   vi.stubGlobal("matchMedia", () => ({ matches: desktop, addEventListener(){}, removeEventListener(){} }));
@@ -39,11 +44,11 @@ for (const desktop of [true, false]) {
     expect(v.flight()?.style.top).toBe("180px");
     expect(v.flight()?.style.getPropertyValue("--farm-flight-x")).toBe("-520px");
     expect(v.flight()?.style.getPropertyValue("--farm-flight-y")).toBe("170px");
-    fireEvent.animationEnd(v.flight()!);
+    endFlight(v.flight()!);
     expect(v.flight()).not.toBeNull(); // No success before transaction confirmation.
     await act(async () => { v.finish(true); await vi.advanceTimersByTimeAsync(420); });
     expect(v.flight()?.classList.contains("confirmed")).toBe(true);
-    fireEvent.animationEnd(v.flight()!);
+    endFlight(v.flight()!);
     expect(v.flight()).toBeNull();
   });
 }
@@ -59,4 +64,26 @@ it("flies a mature crop to the warehouse door and removes feedback on server fai
   expect(v.flight()).toBeNull();
   expect(screen.getByRole("button",{name:"微芒凡土，已成熟"})).toBeTruthy();
   expect(screen.getByText("操作未確認，請檢查錯誤並重新讀取。")).toBeTruthy();
+});
+
+it("does not let a queued pending animation event remove the confirmed flight", async () => {
+  const v = show();
+  fireEvent.click(screen.getByRole("button", { name: "微芒凡土，待播種" }));
+  await act(async () => { v.finish(true); await vi.advanceTimersByTimeAsync(420); });
+  endFlight(v.flight()!, "farm-v2-fly-pending");
+  expect(v.flight()).not.toBeNull();
+  endFlight(v.flight()!);
+  expect(v.flight()).toBeNull();
+});
+
+it("clears pending visuals and permits original-intent retry after an unexpected rejection", async () => {
+  const v = show();
+  v.mutate.mockImplementationOnce(() => Promise.reject(new Error("NETWORK_UNAVAILABLE")));
+  fireEvent.click(screen.getByRole("button", { name: "微芒凡土，待播種" }));
+  await act(async () => { await vi.advanceTimersByTimeAsync(420); });
+  expect(v.flight()).toBeNull();
+  expect(screen.getByText("操作未確認，請檢查錯誤並重新讀取。")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "微芒凡土，待播種" }));
+  expect(v.mutate).toHaveBeenCalledTimes(2);
+  await act(async () => { v.finish(false); await vi.advanceTimersByTimeAsync(420); });
 });

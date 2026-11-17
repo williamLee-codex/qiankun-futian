@@ -256,6 +256,10 @@ export function FarmV2AuthenticatedView(props: {
         ? new Promise<void>(resolve => setTimeout(resolve, 420))
         : Promise.resolve();
       [ok] = await Promise.all([result, flightTime]);
+    } catch {
+      // A rejected transport is an unknown result, never a confirmed rollback.
+      // The API retains its original request key; only remove visual feedback.
+      ok = false;
     } finally {
       actionInFlight.current = false;
       setFlight(current => ok && current ? { ...current, confirmed: true } : null);
@@ -453,7 +457,7 @@ export function FarmV2AuthenticatedView(props: {
           key={flight.id + ":" + flight.confirmed}
           className={"farm-v2-flight " + (flight.confirmed ? "confirmed" : "pending")}
           style={flight.style}
-          onAnimationEnd={() => { if (flight.confirmed) setFlight(current => current?.id === flight.id ? null : current); }}
+          onAnimationEnd={(event) => { if (event.animationName === "farm-v2-fly-confirmed" && flight.confirmed) setFlight(current => current?.id === flight.id ? null : current); }}
         >
           {flight.icon}
         </span>
