@@ -24,7 +24,22 @@ export async function readFarmCoinBalances(userId: string) {
       "select farm_v2_bank.read_balances($1::uuid) as result",
       [userId],
     );
-    return r.rows[0].result as {
+    const balances: unknown = r.rows[0]?.result;
+    if (
+      !balances ||
+      typeof balances !== "object" ||
+      !("coins" in balances) ||
+      !Number.isSafeInteger(balances.coins) ||
+      (balances.coins as number) < 0 ||
+      !("centralCoins" in balances) ||
+      !Number.isSafeInteger(balances.centralCoins) ||
+      (balances.centralCoins as number) < 0 ||
+      !("localCoinsEnabled" in balances) ||
+      balances.localCoinsEnabled !== true
+    ) {
+      throw new Error("FARM_WALLET_INVALID_BALANCES");
+    }
+    return balances as {
       coins: number;
       centralCoins: number;
       localCoinsEnabled: boolean;
