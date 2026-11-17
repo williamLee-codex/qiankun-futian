@@ -13,10 +13,11 @@ export function FarmSceneInteractionLayer(props: {
   busy: boolean;
   onLandSelect?: (id: number) => void;
   pendingLandAction?: { landId: number; kind: "sow" | "harvest" | "purchaseSeeds" };
-  onPlotClick?: (plot: Plot) => void;
+  onPlotClick?: (plot: Plot, target?: { x: number; y: number }) => void;
   onFriendAction?: (kind: "BORROW" | "ASSIST", id: number) => Promise<void>;
   onSection?: (section: string) => void;
   warehouseTargetRef?: Ref<HTMLButtonElement>;
+  flyingSowLand?: number;
   onReturnHome?: () => void;
   onRefresh?: () => unknown;
 }) {
@@ -223,10 +224,10 @@ export function FarmSceneInteractionLayer(props: {
                     aria-label={`${land.landName}，${!p.unlocked ? "未解鎖" : p.state === "ready" ? "已成熟" : p.state === "growing" ? "生長中" : "待播種"}`}
                     disabled={props.busy}
                     data-farm-plot={land.id}
-                    onClick={() => props.onPlotClick ? props.onPlotClick(p) : props.onLandSelect?.(land.id)}
+                    onClick={(event) => props.onPlotClick ? props.onPlotClick(p, event.detail > 0 ? { x: event.clientX, y: event.clientY } : undefined) : props.onLandSelect?.(land.id)}
                   >
                     
-                    {p.unlocked && p.state !== "empty" && (
+                    {p.unlocked && p.state !== "empty" && props.flyingSowLand !== land.id && (
                       <span className="farm-v2-crop-stage" data-stage={stage} aria-label={`生長階段 ${stage}%`}>
                         <span aria-hidden="true">{stage === 0 ? "🫘" : stage === 25 ? "🌱" : stage === 50 ? "🌿" : stage === 75 ? "🪴" : p.cropEmoji}</span>
                       </span>

@@ -112,33 +112,40 @@ export function FarmV2AuthenticatedView(props: {
 
   const sceneRoot = useRef<HTMLElement>(null);
   const warehouseButton = useRef<HTMLButtonElement>(null);
+  const actionInFlight = useRef(false);
+  const flightId = useRef(0);
   const [flight, setFlight] = useState<{
+    id: number;
+    landId: number;
+    kind: "sow" | "harvest";
+    confirmed: boolean;
     icon: string;
     style: CSSProperties;
   } | null>(null);
 
-  function playLandFlight(kind: "sow" | "harvest", landId: number) {
+  function playLandFlight(kind: "sow" | "harvest", landId: number, target?: { x: number; y: number }) {
     const field = sceneRoot.current?.querySelector(
       `[data-farm-plot="${landId}"]`,
     );
-    const fieldBox = field?.getBoundingClientRect();
+    const fieldBox = (field?.querySelector(".farm-v2-crop-stage") ?? field)?.getBoundingClientRect();
     const warehouseBox = warehouseButton.current?.getBoundingClientRect();
     const plot = data?.plots.find((p) => p.id + 1 === landId);
     if (!fieldBox || !warehouseBox || !plot) return;
     const from = kind === "sow" ? warehouseBox : fieldBox;
     const to = kind === "sow" ? fieldBox : warehouseBox;
     setFlight({
+      id: ++flightId.current, landId, kind, confirmed: false,
       icon: kind === "sow" ? "🫘" : plot.cropEmoji,
       style: {
         left: from.x + from.width / 2,
-        top: from.y + from.height / 2,
-        "--farm-flight-x": `${to.x + to.width / 2 - from.x - from.width / 2}px`,
-        "--farm-flight-y": `${to.y + to.height / 2 - from.y - from.height / 2}px`,
+        top: kind === "sow" ? from.y + from.height * 0.8 : from.y + from.height / 2,
+        "--farm-flight-x": `${(kind === "sow" && target ? target.x : to.x + to.width / 2) - from.x - from.width / 2}px`,
+        "--farm-flight-y": `${(kind === "harvest" ? to.y + to.height * 0.8 : target?.y ?? to.y + to.height / 2) - (kind === "sow" ? from.y + from.height * 0.8 : from.y + from.height / 2)}px`,
       } as CSSProperties,
     });
   }
 
-  function handlePlotClick(plot: Plot) {
+  function handlePlotClick(plot: Plot, target?: { x: number; y: number }) {
     const id = plot.id + 1;
     if (plot.unlocked && plot.state === "ready") {
       void execute("harvest", id);
@@ -147,7 +154,7 @@ export function FarmV2AuthenticatedView(props: {
       plot.state === "empty" &&
       (data?.seedInventory[plot.cropId] ?? 0) >= plot.maxSeeds
     ) {
-      void execute("sow", id);
+      void execute("sow", id, undefined, target);
     } else {
       setBuySeedsOnOpen(plot.unlocked && plot.state === "empty" && plot.id < 5);
       setSelectedLand(id);
@@ -217,7 +224,10 @@ export function FarmV2AuthenticatedView(props: {
       | "unlockCoinLand",
     landId: number,
     quantity?: number,
+    target?: { x: number; y: number },
   ) {
+    if (actionInFlight.current || busy) return;
+    actionInFlight.current = true;
     setNotice(null);
     const showFeedback =
       operation === "sow" ||
@@ -235,15 +245,21 @@ export function FarmV2AuthenticatedView(props: {
           purchaseSeeds: "購買種子確認中…",
         }[operation],
       );
-    if (
-      operation === "sow" ||
-      (operation === "harvest" && selectedLand === null)
-    ) {
-      if (operation === "sow") setSelectedLand(null);
-      playLandFlight(operation, landId);
+    if (operation === "sow" || operation === "harvest") {
+      setSelectedLand(null);
+      playLandFlight(operation, landId, target);
     }
-    const ok = await mutate(operation, landId, quantity);
-    if (!ok) setFlight(null);
+    let ok = false;
+    try {
+      const result = mutate(operation, landId, quantity);
+      const flightTime = operation === "sow" || operation === "harvest"
+        ? new Promise<void>(resolve => setTimeout(resolve, 420))
+        : Promise.resolve();
+      [ok] = await Promise.all([result, flightTime]);
+    } finally {
+      actionInFlight.current = false;
+      setFlight(current => ok && current ? { ...current, confirmed: true } : null);
+    }
     setLandFeedback(
       ok && showFeedback ? { landId, kind: operation, confirmed: true } : null,
     );
@@ -434,9 +450,10 @@ export function FarmV2AuthenticatedView(props: {
       {flight && (
         <span
           aria-hidden="true"
-          className="farm-v2-flight"
+          key={flight.id + ":" + flight.confirmed}
+          className={"farm-v2-flight " + (flight.confirmed ? "confirmed" : "pending")}
           style={flight.style}
-          onAnimationEnd={() => setFlight(null)}
+          onAnimationEnd={() => { if (flight.confirmed) setFlight(current => current?.id === flight.id ? null : current); }}
         >
           {flight.icon}
         </span>
@@ -444,6 +461,7 @@ export function FarmV2AuthenticatedView(props: {
       <div className="farm-v2-scene-tools-anchor">
       <FarmSceneInteractionLayer
         warehouseTargetRef={warehouseButton}
+        flyingSowLand={flight?.kind === "sow" ? flight.landId : undefined}
         plots={data.plots}
         state={{
           pots: workshopState(data.warehouse).pots.filter((p) => p.displayed),
