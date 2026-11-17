@@ -1,0 +1,29 @@
+name: Farm V2 integration validation
+on:
+  push:
+    branches:
+      - fix/farm-v2-eight-features-20261117
+  pull_request:
+    branches:
+      - fix/live-production-pedestals-20261116
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm test
+      - run: pnpm --filter @workspace/qiankun-farm build
+        env:
+          PORT: '4173'
+          BASE_PATH: '/farm-v2/'
