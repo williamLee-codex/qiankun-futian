@@ -1,16 +1,37 @@
 import { pool } from "@workspace/db";
 import { bankError, localCoinsEnabled } from "./farm-v2-local-coins";
+
+/**
+ * Reads both wallets for one identity. The Central (core) balance is the
+ * authoritative ledger and is always readable; the Farm (local) balance is a
+ * separate ledger that only exists once local coins are enabled. Returning the
+ * Central balance even when the Farm ledger is disabled keeps the wallet view
+ * from being stuck on a placeholder.
+ */
 export async function readFarmCoinBalances(userId: string) {
-  if (!localCoinsEnabled()) throw new Error("FARM_LOCAL_COINS_NOT_ENABLED");
-  const r = await pool.query(
-    "select farm_v2_bank.read_balances($1::uuid) as result",
-    [userId],
-  );
-  return r.rows[0].result as {
-    coins: number;
-    centralCoins: number;
-    localCoinsEnabled: true;
-  };
+  if (!localCoinsEnabled()) {
+    const central = await pool.query(
+      "select coalesce((select coin_balance from public.core_wallets where owner_id=$1::uuid),0) as central",
+      [userId],
+    );
+    const centralCoins = Number(central.rows[0]?.central ?? 0);
+    if (!Number.isSafeInteger(centralCoins) || centralCoins < 0)
+      throw new Error("FARM_CENTRAL_BALANCE_UNAVAILABLE");
+    return { coins: 0, centralCoins, localCoinsEnabled: false };
+  }
+  try {
+    const r = await pool.query(
+      "select farm_v2_bank.read_balances($1::uuid) as result",
+      [userId],
+    );
+    return r.rows[0].result as {
+      coins: number;
+      centralCoins: number;
+      localCoinsEnabled: boolean;
+    };
+  } catch (error) {
+    return bankError(error);
+  }
 }
 export async function transferFarmCoins(
   userId: string,

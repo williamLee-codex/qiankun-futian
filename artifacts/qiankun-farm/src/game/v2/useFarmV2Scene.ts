@@ -9,6 +9,7 @@ import type { Plot, CropInventory } from "../types";
 type Snapshot = {
   features?: { localCoins?: boolean };
   player: {
+    firstFarmEnteredAt?: string | null;
     missionState?: import("./missionRuntime").MissionState;
     petState?: {
       owned: string[];
@@ -27,6 +28,7 @@ type Snapshot = {
 
 type SceneData = {
   localCoins?: boolean;
+  firstFarmEnteredAt?: number | null;
   warehouse: WorkshopWarehouse;
   missions?: import("./missionRuntime").MissionState;
   pets?: {
@@ -82,6 +84,9 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         const nextData = {
           warehouse: snapshot.player.warehouseState as WorkshopWarehouse,
           localCoins: snapshot.features?.localCoins,
+          firstFarmEnteredAt: snapshot.player.firstFarmEnteredAt
+            ? Date.parse(snapshot.player.firstFarmEnteredAt)
+            : null,
           missions: snapshot.player.missionState,
           pets: snapshot.player.petState,
           farmer: snapshot.player.farmerState,

@@ -1,6 +1,7 @@
 import type { FarmSeedRecovery } from "./farmV2ApiClient";
 import { FarmCoinWallet } from "./FarmCoinWallet";
 import { FarmFirstPurchaseRewards } from "./FarmFirstPurchaseRewards";
+import { FarmNewbieBoost } from "./FarmNewbieBoost";
 import { farmV2ErrorMessage } from "./farmV2ErrorMessage";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
@@ -360,41 +361,34 @@ export function FarmV2AuthenticatedView(props: {
       style={{ maxWidth: 1200, margin: "0 auto" }}
     >
       <Dialog open={signInOpen} onOpenChange={setSignInOpen}>
-        <DialogContent style={{maxHeight:"min(80dvh,760px)",overflowY:"auto",background:"#12251f",color:"#f8f1df",width:"min(820px,96vw)",maxWidth:"96vw",top:"calc(50% - 50px)"}}>
+        <DialogContent style={{background:"#12251f",color:"#f8f1df",width:"min(880px,96vw)",maxWidth:"96vw",top:"calc(50% - 50px)",maxHeight:"calc(100dvh - 2rem)",overflowY:"auto"}}>
           <DialogTitle>30 日簽到</DialogTitle>
-          <div style={{position:"relative",width:"100%",maxWidth:760,margin:"0 auto"}}>
-            <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-panel.png`} alt="30 日簽到日曆，點選當日格子簽到或補簽" style={{display:"block",width:"100%",height:"auto"}} />
-            {signInData && <>
-              <button type="button" aria-label="簽到" title={signInData.todayClaimable?"領取今日簽到":"今日已簽到或尚未開放"}
-                disabled={signInBusy||!signInData.todayClaimable}
-                onClick={()=>void runSignInAction(claimSignInToday)}
-                style={{position:"absolute",left:"58%",top:"82%",width:"19%",height:"15%",background:"transparent",border:0,cursor:signInData.todayClaimable?"pointer":"default"}} />
-              <button type="button" aria-label="補簽" title={signInData.makeupClaimable?"補簽下一個漏簽日期":"目前無法補簽"}
-                disabled={signInBusy||!signInData.makeupClaimable||signInData.nextMakeupDay==null||signInData.nextMakeupRewardSupported===false}
-                onClick={()=>void runSignInAction(()=>claimSignInMakeup(signInData.nextMakeupDay!))}
-                style={{position:"absolute",left:"78%",top:"82%",width:"19%",height:"15%",background:"transparent",border:0,cursor:signInData.makeupClaimable?"pointer":"default"}} />
-            </>}
-            {signInData && signInRewards.map((_,i)=>{
+          {signInData && <p style={{fontSize:13,margin:0}}>第 {signInData.cycleNumber} 輪，第 {signInData.cycleDay} 天；補簽額度 {signInData.makeupCreditsAvailable ?? 0}</p>}
+          <div role="grid" aria-label="30 日簽到格，共 30 格" style={{display:"grid",gridTemplateColumns:"repeat(6,minmax(0,1fr))",gap:6}}>
+            {signInRewards.map((reward,i)=>{
               const day=i+1;
-              const signed=signInData.signedDays?.includes(day)??false;
-              const makeup=signInData.makeupDays?.includes(day)??false;
-              const today=day===signInData.cycleDay && signInData.todayClaimable;
-              const canMakeup=day===signInData.nextMakeupDay && signInData.makeupClaimable && signInData.nextMakeupRewardSupported!==false;
+              const signed=signInData?.signedDays?.includes(day)??false;
+              const makeup=signInData?.makeupDays?.includes(day)??false;
+              const today=!!signInData && day===signInData.cycleDay && signInData.todayClaimable;
+              const canMakeup=!!signInData && day===signInData.nextMakeupDay && signInData.makeupClaimable && signInData.nextMakeupRewardSupported!==false;
               const active=!signInBusy && !signed && (today||canMakeup);
-              const column=i%6,row=Math.floor(i/6);
-              return <button type="button" key={day}
-                aria-label={`第${day}天：${signed?"已簽到":today?"領取今日簽到":canMakeup?"補簽":"尚未可領取"}`}
-                title={`第${day}天 ${signed?"已簽到":today?"點擊簽到":canMakeup?"點擊補簽":"尚未開放"}`}
+              const milestone=day===15||day===30;
+              const done=signed||makeup;
+              return <button type="button" role="gridcell" key={day}
+                aria-label={`第${day}天：${done?"已簽到":today?"領取今日簽到":canMakeup?"補簽":"尚未可領取"}，獎勵 ${reward}`}
+                title={`第${day}天・${reward}`}
                 disabled={!active}
                 onClick={()=>void runSignInAction(today?claimSignInToday:()=>claimSignInMakeup(day))}
-                style={{position:"absolute",left:`${5.3+column*11.45}%`,top:`${12.8+row*12.8}%`,width:"11.2%",height:"11.8%",border:active?"2px solid #ffe17b":"none",borderRadius:4,background:active?"#ffd25b22":"transparent",cursor:active?"pointer":"default",padding:0}}>
-                {(signed||makeup)&&<span aria-hidden="true" style={{position:"absolute",inset:0,display:"grid",placeItems:"center",fontSize:"clamp(20px,3vw,42px)",fontWeight:900,color:"#e71923",textShadow:"1px 2px 0 #ffcf4c,-1px -1px 0 #ffcf4c"}}>✕</span>}
+                style={{position:"relative",minHeight:74,display:"grid",gap:2,alignContent:"center",justifyItems:"center",textAlign:"center",padding:"4px 2px",border:active?"2px solid #ffe17b":milestone?"1px solid #f0b34a":"1px solid #3c5a4c",borderRadius:8,background:done?"#1f3a2c":today?"#3a3418":milestone?"#243a2c":"#182f25",cursor:active?"pointer":"default",color:"#f8f1df"}}>
+                <span style={{fontSize:11,fontWeight:800,color:milestone?"#ffd76a":"#b3c2b4"}}>第{day}天</span>
+                <span style={{fontSize:11,lineHeight:1.2}}>{reward}</span>
+                {done&&<span aria-hidden="true" style={{fontSize:20,fontWeight:900,color:"#ffd76a"}}>✓</span>}
+                {active&&<span style={{fontSize:10,color:"#ffe17b"}}>{today?"點擊簽到":"點擊補簽"}</span>}
               </button>;
             })}
           </div>
-          <p style={{fontSize:13}}>補簽計入全勤，每日台灣時間 05:00 換日。點選大圖中的當日格子即可簽到；可補簽日期直接點選補簽。</p>
+          <p style={{fontSize:13,margin:0}}>補簽計入全勤，依序補簽下一個漏簽日期；每日台灣時間 05:00 換日。第 15 日、第 30 日為里程碑獎勵。</p>
           {signInData && <>
-            <p style={{fontSize:13}}>第 {signInData.cycleNumber} 輪，第 {signInData.cycleDay} 天；補簽額度 {signInData.makeupCreditsAvailable ?? 0}</p>
             <p>全勤獎勵：徽章 ×1、水晶 ×3、金幣 ×200、蘊靈砂 ×2、九霄玉髓 ×2</p>
             {signInData.pendingPerfectCycle != null &&
               signInData.pendingPerfectCycle !== signInData.cycleNumber &&
@@ -413,36 +407,30 @@ export function FarmV2AuthenticatedView(props: {
         </DialogContent>
       </Dialog>
       <Dialog open={newcomerNoticeOpen} onOpenChange={setNewcomerNoticeOpen}>
-        <DialogContent style={{background:"#12251f",color:"#f8f1df",maxHeight:"min(76dvh,720px)",overflowY:"auto",top:"calc(50% - 60px)",padding:12,width:"min(660px,96vw)",maxWidth:"96vw"}}>
-          <DialogTitle>新手 7 日六倍公告</DialogTitle>
-          <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/newcomer-6x-panel.png`} alt="新手六倍活動公告" style={{display:"block",width:"100%",height:"auto"}} />
-          <p>實際加成資格與期限依伺服器帳號資料為準。</p>
+        <DialogContent style={{background:"#12251f",color:"#f8f1df",maxHeight:"min(76dvh,720px)",overflowY:"auto",top:"calc(50% - 60px)",padding:12,width:"min(680px,96vw)",maxWidth:"96vw"}}>
+          <DialogTitle>新手 7 日六倍</DialogTitle>
+          <FarmNewbieBoost firstFarmEnteredAt={data.firstFarmEnteredAt} />
         </DialogContent>
       </Dialog>
       <Dialog open={firstRechargeNoticeOpen} onOpenChange={setFirstRechargeNoticeOpen}>
         <DialogContent style={{background:"#12251f",color:"#f8f1df",maxHeight:"min(76dvh,720px)",overflowY:"auto",top:"calc(50% - 60px)",padding:12,width:"min(660px,96vw)",maxWidth:"96vw"}}>
-          <DialogTitle>首儲獎勵公告</DialogTitle>
-          <div style={{position:"relative",width:"100%"}}>
-             <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/first-recharge-panel.png`} alt="首儲獎勵正式公告" style={{display:"block",width:"100%",height:"auto"}} />
-             {[0,1,2].map(i=><a key={i} href="/top-up" target="_top" aria-label={`前往儲值，第${i+1}方案`} style={{position:"absolute",left:`${7.5+i*30.5}%`,top:"82%",width:"25%",height:"14%",borderRadius:20,background:"transparent"}} />)}
-           </div>
-          <p>獎勵是否符合領取資格，以正式儲值與伺服器紀錄為準。</p>
+          <DialogTitle>首儲獎勵</DialogTitle>
+          <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/first-recharge-panel.png`} alt="首儲獎勵正式公告橫幅" style={{display:"block",width:"100%",height:"auto",borderRadius:10}} />
+          <p style={{margin:0}}>獎勵是否符合領取資格，以正式儲值與伺服器紀錄為準；下方卡片為實際領取與儲值入口。</p>
           <FarmFirstPurchaseRewards apiBaseUrl={props.apiBaseUrl} launchToken={props.launchToken} />
         </DialogContent>
       </Dialog>
-      {data.localCoins && (
-        <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
-          <DialogContent style={{ background: "#12251f", color: "#f8f1df", border: "1px solid #bda365", top:"calc(50% - 60px)", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(32rem, calc(100vw - 2rem))", maxHeight: "calc(100dvh - 2rem)", overflowY: "auto", lineHeight: 1.6 }}>
-            <DialogTitle style={{ color: "#f8f1df", fontFamily: "inherit" }}>福田金幣錢包</DialogTitle>
-            <FarmCoinWallet
-              read={readWallet}
-              transfer={transferCoins}
-              pending={pendingTransfers}
-              busy={busy}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
+        <DialogContent style={{ background: "#12251f", color: "#f8f1df", border: "1px solid #bda365", top:"calc(50% - 60px)", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(32rem, calc(100vw - 2rem))", maxHeight: "calc(100dvh - 2rem)", overflowY: "auto", lineHeight: 1.6 }}>
+          <DialogTitle style={{ color: "#f8f1df", fontFamily: "inherit" }}>福田金幣錢包</DialogTitle>
+          <FarmCoinWallet
+            read={readWallet}
+            transfer={transferCoins}
+            pending={pendingTransfers}
+            busy={busy}
+          />
+        </DialogContent>
+      </Dialog>
       {flight && (
         <span
           aria-hidden="true"
@@ -489,7 +477,7 @@ export function FarmV2AuthenticatedView(props: {
         onSection={openPanel}
       />
       <div className="farm-v2-corner-tools" aria-label="福田右上角工具" >
-        {data.localCoins && <button type="button" className="farm-v2-coin-launcher" aria-label="金幣轉換：中央與福田金幣轉入回存" title="金幣轉換" disabled={busy||loading} onClick={()=>setWalletOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-conversion.png`} alt="金幣轉換" /></button>}
+        <button type="button" className="farm-v2-coin-launcher" aria-label="金幣轉換：中央與福田金幣轉入回存" title="金幣轉換" disabled={busy||loading} onClick={()=>setWalletOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-conversion.png`} alt="金幣轉換" /></button>
         <button type="button" className="farm-v2-bag-launcher" aria-label="開啟乾坤寶囊" title="乾坤寶囊" disabled={busy||loading} onClick={()=>openPanel("乾坤寶囊")}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`} alt="乾坤寶囊" /></button>
         <button type="button" className="farm-v2-signin-launcher" aria-label="開啟30日簽到" title="30日簽到" disabled={busy||loading} onClick={()=>void openSignIn()}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-icon.png`} alt="30日簽到" /></button>
         <button type="button" className="farm-v2-newcomer-launcher" aria-label="查看新手六倍公告" title="新手六倍" onClick={()=>setNewcomerNoticeOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/newcomer-6x-icon.png`} alt="新手六倍" /></button>
@@ -506,7 +494,7 @@ export function FarmV2AuthenticatedView(props: {
           {panelTab === "福田倉庫" ? (
             <section aria-label="福田倉庫庫存">
               <p>以下數量來自目前伺服器回傳的農田庫存。</p>
-              {data.localCoins && <button type="button" onClick={() => setWalletOpen(true)}>🪙 福田金幣・轉入／回存</button>}
+              <button type="button" onClick={() => setWalletOpen(true)}>🪙 福田金幣・轉入／回存</button>
               <button type="button" disabled={busy || loading || checkingSeeds} onClick={async () => {
                 setCheckingSeeds(true);
                 try { const result = await readSeedRecoveries(); setSeedRecoveries(result.purchases); setNotice(result.purchases.length ? "請接續原買種子交易，系統會先查核原扣款。" : "沒有待接續的買種子交易。"); }
