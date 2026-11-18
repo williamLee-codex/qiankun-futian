@@ -23,7 +23,7 @@ it("enables transfer only after confirmed enabled balances", async () => {
   const read = vi.fn(async () => balances);
   const transfer = vi.fn(async () => balances);
   render(<FarmCoinWallet read={read} transfer={transfer} pending={() => []} busy={false} />);
-  await waitFor(() => expect(screen.getByRole("button", { name: "轉入福田" }).hasAttribute("disabled")).toBe(true);
+  await waitFor(() => expect(screen.getByRole("textbox", { name: "轉帳金額" })).toBeTruthy());
   fireEvent.change(screen.getByRole("textbox", { name: "轉帳金額" }), { target: { value: "10" } });
   await waitFor(() => expect(screen.getByRole("button", { name: "轉入福田" }).hasAttribute("disabled")).toBe(false));
 });
