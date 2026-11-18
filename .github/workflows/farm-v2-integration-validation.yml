@@ -4,9 +4,11 @@ on:
     branches:
       - fix/farm-v2-eight-features-20261117
       - fix/farm-v2-production-ux-batch-20261118
+      - fix/farm-v2-eight-ux-integration-20261118
   pull_request:
     branches:
       - fix/live-production-pedestals-20261116
+      - fix/farm-v2-eight-features-20261117
   workflow_dispatch:
 jobs:
   validate:
