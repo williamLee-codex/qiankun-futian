@@ -17,7 +17,8 @@ function formatRemaining(ms: number) {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  return `${days} 天 ${hours} 小時 ${minutes} 分`;
+  const remainderSeconds = seconds % 60;
+  return `${days} 天 ${hours} 小時 ${minutes} 分 ${remainderSeconds} 秒`;
 }
 
 /**
@@ -26,7 +27,7 @@ function formatRemaining(ms: number) {
  * settlement on the server, never here.
  */
 export function FarmNewbieBoost({ firstFarmEnteredAt }: { firstFarmEnteredAt?: number | null }) {
-  const active = typeof firstFarmEnteredAt === "number" && firstFarmEnteredAt > 0;
+  const active = typeof firstFarmEnteredAt === "number" && Number.isFinite(firstFarmEnteredAt) && firstFarmEnteredAt > 0;
   const endsAt = active ? firstFarmEnteredAt + NEWBIE_WINDOW_MS : null;
   const now = useNow(active);
   const remaining = endsAt ? endsAt - now : 0;
