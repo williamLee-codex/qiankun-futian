@@ -3,6 +3,7 @@ import { executeFarmerLandTransaction } from "./farmerLandTransaction";
 import { createFarmerState } from "./farmerRuntime";
 import { createEmptyFarmWarehouse } from "./warehouseRuntime";
 const H = 3600000;
+const enteredAt = Date.parse("2026-11-01T00:00:00Z");
 test("FARMER-NEWBIE-001: offline harvests use original maturity, not login time", () => {
   const warehouse = createEmptyFarmWarehouse();
   warehouse.seeds[1] = 40;
@@ -24,12 +25,12 @@ test("FARMER-NEWBIE-001: offline harvests use original maturity, not login time"
       lifecycle: "GROWING",
       accessActive: true,
       plantedQuantity: 20,
-      plantedAt: 160 * H,
-      maturesAt: 164 * H,
+      plantedAt: enteredAt + 160 * H,
+      maturesAt: enteredAt + 164 * H,
     },
     warehouse,
-    firstFarmEnteredAt: 0,
-    now: 174 * H,
+    firstFarmEnteredAt: enteredAt,
+    now: enteredAt + 174 * H,
   });
   // 164h blessed; 168h and 172h outside the exact seven-day window.
   expect(result.creditedHarvestQuantity).toBe(160);

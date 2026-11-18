@@ -31,7 +31,8 @@ export function FarmNewbieBoost({ firstFarmEnteredAt }: { firstFarmEnteredAt?: n
   const endsAt = active ? firstFarmEnteredAt + NEWBIE_WINDOW_MS : null;
   const now = useNow(active);
   const remaining = endsAt ? endsAt - now : 0;
-  const inWindow = endsAt !== null && remaining > 0;
+  const futureStart = active && firstFarmEnteredAt > now;
+  const inWindow = endsAt !== null && !futureStart && remaining > 0;
   return (
     <section aria-label="新手七日六倍活動" style={{ display: "grid", gap: 10 }}>
       <img
@@ -43,7 +44,7 @@ export function FarmNewbieBoost({ firstFarmEnteredAt }: { firstFarmEnteredAt?: n
       {active && (
         <>
           <p role="status" style={{ margin: 0, fontWeight: 700, color: inWindow ? "#ffd76a" : "#9fb2a6" }}>
-            {inWindow ? `剩餘時間：${formatRemaining(remaining)}` : "活動已結束，收成回復為一般產量。"}
+            {futureStart ? "首次進入時間晚於目前時間，無法判定活動資格；請確認裝置時間並重新讀取。" : inWindow ? `剩餘時間：${formatRemaining(remaining)}` : "活動已結束，收成回復為一般產量。"}
           </p>
           <p style={{ margin: 0, fontSize: 13 }}>
             活動期間：{new Date(firstFarmEnteredAt).toLocaleString("zh-TW")} 起 7 日。

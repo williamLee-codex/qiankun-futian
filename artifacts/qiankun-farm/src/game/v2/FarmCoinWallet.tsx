@@ -37,6 +37,10 @@ export function FarmCoinWallet(props: {
     );
   useEffect(() => {
     let active = true;
+    setBalances(null);
+    setPending(props.pending()[0] ?? null);
+    setAmount("");
+    setMessage("");
     setReadError(null);
     props
       .read()
@@ -70,6 +74,7 @@ export function FarmCoinWallet(props: {
     return readError ? "讀取失敗" : "讀取中…";
   };
   async function reload() {
+    setBalances(null);
     setReadError(null);
     setMessage("");
     try {

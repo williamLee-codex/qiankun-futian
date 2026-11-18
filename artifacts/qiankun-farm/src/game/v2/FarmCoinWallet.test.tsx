@@ -27,3 +27,13 @@ it("enables transfer only after confirmed enabled balances", async () => {
   fireEvent.change(screen.getByRole("textbox", { name: "轉帳金額" }), { target: { value: "10" } });
   await waitFor(() => expect(screen.getByRole("button", { name: "轉入福田" }).hasAttribute("disabled")).toBe(false));
 });
+it("does not reuse a prior reader's verified balances while the replacement reader is pending", async () => {
+  const transfer=vi.fn(async()=>balances);
+  const view=render(<FarmCoinWallet read={async()=>balances} transfer={transfer} pending={()=>[]} busy={false}/>);
+  await waitFor(()=>expect(screen.getByRole("textbox",{name:"轉帳金額"})).toBeTruthy());
+  fireEvent.change(screen.getByRole("textbox",{name:"轉帳金額"}),{target:{value:"10"}});
+  expect((screen.getByRole("button",{name:"轉入福田"}) as HTMLButtonElement).disabled).toBe(false);
+  view.rerender(<FarmCoinWallet read={()=>new Promise(()=>{})} transfer={transfer} pending={()=>[]} busy={false}/>);
+  expect((screen.getByRole("button",{name:"轉入福田"}) as HTMLButtonElement).disabled).toBe(true);
+  expect(transfer).not.toHaveBeenCalled();
+});
