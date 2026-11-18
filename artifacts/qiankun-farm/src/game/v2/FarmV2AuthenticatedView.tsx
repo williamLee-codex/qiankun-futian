@@ -660,7 +660,7 @@ export function FarmV2AuthenticatedView(props: {
         結束遊玩並登出
       </button>
       {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
-      {error === "FARM_COIN_INSUFFICIENT" && data.localCoins && <button onClick={()=>{setSelectedLand(null);setPanelOpen(false);setWalletOpen(true);}}>轉入福田金幣</button>}
+      {error === "FARM_COIN_INSUFFICIENT" && <p role="status">金幣不足，請透過上方福田金幣錢包查看餘額與轉換狀態。</p>}
       {notice && <p role="status">{notice}</p>}
       <button
         type="button"
