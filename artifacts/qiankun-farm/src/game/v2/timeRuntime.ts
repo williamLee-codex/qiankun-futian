@@ -58,7 +58,8 @@ export function nextFarmMonthReset(timestamp: number): number {
 export const NEWBIE_WINDOW_MS = 7 * DAY_MS;
 
 export function isNewbieHarvestWindow(firstFarmEnteredAt: number, harvestedAt: number): boolean {
-  return harvestedAt >= firstFarmEnteredAt &&
+  return Number.isFinite(firstFarmEnteredAt) && firstFarmEnteredAt > 0 &&
+    Number.isFinite(harvestedAt) && harvestedAt >= firstFarmEnteredAt &&
     harvestedAt < firstFarmEnteredAt + NEWBIE_WINDOW_MS;
 }
 
