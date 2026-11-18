@@ -64,6 +64,7 @@ export function FarmWorkshopPanel(props: {
   const [localTab, setLocalTab] = useState("盆栽");
   const [festivalCode, setFestivalCode] = useState("");
   const [selectedPet, setSelectedPet] = useState<string | null>(null);
+  const [formationPurchaseOpen, setFormationPurchaseOpen] = useState(false);
   const [bagCategory, setBagCategory] = useState<(typeof BAG_CATEGORIES)[number]>("材料");
   const tab = props.tab ?? localTab;
   const [clock, setClock] = useState(Date.now);
@@ -359,15 +360,24 @@ export function FarmWorkshopPanel(props: {
               disabled={state.formations?.some(
                 (f) => f.id === "FORMATION_PREMIUM_V2",
               )}
-              onClick={() => {
-                if (
-                  window.confirm("取得太虛星河大陣，支付388水晶；永久使用權。")
-                )
-                  void props.transact({ kind: "buyFormation" });
-              }}
+              onClick={() => setFormationPurchaseOpen(true)}
             >
               取得太虛星河大陣
             </button>
+            {formationPurchaseOpen && (
+              <div role="presentation" onClick={() => setFormationPurchaseOpen(false)} style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(0,0,0,.72)",display:"grid",placeItems:"center",padding:16}}>
+                <section role="dialog" aria-modal="true" aria-labelledby="formation-purchase-title" onClick={(event) => event.stopPropagation()} style={{width:"min(100%,420px)",background:"#1b332a",color:"#f1e5c7",border:"2px solid #b99b58",borderRadius:14,padding:22,display:"grid",gap:14,boxShadow:"0 20px 80px #0009"}}>
+                  <h3 id="formation-purchase-title" style={{margin:0}}>太虛星河大陣</h3>
+                  <p style={{margin:0}}>永久使用權，購買後可於護陣介面裝備或卸下。</p>
+                  <p style={{margin:0,fontWeight:700}}>購買價格：388 水晶</p>
+                  <p style={{margin:0,fontSize:13}}>確認後由伺服器驗證資格及扣除水晶；未成功交易不會取得護陣。</p>
+                  <div style={{display:"flex",justifyContent:"flex-end",gap:12}}>
+                    <button type="button" disabled={props.busy} onClick={() => setFormationPurchaseOpen(false)}>取消</button>
+                    <button type="button" disabled={props.busy} onClick={() => { setFormationPurchaseOpen(false); void props.transact({kind:"buyFormation"}); }}>確認購買</button>
+                  </div>
+                </section>
+              </div>
+            )
           </>
         )}
         {tab === "好友" && (
