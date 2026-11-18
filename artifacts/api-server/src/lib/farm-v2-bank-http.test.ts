@@ -13,6 +13,7 @@ afterEach(() => {
 });
 
 it("reads the central ledger and reports Farm coins as zero while local coins are disabled", async () => {
+  process.env.FARM_V2_LOCAL_COINS_ENABLED = "0";
   query.mockResolvedValue({ rows: [{ central: "6700" }] });
   const result = await readFarmCoinBalances("owner");
   expect(result).toEqual({ coins: 0, centralCoins: 6700, localCoinsEnabled: false });
@@ -22,6 +23,7 @@ it("reads the central ledger and reports Farm coins as zero while local coins ar
 });
 
 it("rejects a non-integer central balance instead of showing a placeholder", async () => {
+  process.env.FARM_V2_LOCAL_COINS_ENABLED = "0";
   query.mockResolvedValue({ rows: [{ central: "not-a-number" }] });
   await expect(readFarmCoinBalances("owner")).rejects.toThrow(
     "FARM_CENTRAL_BALANCE_UNAVAILABLE",
