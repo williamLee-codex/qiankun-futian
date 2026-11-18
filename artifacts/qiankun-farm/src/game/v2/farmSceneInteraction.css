@@ -379,10 +379,16 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
   z-index: 25;
   pointer-events: none;
   font-size: 2rem;
-  animation: farm-v2-fly 850ms ease-in-out both;
+  will-change: transform, opacity;
+  animation: farm-v2-fly-pending 420ms ease-out both;
 }
-@keyframes farm-v2-fly {
+@keyframes farm-v2-fly-pending {
   from { transform: translate(-50%, -50%) scale(1.15); }
+  to { transform: translate(calc(-50% + var(--farm-flight-x) * 0.82), calc(-50% + var(--farm-flight-y) * 0.82)) scale(0.8); }
+}
+.farm-v2-flight.confirmed { animation: farm-v2-fly-confirmed 180ms ease-in both; }
+@keyframes farm-v2-fly-confirmed {
+  from { transform: translate(calc(-50% + var(--farm-flight-x) * 0.82), calc(-50% + var(--farm-flight-y) * 0.82)) scale(0.8); }
   to { transform: translate(calc(-50% + var(--farm-flight-x)), calc(-50% + var(--farm-flight-y))) scale(0.45); opacity: 0; }
 }
 .farm-v2-crop-stage {

@@ -21,19 +21,21 @@ export const SIGN_IN_PERFECT_ATTENDANCE: readonly Reward[] = [
   reward('coins',200), reward('spirit_sand',2), reward('jade_marrow',2),
 ];
 
+// Official plan names. Plan identifiers (A/B/C), pricing, payment and claim
+// logic are unchanged; only the displayed name was corrected.
 export const FIRST_PURCHASE_PLANS = {
   A: {
-    name: '靈泉初啟', priceTwd: 390, baseCrystals: 60, bonusCrystals: 60,
+    name: '靈田初耕', priceTwd: 390, baseCrystals: 60, bonusCrystals: 60,
     gifts: [reward('spirit_sand',6),reward('jade_marrow',3),reward('double_harvest',8),
       reward('random_mystic_pot',1),reward('random_earth_pot',1)],
   },
   B: {
-    name: '天華賜福', priceTwd: 990, baseCrystals: 180, bonusCrystals: 180,
+    name: '仙田豐穰', priceTwd: 990, baseCrystals: 180, bonusCrystals: 180,
     gifts: [reward('spirit_sand',18),reward('jade_marrow',9),reward('double_harvest',24),
       reward('random_heaven_pot_distinct',2)],
   },
   C: {
-    name: '聖域至尊', priceTwd: 1790, baseCrystals: 360, bonusCrystals: 360,
+    name: '神田天賜', priceTwd: 1790, baseCrystals: 360, bonusCrystals: 360,
     gifts: [reward('spirit_sand',36),reward('jade_marrow',18),reward('double_harvest',48),
       reward('random_sacred_pot_distinct',2)],
   },
