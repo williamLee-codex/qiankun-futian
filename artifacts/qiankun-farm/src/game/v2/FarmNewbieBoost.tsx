@@ -39,7 +39,7 @@ export function FarmNewbieBoost({ firstFarmEnteredAt }: { firstFarmEnteredAt?: n
         alt="新手六倍活動正式公告橫幅"
         style={{ display: "block", width: "100%", height: "auto", borderRadius: 10 }}
       />
-      {!active && <p>目前沒有進行中的新手六倍活動。本活動自首次進入福田起算，為期 7 日。</p>}
+      {!active && <p role="status">尚未取得首次進入福田的有效時間，無法判定六倍活動資格或顯示倒數；請重新讀取農田資料。</p>}
       {active && (
         <>
           <p role="status" style={{ margin: 0, fontWeight: 700, color: inWindow ? "#ffd76a" : "#9fb2a6" }}>
