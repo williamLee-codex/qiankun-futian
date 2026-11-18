@@ -516,7 +516,6 @@ export function FarmV2AuthenticatedView(props: {
           {panelTab === "福田倉庫" ? (
             <section aria-label="福田倉庫庫存">
               <p>以下數量來自目前伺服器回傳的農田庫存。</p>
-              <button type="button" onClick={() => setWalletOpen(true)}>🪙 福田金幣・轉入／回存</button>
               <button type="button" disabled={busy || loading || checkingSeeds} onClick={async () => {
                 setCheckingSeeds(true);
                 try { const result = await readSeedRecoveries(); setSeedRecoveries(result.purchases); setNotice(result.purchases.length ? "請接續原買種子交易，系統會先查核原扣款。" : "沒有待接續的買種子交易。"); }
