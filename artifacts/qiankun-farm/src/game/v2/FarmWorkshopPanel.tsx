@@ -377,7 +377,7 @@ export function FarmWorkshopPanel(props: {
                   </div>
                 </section>
               </div>
-            )
+            )}
           </>
         )}
         {tab === "好友" && (
