@@ -5,13 +5,19 @@ import { getVercelOidcToken } from '@vercel/oidc';
 export async function farmV2PlatformFetch(url: URL, init: RequestInit) {
   const headers = new Headers(init.headers);
   headers.delete('x-vercel-trusted-oidc-idp-token');
-  if (process.env.VERCEL_ENV === 'preview') {
+  headers.delete('x-vercel-protection-bypass');
+  headers.delete('x-vercel-set-bypass-cookie');
+  if (['preview', 'production'].includes(process.env.VERCEL_ENV ?? '')) {
     const configured = new URL(process.env.PLATFORM_BASE_URL ?? '');
     if (url.origin !== configured.origin || url.protocol !== 'https:' ||
         url.username || url.password || !url.pathname.startsWith('/api/replit/')) {
       throw new Error('INVALID_FARM_PLATFORM_IDENTITY_TARGET');
     }
     headers.set('x-vercel-trusted-oidc-idp-token', await getVercelOidcToken());
+    // Only a server-bound credential for this exact configured target may pass SSO.
+    // This does not replace the existing shared-secret or Session checks.
+    const automationSecret = process.env.FARM_V2_PLATFORM_AUTOMATION_SECRET;
+    if (automationSecret) headers.set('x-vercel-protection-bypass', automationSecret);
   }
   const stage = ['/api/replit/launch/validate', '/api/replit/farm-v2/identity'].includes(url.pathname) ? 'platform_validate'
     : url.pathname.includes('/wallet') ? 'platform_wallet' : 'platform_other';
