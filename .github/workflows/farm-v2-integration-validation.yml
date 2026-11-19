@@ -16,6 +16,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -23,6 +25,19 @@ jobs:
         with:
           node-version: '24'
           cache: pnpm
+      - name: Enforce V2-only change boundary (V1 is read-only)
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          const baseline = '354a375a7d2ed2ea4b65e8e6c07c90f10cefbbc1';
+          const changed = execFileSync('git', ['diff', '--name-only', baseline, 'HEAD'], { encoding: 'utf8' }).trim().split('\\n').filter(Boolean);
+          const forbidden = changed.filter(path => /(^|\\/)(farm-v1|FarmV1|v1Server)(\\/|\\.|$)/i.test(path) || /^src\\/app\\/farm\\//.test(path));
+          if (forbidden.length) {
+            console.error('V1_PROTECTED_PATH_MODIFIED:', forbidden.join(', '));
+            process.exit(1);
+          }
+          console.log('V1 protected path check passed; files checked:', changed.length);
+          NODE
       - run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck
       - run: pnpm test
