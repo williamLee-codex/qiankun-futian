@@ -30,8 +30,8 @@ jobs:
           node --input-type=module <<'NODE'
           import { execFileSync } from 'node:child_process';
           const baseline = '354a375a7d2ed2ea4b65e8e6c07c90f10cefbbc1';
-          const changed = execFileSync('git', ['diff', '--name-only', baseline, 'HEAD'], { encoding: 'utf8' }).trim().split('\\n').filter(Boolean);
-          const forbidden = changed.filter(path => /(^|\\/)(farm-v1|FarmV1|v1Server)(\\/|\\.|$)/i.test(path) || /^src\\/app\\/farm\\//.test(path));
+          const changed = execFileSync('git', ['diff', '--name-only', baseline, 'HEAD'], { encoding: 'utf8' }).trim().split(String.fromCharCode(10)).filter(Boolean);
+          const forbidden = changed.filter(path => path.includes('/farm-v1/') || path.includes('/FarmV1') || path.includes('/v1Server') || path.startsWith('src/app/farm/'));
           if (forbidden.length) {
             console.error('V1_PROTECTED_PATH_MODIFIED:', forbidden.join(', '));
             process.exit(1);
