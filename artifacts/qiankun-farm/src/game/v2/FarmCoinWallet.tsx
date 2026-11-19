@@ -37,6 +37,10 @@ export function FarmCoinWallet(props: {
     );
   useEffect(() => {
     let active = true;
+    setBalances(null);
+    setPending(props.pending()[0] ?? null);
+    setAmount("");
+    setMessage("");
     setReadError(null);
     props
       .read()
@@ -64,12 +68,13 @@ export function FarmCoinWallet(props: {
       number <= 2147483647;
   // Transfers only exist once the Farm ledger is enabled server-side. Until
   // then the Central balance is read-only and no transfer may be created.
-  const transferEnabled = balances?.localCoinsEnabled !== false;
+  const transferEnabled = balances?.localCoinsEnabled === true && !readError;
   const balanceText = (value: number | undefined) => {
     if (value !== undefined) return String(value);
     return readError ? "讀取失敗" : "讀取中…";
   };
   async function reload() {
+    setBalances(null);
     setReadError(null);
     setMessage("");
     try {

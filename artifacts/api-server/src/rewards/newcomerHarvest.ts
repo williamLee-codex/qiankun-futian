@@ -9,7 +9,7 @@ export function newcomerHarvestMultiplier(firstFarmEnteredAt: string | number | 
   if (firstFarmEnteredAt == null) return 1;
   const started = new Date(firstFarmEnteredAt).getTime();
   const harvested = new Date(harvestedAt).getTime();
-  if (!Number.isFinite(started) || !Number.isFinite(harvested)) return 1;
+  if (!Number.isFinite(started) || started <= 0 || !Number.isFinite(harvested)) return 1;
   return harvested >= started && harvested - started < NEWCOMER_DURATION_MS ? 6 : 1;
 }
 

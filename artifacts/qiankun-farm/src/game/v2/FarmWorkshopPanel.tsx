@@ -2,7 +2,7 @@ import { PotSynthesisGrid } from "./PotSynthesisGrid";
 const unavailableWallet = async (): Promise<{ coins: number }> => { throw new Error("WALLET_UNAVAILABLE"); };
 import { FORMATION_NAMES } from "./formationSourcesRuntime";
 import { nextFarmMonthReset } from "./timeRuntime";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   workshopState,
   workshopPublicState,
@@ -64,8 +64,16 @@ export function FarmWorkshopPanel(props: {
   const [localTab, setLocalTab] = useState("盆栽");
   const [festivalCode, setFestivalCode] = useState("");
   const [selectedPet, setSelectedPet] = useState<string | null>(null);
+  const [formationPurchaseOpen, setFormationPurchaseOpen] = useState(false);
   const [bagCategory, setBagCategory] = useState<(typeof BAG_CATEGORIES)[number]>("材料");
   const tab = props.tab ?? localTab;
+  const [clock, setClock] = useState(Date.now);
+  useEffect(() => {
+    if (tab !== "靈寵" && tab !== "護陣") return;
+    setClock(Date.now());
+    const timer = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [tab]);
   const state = workshopState(props.warehouse), summary = workshopPublicState(props.warehouse);
   const bagInventoryAvailable = props.warehouse.workshop !== undefined;
   // A server snapshot may belong to the previous 05:00 period. Never offer
@@ -237,7 +245,7 @@ export function FarmWorkshopPanel(props: {
             <div role="list" aria-label="靈獸圖鑑" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12, padding: "8px 0" }}>
               {FARM_V2_PETS.map((pet) => {
                 const owned = props.pets?.owned.includes(pet.id) ?? false;
-                const active = owned && props.pets?.activePetId === pet.id && (props.pets?.activeUntil ?? 0) > Date.now();
+                const active = owned && props.pets?.activePetId === pet.id && (props.pets?.activeUntil ?? 0) > clock;
                 const requirement = pet.acquisition.kind === "coins"
                   ? `${pet.acquisition.amount} 金幣`
                   : pet.acquisition.kind === "crystals"
@@ -253,7 +261,7 @@ export function FarmWorkshopPanel(props: {
                     <span style={{ fontSize: 12, color: owned ? "#9fe0b4" : "#e0b48c" }}>{owned ? "已解鎖" : `未解鎖・${requirement}`}</span>
                     <span style={{ fontSize: 12 }}>每次啟動消耗百味糧 ×{pet.foodPerActivation}</span>
                     <span style={{ fontSize: 12, color: active ? "#ffd76a" : "#9fb2a6" }}>
-                      {active ? `活動中・截止 ${new Date(props.pets!.activeUntil!).toLocaleString("zh-TW")}` : owned ? "未活動" : "尚未取得"}
+                      {active ? `活動中・截止 ${new Date(props.pets!.activeUntil!).toLocaleString("zh-TW")}` : owned ? "休息中（尚未啟用）" : "尚未取得"}
                     </span>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {owned
@@ -331,7 +339,7 @@ export function FarmWorkshopPanel(props: {
             <p>同時最多裝備一個護陣；由乾坤寶囊持有的護陣道具中選取，裝備資格與期限由伺服器驗證。</p>
             <div role="list" aria-label="持有護陣道具" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 10, padding: "8px 0" }}>
               {(state.formations ?? [])
-                .filter((f) => f.expiresAt === null || f.expiresAt > Date.now())
+                .filter((f) => f.expiresAt === null || f.expiresAt > clock)
                 .map((f) => {
                   const active = state.activeFormation === f.id;
                   const expiry = f.expiresAt === null ? "永久有效" : `有效至 ${new Date(f.expiresAt).toLocaleString("zh-TW")}`;
@@ -346,21 +354,30 @@ export function FarmWorkshopPanel(props: {
                     </div>
                   );
                 })}
-              {(state.formations ?? []).filter((f) => f.expiresAt === null || f.expiresAt > Date.now()).length === 0 && <p style={{ gridColumn: "1/-1", margin: 0 }}>目前沒有持有任何護陣道具。</p>}
+              {(state.formations ?? []).filter((f) => f.expiresAt === null || f.expiresAt > clock).length === 0 && <p style={{ gridColumn: "1/-1", margin: 0 }}>目前沒有持有任何護陣道具。</p>}
             </div>
             <button
               disabled={state.formations?.some(
                 (f) => f.id === "FORMATION_PREMIUM_V2",
               )}
-              onClick={() => {
-                if (
-                  window.confirm("取得太虛星河大陣，支付388水晶；永久使用權。")
-                )
-                  void props.transact({ kind: "buyFormation" });
-              }}
+              onClick={() => setFormationPurchaseOpen(true)}
             >
               取得太虛星河大陣
             </button>
+            {formationPurchaseOpen && (
+              <div role="presentation" onClick={() => setFormationPurchaseOpen(false)} style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(0,0,0,.72)",display:"grid",placeItems:"center",padding:16}}>
+                <section role="dialog" aria-modal="true" aria-labelledby="formation-purchase-title" onClick={(event) => event.stopPropagation()} style={{width:"min(100%,420px)",background:"#1b332a",color:"#f1e5c7",border:"2px solid #b99b58",borderRadius:14,padding:22,display:"grid",gap:14,boxShadow:"0 20px 80px #0009"}}>
+                  <h3 id="formation-purchase-title" style={{margin:0}}>太虛星河大陣</h3>
+                  <p style={{margin:0}}>永久使用權，購買後可於護陣介面裝備或卸下。</p>
+                  <p style={{margin:0,fontWeight:700}}>購買價格：388 水晶</p>
+                  <p style={{margin:0,fontSize:13}}>確認後由伺服器驗證資格及扣除水晶；未成功交易不會取得護陣。</p>
+                  <div style={{display:"flex",justifyContent:"flex-end",gap:12}}>
+                    <button type="button" disabled={props.busy} onClick={() => setFormationPurchaseOpen(false)}>取消</button>
+                    <button type="button" disabled={props.busy} onClick={() => { setFormationPurchaseOpen(false); void props.transact({kind:"buyFormation"}); }}>確認購買</button>
+                  </div>
+                </section>
+              </div>
+            )}
           </>
         )}
         {tab === "好友" && (

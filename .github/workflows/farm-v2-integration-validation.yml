@@ -3,9 +3,12 @@ on:
   push:
     branches:
       - fix/farm-v2-eight-features-20261117
+      - fix/farm-v2-production-ux-batch-20261118
+      - fix/farm-v2-eight-ux-integration-20261118
   pull_request:
     branches:
       - fix/live-production-pedestals-20261116
+      - fix/farm-v2-eight-features-20261117
   workflow_dispatch:
 jobs:
   validate:
@@ -13,6 +16,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -20,6 +25,19 @@ jobs:
         with:
           node-version: '24'
           cache: pnpm
+      - name: Enforce V2-only change boundary (V1 is read-only)
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          const baseline = '354a375a7d2ed2ea4b65e8e6c07c90f10cefbbc1';
+          const changed = execFileSync('git', ['diff', '--name-only', baseline, 'HEAD'], { encoding: 'utf8' }).trim().split(String.fromCharCode(10)).filter(Boolean);
+          const forbidden = changed.filter(path => path.includes('/farm-v1/') || path.includes('/FarmV1') || path.includes('/v1Server') || path.startsWith('src/app/farm/'));
+          if (forbidden.length) {
+            console.error('V1_PROTECTED_PATH_MODIFIED:', forbidden.join(', '));
+            process.exit(1);
+          }
+          console.log('V1 protected path check passed; files checked:', changed.length);
+          NODE
       - run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck
       - run: pnpm test
@@ -27,3 +45,17 @@ jobs:
         env:
           PORT: '4173'
           BASE_PATH: '/farm-v2/'
+          # Build the authenticated UI, not only the missing-connection guard.
+          # CI-only path; this does not change any Vercel runtime setting.
+          VITE_FARM_API_BASE_URL: '/api/'
+
+      - name: Verify authenticated Farm UI is in the artifact
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdirSync, readFileSync } from 'node:fs';
+          const assets = 'artifacts/qiankun-farm/dist/public/assets/';
+          const bundle = readdirSync(assets).filter(f => f.endsWith('.js')).map(f => readFileSync(assets + f, 'utf8')).join('\n');
+          for (const marker of ['farm-v2-authenticated-view', 'farm-v2-warehouse-building']) {
+            if (!bundle.includes(marker)) throw new Error('AUTHENTICATED_FARM_UI_NOT_BUNDLED');
+          }
+          NODE
