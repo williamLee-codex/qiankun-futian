@@ -3,10 +3,11 @@ import { getVercelOidcToken } from '@vercel/oidc';
 import { randomBytes } from 'node:crypto';
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
-  if (process.env.VERCEL_ENV !== 'preview' || process.env.FARM_V2_ENTRY_ENABLED !== '0' || process.env.FARM_V2_ATOMIC_POT_ENABLED !== '0') return res.status(404).json({status:'disabled'});
+  if (process.env.VERCEL_ENV !== 'preview' || process.env.FARM_V2_ENTRY_ENABLED !== '0' || process.env.FARM_V2_ATOMIC_POT_ENABLED !== '1') return res.status(404).json({status:'disabled'});
   if (req.method !== 'GET') return res.status(405).json({status:'method_not_allowed'});
   try {
-    const origin = new URL(process.env.PLATFORM_BASE_URL);
+    // Fixed, isolated main-site Preview for this acceptance; do not read shared Preview origin.
+    const origin = new URL('https://yuceluopan-main-l0exgwomm-williamlee-codexs-projects.vercel.app');
     if (origin.protocol !== 'https:' || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) throw new Error('INVALID_ORIGIN');
     const response = await fetch(new URL('/api/replit/farm-v2/session', origin), {
       method:'POST', redirect:'error', cache:'no-store', signal:AbortSignal.timeout(10000),
