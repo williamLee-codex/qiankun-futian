@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Notice = {
   id: string;
@@ -44,6 +44,7 @@ export function FarmV2AnnouncementOverlay() {
   const [hideForever, setHideForever] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const firstSeenAttempted = useRef(new Set<string>());
 
   useEffect(() => {
     const controller = new AbortController();
@@ -72,6 +73,33 @@ export function FarmV2AnnouncementOverlay() {
     if (receipt.hideTodayUntil && Date.parse(receipt.hideTodayUntil) > now) return false;
     return true;
   });
+
+  // Start the first-view clock when shown, not when closed.
+  const currentId = current?.id;
+  useEffect(() => {
+    if (!currentId || receipts[currentId]?.firstSeenAt ||
+        firstSeenAttempted.current.has(currentId)) return;
+    firstSeenAttempted.current.add(currentId);
+    if (authenticated) {
+      void fetch("/api/announcements/receipts", {
+        method: "POST", credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ announcementId: currentId, action: "SEEN", target: TARGET }),
+      }).then((response) => {
+        if (!response.ok) firstSeenAttempted.current.delete(currentId);
+      }).catch(() => firstSeenAttempted.current.delete(currentId));
+    } else {
+      try {
+        const next = { ...guestReceipts(), [currentId]: {
+          firstSeenAt: new Date().toISOString(),
+          hideTodayUntil: null, dismissedPermanently: false,
+        }};
+        localStorage.setItem(KEY, JSON.stringify(next));
+        setReceipts(next);
+      } catch { firstSeenAttempted.current.delete(currentId); }
+    }
+  }, [currentId, authenticated, receipts]);
+
   if (!current) return null;
 
   async function close() {
