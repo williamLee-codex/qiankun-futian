@@ -21,18 +21,6 @@ type ResponseData = {
   authenticated: boolean;
 };
 const TARGET = "FARM_V2";
-const KEY = "imperial-announcement-receipts-v1";
-const taipeiMidnight = () => {
-  const now = new Date();
-  const taipei = new Date(now.getTime() + 8 * 3600000);
-  return new Date(Date.UTC(taipei.getUTCFullYear(), taipei.getUTCMonth(), taipei.getUTCDate() + 1, -8)).toISOString();
-};
-function guestReceipts(): Record<string, Receipt> {
-  try {
-    const value: unknown = JSON.parse(localStorage.getItem(KEY) || "{}");
-    return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, Receipt> : {};
-  } catch { return {}; }
-}
 
 /** Only mounted by the authenticated Farm V2 entry. No navigation or scene mutations. */
 export function FarmV2AnnouncementOverlay() {
@@ -55,8 +43,11 @@ export function FarmV2AnnouncementOverlay() {
       return response.json() as Promise<ResponseData>;
     }).then((data) => {
       if (controller.signal.aborted) return;
-      setAuthenticated(data.authenticated);
-      setReceipts(data.authenticated ? data.receipts : guestReceipts());
+      // Authenticated Farm V2 must never downgrade to anonymous receipts.
+      // If platform cookies are unavailable, keep the farm playable and show no notices.
+      if (!data.authenticated) return;
+      setAuthenticated(true);
+      setReceipts(data.receipts ?? {});
       setItems(data.announcements);
     }).catch(() => {
       // The farm must remain usable if the announcement service is unavailable.
@@ -88,15 +79,6 @@ export function FarmV2AnnouncementOverlay() {
       }).then((response) => {
         if (!response.ok) firstSeenAttempted.current.delete(currentId);
       }).catch(() => firstSeenAttempted.current.delete(currentId));
-    } else {
-      try {
-        const next = { ...guestReceipts(), [currentId]: {
-          firstSeenAt: new Date().toISOString(),
-          hideTodayUntil: null, dismissedPermanently: false,
-        }};
-        localStorage.setItem(KEY, JSON.stringify(next));
-        setReceipts(next);
-      } catch { firstSeenAttempted.current.delete(currentId); }
     }
   }, [currentId, authenticated, receipts]);
 
@@ -116,18 +98,6 @@ export function FarmV2AnnouncementOverlay() {
           body: JSON.stringify({ announcementId: current.id, action, target: TARGET }),
         });
         if (!response.ok) throw new Error("RECEIPT_FAILED");
-      } else {
-        const prior = receipts[current.id];
-        const next = {
-          ...receipts,
-          [current.id]: {
-            firstSeenAt: prior?.firstSeenAt ?? new Date().toISOString(),
-            hideTodayUntil: action === "TODAY" ? taipeiMidnight() : prior?.hideTodayUntil ?? null,
-            dismissedPermanently: action === "FOREVER" || (prior?.dismissedPermanently ?? false),
-          },
-        };
-        localStorage.setItem(KEY, JSON.stringify(next));
-        setReceipts(next);
       }
       setHidden((previous) => [...previous, current.id]);
       setHideToday(false);
