@@ -73,3 +73,17 @@ it("rejects unauthorized session exchange without retrying against the legacy he
   await expect(requestFarmV2PlatformSession("invalid-token", "exchange")).rejects.toThrow("FARM_SESSION_NOT_ACTIVE");
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
+
+it("allows a dedicated-only deployment to authenticate Session without the legacy secret", async () => {
+  vi.stubEnv("PLATFORM_BASE_URL", "https://platform.example");
+  vi.stubEnv("REPLIT_APP_SHARED_SECRET", "");
+  vi.stubEnv("FARM_V2_BRIDGE_SHARED_SECRET", "bridge-only");
+  fetchMock.mockImplementationOnce(async (_url: URL, init: RequestInit) => {
+    const headers = new Headers(init.headers);
+    expect(headers.get("x-farm-v2-shared-secret")).toBe("bridge-only");
+    expect(headers.has("x-replit-shared-secret")).toBe(false);
+    return Response.json({ revoked: true });
+  });
+  await expect(requestFarmV2PlatformSession("fvs1." + "a".repeat(43), "revoke")).resolves.toEqual({ revoked: true });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});

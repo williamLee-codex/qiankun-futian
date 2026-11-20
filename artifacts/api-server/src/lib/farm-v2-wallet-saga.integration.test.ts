@@ -141,7 +141,7 @@ describe.skipIf(!enabled)(
         ],
       );
       await storage.pool.query(
-        "INSERT INTO farm_v2_land(user_id,land_id,lifecycle,access_active,planted_quantity) SELECT $1,n,'EMPTY',true,0 FROM generate_series(1,6) n",
+        "INSERT INTO farm_v2_land(user_id,land_id,lifecycle,access_active,planted_quantity) SELECT $1,n,'EMPTY',true,0 FROM generate_series(1,6) n ON CONFLICT(user_id,land_id) DO NOTHING",
         [userId],
       );
     }
@@ -205,6 +205,11 @@ describe.skipIf(!enabled)(
       await gameplayFixture();
       const { settleFarmV2Farmer, configureFarmV2Farmer } =
         await import("./farm-v2-gameplay");
+      // Epoch zero is intentionally invalid under the retained newbie guard.
+      // Use a valid positive entry time for this multiplier/concurrency case.
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET first_farm_entered_at=to_timestamp(1) WHERE user_id=$1", [userId],
+      );
       await storage.pool.query(
         "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(warehouse_state,'{seeds,1}','40') WHERE user_id=$1",
         [userId],
@@ -2064,6 +2069,12 @@ describe.skipIf(!enabled)(
         `insert into farm_v2_player_state(user_id,access_state,warehouse_state,mission_state,pet_state,farmer_state) values($1,'{}',$2,$3,'{}','{}')`,
         [userId, warehouse, createMissionState(Date.now())],
       );
+      // The real first-entry path opens land 1. Recovery fixtures must meet
+      // that precondition before testing post-wallet failures.
+      await storage.pool.query(
+        "INSERT INTO farm_v2_land(user_id,land_id,lifecycle,access_active,planted_quantity) VALUES($1,1,'EMPTY',true,0)",
+        [userId],
+      );
       vi.stubGlobal("fetch", async (_url: unknown, init: RequestInit) => {
         const input = JSON.parse(String(init.body));
         if (String(_url).endsWith("/friends/authorization")) {
@@ -2191,6 +2202,7 @@ describe.skipIf(!enabled)(
       packs: 2,
     });
     it("HTTP seed purchase and simultaneous retries charge and grant once", async () => {
+      await storage.pool.query("delete from farm_v2_land where user_id=$1", [userId]);
       await storage.pool.query("delete from farm_v2_player_state where user_id=$1", [userId]);
       const { ensureFarmV2PlayerInitialized } = await import("./farm-v2-init");
       await ensureFarmV2PlayerInitialized({ userId });
@@ -2813,6 +2825,7 @@ describe.skipIf(!enabled)(
       ).toBe(100);
     });
     it("paid sow/harvest use real persisted fields and a post-refund operation cannot retain paid land access", async () => {
+      await storage.pool.query("delete from farm_v2_land");
       await storage.pool.query("delete from farm_v2_player_state");
       const { ensureFarmV2PlayerInitialized } = await import("./farm-v2-init");
       const { reconcileFarmV2PaidAccessFromCore } =

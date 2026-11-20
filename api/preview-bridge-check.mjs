@@ -9,7 +9,10 @@ export default async function handler(req, res) {
     // Fixed, isolated main-site Preview for this acceptance; do not read shared Preview origin.
     const origin = new URL('https://yuceluopan-main-l0exgwomm-williamlee-codexs-projects.vercel.app');
     if (origin.protocol !== 'https:' || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) throw new Error('INVALID_ORIGIN');
-    const headers = new Headers({'content-type':'application/json','x-replit-shared-secret':process.env.REPLIT_APP_SHARED_SECRET,'x-vercel-trusted-oidc-idp-token':await getVercelOidcToken()});
+    const dedicatedSecret = process.env.FARM_V2_BRIDGE_SHARED_SECRET;
+    const secret = dedicatedSecret || process.env.REPLIT_APP_SHARED_SECRET;
+    if (!secret) throw new Error('FARM_SESSION_NOT_CONFIGURED');
+    const headers = new Headers({'content-type':'application/json',[dedicatedSecret ? 'x-farm-v2-shared-secret' : 'x-replit-shared-secret']:secret,'x-vercel-trusted-oidc-idp-token':await getVercelOidcToken()});
     // Match the real callback's server-bound protection authentication; never
     // use incoming browser headers or create a deployment-bypass cookie.
     const automationSecret = process.env.FARM_V2_PLATFORM_AUTOMATION_SECRET;
