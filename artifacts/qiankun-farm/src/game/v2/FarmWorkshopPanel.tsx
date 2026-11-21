@@ -33,6 +33,7 @@ function BagGrid({ slots, label }: { slots: readonly BagSlot[]; label: string })
 }
 export function FarmWorkshopPanel(props: {
   tab?: string;
+  petId?: string | null;
   onTabChange?: (tab: string) => void;
   readFriends?: () => Promise<{ friends: { id: string }[] }>;
   visitCave?: (id: string) => Promise<{
@@ -63,7 +64,8 @@ export function FarmWorkshopPanel(props: {
     [friendError, setFriendError] = useState("");
   const [localTab, setLocalTab] = useState("盆栽");
   const [festivalCode, setFestivalCode] = useState("");
-  const [selectedPet, setSelectedPet] = useState<string | null>(null);
+  const [selectedPet, setSelectedPet] = useState<string | null>(props.petId ?? null);
+  useEffect(() => setSelectedPet(props.petId ?? null), [props.petId]);
   const [formationPurchaseOpen, setFormationPurchaseOpen] = useState(false);
   const [bagCategory, setBagCategory] = useState<(typeof BAG_CATEGORIES)[number]>("材料");
   const tab = props.tab ?? localTab;
@@ -107,8 +109,8 @@ export function FarmWorkshopPanel(props: {
             {!bagInventoryAvailable && <p role="alert">伺服器尚未提供乾坤寶囊庫存，無法確認物品數量；已停止寶囊操作。</p>}
             {bagInventoryAvailable && bagCategory === "材料" && (
               <BagGrid label="材料背包格子" slots={[
-                { key: "蘊靈砂", name: "蘊靈砂", count: state.materials.蘊靈砂 ?? 0, icon: null },
-                { key: "九霄玉髓", name: "九霄玉髓", count: state.materials.九霄玉髓 ?? 0, icon: null },
+                { key: "蘊靈砂", name: "蘊靈砂", count: state.materials.蘊靈砂 ?? 0, icon: `${import.meta.env.BASE_URL ?? "/"}images/farm/items/蘊靈砂.png` },
+                { key: "九霄玉髓", name: "九霄玉髓", count: state.materials.九霄玉髓 ?? 0, icon: `${import.meta.env.BASE_URL ?? "/"}images/farm/items/九霄玉髓.png` },
               ]} />
             )}
             {bagInventoryAvailable && bagCategory === "碎片" && <p>碎片庫存尚未接入。</p>}
@@ -243,7 +245,7 @@ export function FarmWorkshopPanel(props: {
               <button type="button" disabled={props.busy} onClick={() => void props.transact({ kind: "buyFood", quantity: 1 })}>購買一份</button>
             </p>
             <div role="list" aria-label="靈獸圖鑑" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12, padding: "8px 0" }}>
-              {FARM_V2_PETS.map((pet) => {
+              {FARM_V2_PETS.filter(pet => !props.petId || pet.id === props.petId).map((pet) => {
                 const owned = props.pets?.owned.includes(pet.id) ?? false;
                 const active = owned && props.pets?.activePetId === pet.id && (props.pets?.activeUntil ?? 0) > clock;
                 const requirement = pet.acquisition.kind === "coins"

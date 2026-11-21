@@ -26,3 +26,11 @@ it.each([null,undefined,0,-1,NaN,Infinity])("keeps missing/invalid entry evidenc
  expect(screen.getByRole("status").textContent).toContain("無法判定");
  expect(screen.getByRole("status").textContent).not.toContain("活動已結束");
 });
+it("uses the existing illustrated close control without adding a second visible X", () => {
+  const close = vi.fn();
+  render(<FarmNewbieBoost firstFarmEnteredAt={start} onClose={close}/>);
+  const button = screen.getByRole("button", { name: "關閉新手六倍公告" });
+  expect(button.textContent).toBe("");
+  button.click();
+  expect(close).toHaveBeenCalledOnce();
+});

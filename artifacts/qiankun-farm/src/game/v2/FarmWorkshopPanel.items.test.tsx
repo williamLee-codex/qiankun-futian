@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
 import { FARM_V2_PETS } from "./petRuntime";
 import type { WorkshopWarehouse } from "./workshopRuntime";
 
+afterEach(cleanup);
 const warehouse: WorkshopWarehouse = {
   seeds: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
   crops: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
@@ -82,6 +83,18 @@ describe("Formation item cards", () => {
     expect(transact).toHaveBeenCalledWith({ kind: "switchFormation", formationId: null });
     fireEvent.click(screen.getByRole("button", { name: "裝備" }));
     expect(transact).toHaveBeenCalledWith({ kind: "switchFormation", formationId: "FORMATION_ACHIEVEMENT_01" });
+    cleanup();
+  });
+});
+
+describe("Individual scene pet selection", () => {
+  it.each(FARM_V2_PETS)("keeps $id artwork and description separate", pet => {
+    render(<FarmWorkshopPanel tab="靈寵" petId={pet.id} warehouse={warehouse} busy={false} transact={async()=>true} pets={{owned:[pet.id],activePetId:null,activeUntil:null}} />);
+    const list=screen.getByRole("list",{name:"靈獸圖鑑"});
+    expect(list.querySelectorAll('[role="listitem"]')).toHaveLength(1);
+    expect(screen.getByAltText(`${pet.id}正式角色圖片`)).toBeTruthy();
+    expect(screen.getByAltText(`${pet.id}正式能力說明圖`)).toBeTruthy();
+    for(const other of FARM_V2_PETS.filter(item=>item.id!==pet.id)) expect(screen.queryByAltText(`${other.id}正式角色圖片`)).toBeNull();
     cleanup();
   });
 });

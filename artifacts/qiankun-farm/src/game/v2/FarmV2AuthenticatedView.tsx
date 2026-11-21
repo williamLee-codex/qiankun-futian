@@ -84,7 +84,9 @@ export function FarmV2AuthenticatedView(props: {
   const [visited, setVisited] = useState<FarmV2PublicCave | null>(null);
   const [panelTab, setPanelTab] = useState("盆栽");
   const [activityNotice, setActivityNotice] = useState("");
-  function openPanel(tab: string) {
+  const [focusedPetId, setFocusedPetId] = useState<string | null>(null);
+  function openPanel(tab: string, petId: string | null = null) {
+    setFocusedPetId(petId);
     setPanelTab(tab);
     setPanelOpen(true);
     const inspection = tab === "福田倉庫" ? "warehouse" : tab === "靈寵" ? "pet" : null;
@@ -434,13 +436,13 @@ export function FarmV2AuthenticatedView(props: {
         </DialogContent>
       </Dialog>
       <Dialog open={newcomerNoticeOpen} onOpenChange={setNewcomerNoticeOpen}>
-        <DialogContent style={{background:"#12251f",color:"#f8f1df",maxHeight:"min(76dvh,720px)",overflowY:"auto",top:"calc(50% - 60px)",padding:12,width:"min(680px,96vw)",maxWidth:"96vw"}}>
+        <DialogContent className="farm-v2-newcomer-dialog" style={{background:"#12251f",color:"#f8f1df",maxHeight:"min(76dvh,720px)",overflowY:"auto",top:"calc(50% - 60px)",padding:12,width:"min(680px,96vw)",maxWidth:"96vw"}}>
           <DialogTitle>新手 7 日六倍</DialogTitle>
-          <FarmNewbieBoost firstFarmEnteredAt={data.firstFarmEnteredAt} />
+          <FarmNewbieBoost firstFarmEnteredAt={data.firstFarmEnteredAt} onClose={() => setNewcomerNoticeOpen(false)} />
         </DialogContent>
       </Dialog>
       <Dialog open={firstRechargeNoticeOpen} onOpenChange={setFirstRechargeNoticeOpen}>
-        <DialogContent style={{background:"#12251f",color:"#f8f1df",maxHeight:"min(76dvh,720px)",overflowY:"auto",top:"calc(50% - 60px)",padding:12,width:"min(660px,96vw)",maxWidth:"96vw"}}>
+        <DialogContent className="farm-v2-first-purchase-dialog" style={{background:"#12251f",color:"#f8f1df",maxHeight:"min(76dvh,720px)",overflowY:"auto",top:"calc(50% - 60px)",padding:12,width:"min(660px,96vw)",maxWidth:"96vw"}}>
           <DialogTitle>首儲獎勵</DialogTitle>
           <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/first-recharge-panel.png`} alt="首儲獎勵正式公告橫幅" style={{display:"block",width:"100%",height:"auto",borderRadius:10}} />
           <p style={{margin:0}}>獎勵是否符合領取資格，以正式儲值與伺服器紀錄為準；下方卡片為實際領取與儲值入口。</p>
@@ -503,6 +505,7 @@ export function FarmV2AuthenticatedView(props: {
             : undefined
         }
         onPlotClick={handlePlotClick}
+        onPetSelect={(petId) => openPanel("靈寵", petId)}
         onSection={openPanel}
       />
       <div className="farm-v2-corner-tools" aria-label="福田右上角工具" >
@@ -560,7 +563,9 @@ export function FarmV2AuthenticatedView(props: {
                     ]
                 ).map(item => (
                   <div role="listitem" key={item.key} title={item.name} style={{ minHeight: 88, border: "1px solid #a99565", borderRadius: 8, padding: 6, background: "#25392e", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-                    <span aria-hidden="true" style={{ fontSize: 24 }}>{item.icon}</span>
+                    {item.key.startsWith("crop-") ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/plants/${item.key.slice(5)}-0.webp`} alt="" width={48} height={48} style={{ objectFit: "contain" }} />
+                      : item.key.startsWith("material-") ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/items/${item.name}.png`} alt="" width={48} height={48} style={{ objectFit: "contain" }} />
+                      : <span aria-hidden="true" style={{ fontSize: 24 }}>{item.icon}</span>}
                     <span style={{ fontSize: 12 }}>{item.name}</span>
                     <strong style={{ fontSize: 12 }}>{item.qty === null ? "資料缺失" : "×" + item.qty}</strong>
                   </div>
@@ -571,6 +576,7 @@ export function FarmV2AuthenticatedView(props: {
           ) : (
             <FarmWorkshopPanel
               tab={panelTab}
+              petId={focusedPetId}
               onTabChange={openPanel}
               readFriends={readFriends}
               visitCave={async (id) => {
