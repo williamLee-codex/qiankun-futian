@@ -9,6 +9,7 @@ on:
       - codex/farm-two-bags-isolated-20261105
       - perf/farm-db-reuse-20261112
       - integrate/farm-v2-rewards-api-20261113
+      - fix/restore-approved-signin-panel-20261121
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
