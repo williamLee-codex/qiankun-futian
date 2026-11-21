@@ -265,7 +265,8 @@ body:has(.farm-v2-authenticated-view) {
 .farm-v2-canvas.interior .farm-v2-decor:focus-visible { outline: 2px solid #e5c879; }
 html:has(.farm-v2-interaction.cave-open),
 body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
-.farm-v2-authenticated-view:has(.cave-open) > :not(.farm-v2-interaction) { visibility: hidden; }
+.farm-v2-authenticated-view:has(.cave-open) > :not(.farm-v2-interaction):not(.farm-v2-scene-tools-anchor) { visibility: hidden; }
+.farm-v2-scene-tools-anchor:has(.cave-open) > .farm-v2-corner-tools { visibility: hidden; }
 .farm-v2-canvas.exterior button:hover:not(:focus-visible) {
   outline: none;
 }
@@ -552,3 +553,8 @@ body:has(.farm-v2-interaction.cave-open) { overflow: hidden; }
 .farm-v2-corner-tools button img {display:block;width:100%;height:100%;object-fit:contain;}
 .farm-v2-corner-tools button:focus-visible {outline:2px solid #f3cf77;outline-offset:2px;}
 @media(max-width:650px){.farm-v2-corner-tools{width:min(30%,132px);gap:4px;top:6px;right:6px;}}
+/* The approved newcomer art already includes its red close icon. */
+.farm-v2-newcomer-dialog > button:last-child { display: none; }
+/* Keep one scrollable dialog without a second visible scrollbar. */
+.farm-v2-first-purchase-dialog { overflow-x: hidden; scrollbar-width: none; }
+.farm-v2-first-purchase-dialog::-webkit-scrollbar { display: none; }
