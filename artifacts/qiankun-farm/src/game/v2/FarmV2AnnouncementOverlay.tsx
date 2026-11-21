@@ -22,6 +22,22 @@ type ResponseData = {
 };
 const TARGET = "FARM_V2";
 
+function linkedContent(content: string) {
+  return content.split(/(https:\/\/[^\s<>]+)/g).map((part, index) => {
+    if (!/^https:\/\//i.test(part)) return part;
+    const match = part.match(/^(.*?)([.,!?，。！？、；;：:]*)$/);
+    const href = match?.[1] ?? part;
+    const trailing = match?.[2] ?? "";
+    try {
+      const url = new URL(href);
+      if (url.protocol !== "https:" || !url.hostname || url.username || url.password) return part;
+      return <span key={index}><a href={url.href} target="_blank" rel="noopener noreferrer" style={{ overflowWrap: "anywhere", textDecoration: "underline" }}>{href}</a>{trailing}</span>;
+    } catch { return part; }
+  });
+}
+
+
+
 /** Only mounted by the authenticated Farm V2 entry. No navigation or scene mutations. */
 export function FarmV2AnnouncementOverlay() {
   const [items, setItems] = useState<Notice[]>([]);
@@ -122,7 +138,7 @@ export function FarmV2AnnouncementOverlay() {
         <p>{current.category}</p>
         {current.imageUrl ? <img src={current.imageUrl} alt="" style={{ width: "100%", maxHeight: 280, objectFit: "contain" }} /> : null}
         <h2 id="farm-announcement-title">{current.title}</h2>
-        <p style={{ whiteSpace: "pre-wrap" }}>{current.content}</p>
+        <p style={{ whiteSpace: "pre-wrap" }}>{linkedContent(current.content)}</p>
         {current.actionUrl && (/^\/(?!\/)/.test(current.actionUrl) || /^https:\/\//i.test(current.actionUrl)) ?
           <a href={current.actionUrl} target="_blank" rel="noopener noreferrer">查看詳情</a> : null}
         {current.allowHideToday ? <label style={{ display: "block" }}>
