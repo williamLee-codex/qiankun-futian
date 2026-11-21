@@ -6,7 +6,7 @@ import { FarmV2AnnouncementOverlay } from "./FarmV2AnnouncementOverlay";
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 const notice = {
-  id: "notice-1", title: "福田公告", content: "公告內容",
+  id: "notice-1", title: "福田公告", content: "公告內容 https://example.com/event。",
   category: "GENERAL", allowHideToday: true, allowDismissForever: true,
 };
 function mockFetch(authenticated: boolean, receipts = {}) {
@@ -35,6 +35,10 @@ it("displays a farm notice as an overlay and persists dismissal without navigati
   });
   render(<FarmV2AnnouncementOverlay />);
   expect(await screen.findByRole("dialog")).toBeTruthy();
+  const link = screen.getByRole("link", { name: "https://example.com/event" });
+  expect(link.getAttribute("href")).toBe("https://example.com/event");
+  expect(link.getAttribute("target")).toBe("_blank");
+  expect(link.getAttribute("rel")).toBe("noopener noreferrer");
   fireEvent.click(screen.getByLabelText("今日不再出現"));
   fireEvent.click(screen.getByRole("button", { name: "關閉" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
