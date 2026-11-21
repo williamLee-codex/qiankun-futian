@@ -93,7 +93,7 @@ export function FarmSceneInteractionLayer(props: {
   const artBase = `${import.meta.env.BASE_URL ?? "/"}images/farm/characters/`;
   return (
     <section
-      className={"farm-v2-interaction " + (desktop ? "desktop" : "mobile") + (interior ? " cave-open" : "")}
+      className={"farm-v2-interaction " + (desktop ? "desktop" : "mobile") + (interior ? " cave-open" : "") + (typeof window !== "undefined" && window.self !== window.top ? " embedded" : "")}
       aria-label={props.ownerLabel + "場景互動層"}
       data-layout={desktop ? "desktop" : "mobile"}
     >
@@ -295,7 +295,8 @@ export function FarmSceneInteractionLayer(props: {
                 title={`${land.cropName} · ${pot ? pot.grade + "階" : "空位"}`}
                 disabled={props.busy || props.readOnly}
                 onClick={() => section("盆栽")}>
-                {pot && level > 0 ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/plants/${land.id}-${level}.webp`} alt="" /> : <span className="farm-v2-empty-pot-stand" aria-hidden="true" />}
+                <span className="farm-v2-approved-pedestal" style={{ backgroundImage: `url("${import.meta.env.BASE_URL ?? "/"}images/farm/flower-pedestal.png")` }} aria-hidden="true" />
+                {pot && level > 0 && <img src={`${import.meta.env.BASE_URL ?? "/"}images/plants/${land.id}-${level}.webp`} alt="" />}
                 {pot && <small>{land.cropName}</small>}
               </button>;
             })}

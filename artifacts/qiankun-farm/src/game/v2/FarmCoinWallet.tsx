@@ -77,19 +77,14 @@ export function FarmCoinWallet(props: {
         </p>
       ) : (
         <>
-          <label>
-            轉帳方向{" "}
-            <select
-              style={controlStyle}
-              aria-label="轉帳方向"
-              value={direction}
-              onChange={(e) => setDirection(e.target.value as "in" | "out")}
-              disabled={working || props.busy}
-            >
-              <option value="in">中央 → 福田</option>
-              <option value="out">福田 → 中央</option>
-            </select>
-          </label>
+          <div role="group" aria-label="金幣轉帳方向" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <button type="button" aria-label="向下箭頭，中央金幣轉入福田" aria-pressed={direction === "in"} disabled={working || props.busy} onClick={() => setDirection("in")} style={{ ...controlStyle, cursor: "pointer", fontWeight: 700, background: direction === "in" ? "#d6b76c" : "#f8f3e7", borderWidth: direction === "in" ? 2 : 1 }}>
+              <span aria-hidden="true" style={{ fontSize: 26, display: "block", lineHeight: 1.2 }}>↓</span>中央 → 福田
+            </button>
+            <button type="button" aria-label="向上箭頭，福田金幣回存中央" aria-pressed={direction === "out"} disabled={working || props.busy} onClick={() => setDirection("out")} style={{ ...controlStyle, cursor: "pointer", fontWeight: 700, background: direction === "out" ? "#d6b76c" : "#f8f3e7", borderWidth: direction === "out" ? 2 : 1 }}>
+              <span aria-hidden="true" style={{ fontSize: 26, display: "block", lineHeight: 1.2 }}>↑</span>福田 → 中央
+            </button>
+          </div>
           <label>
             金額{" "}
             <input

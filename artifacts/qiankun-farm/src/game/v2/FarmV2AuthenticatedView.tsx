@@ -73,6 +73,8 @@ export function FarmV2AuthenticatedView(props: {
   const [checkingSeeds,setCheckingSeeds]=useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
   const [signInOpen, setSignInOpen] = useState(false);
+  const [newcomerNoticeOpen, setNewcomerNoticeOpen] = useState(false);
+  const [firstRechargeNoticeOpen, setFirstRechargeNoticeOpen] = useState(false);
   const [signInData, setSignInData] = useState<Awaited<ReturnType<typeof readSignIn>> | null>(null);
   const [signInBusy, setSignInBusy] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
@@ -352,6 +354,7 @@ export function FarmV2AuthenticatedView(props: {
       <Dialog open={signInOpen} onOpenChange={setSignInOpen}>
         <DialogContent style={{maxHeight:"85dvh",overflowY:"auto",background:"#12251f",color:"#f8f1df"}}>
           <DialogTitle>30 日簽到</DialogTitle>
+          <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-panel.png`} alt="30 日簽到正式美術" style={{display:"block",width:"100%",height:"auto",maxHeight:220,objectFit:"contain"}} />
           <p>補簽可領回當日獎勵，並計入全勤；每日以台灣時間 05:00 換日。</p>
           {signInData && <>
             <p>第 {signInData.cycleNumber} 輪，第 {signInData.cycleDay} 天；補簽額度 {signInData.makeupCreditsAvailable ?? 0}</p>
@@ -391,7 +394,20 @@ export function FarmV2AuthenticatedView(props: {
           {!signInData && !signInError && <p>正在讀取簽到資料…</p>}
         </DialogContent>
       </Dialog>
-      <button type="button" disabled={busy||loading} onClick={()=>void openSignIn()}>📅 30 日簽到</button>
+      <Dialog open={newcomerNoticeOpen} onOpenChange={setNewcomerNoticeOpen}>
+        <DialogContent style={{background:"#12251f",color:"#f8f1df",maxHeight:"85dvh",overflowY:"auto"}}>
+          <DialogTitle>新手 7 日六倍公告</DialogTitle>
+          <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/newcomer-6x-panel.png`} alt="新手六倍活動公告" style={{display:"block",width:"100%",height:"auto"}} />
+          <p>實際加成資格與期限依伺服器帳號資料為準。</p>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={firstRechargeNoticeOpen} onOpenChange={setFirstRechargeNoticeOpen}>
+        <DialogContent style={{background:"#12251f",color:"#f8f1df",maxHeight:"85dvh",overflowY:"auto"}}>
+          <DialogTitle>首儲獎勵公告</DialogTitle>
+          <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/first-recharge-panel.png`} alt="首儲獎勵正式公告" style={{display:"block",width:"100%",height:"auto"}} />
+          <p>獎勵是否符合領取資格，以正式儲值與伺服器紀錄為準。</p>
+        </DialogContent>
+      </Dialog>
       {data.localCoins && (
         <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
           <DialogContent style={{ background: "#12251f", color: "#f8f1df", border: "1px solid #bda365", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(32rem, calc(100vw - 2rem))", maxHeight: "calc(100dvh - 2rem)", overflowY: "auto", lineHeight: 1.6 }}>
@@ -405,29 +421,6 @@ export function FarmV2AuthenticatedView(props: {
           </DialogContent>
         </Dialog>
       )}
-      {data.localCoins && (
-        <button
-          type="button"
-          aria-label="開啟福田金幣錢包，轉入或回存金幣"
-          onClick={() => setWalletOpen(true)}
-          disabled={busy || loading}
-          style={{
-            position: "fixed",
-            left: "max(12px, env(safe-area-inset-left, 12px))",
-            bottom: "max(16px, env(safe-area-inset-bottom, 16px))",
-            zIndex: 45,
-            padding: "10px 14px",
-            borderRadius: 12,
-            border: "1px solid #bda365",
-            background: "#12251f",
-            color: "#f8f1df",
-            fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif',
-            cursor: "pointer",
-          }}
-        >
-          🪙 福田金幣・轉入／回存
-        </button>
-      )}
       {flight && (
         <span
           aria-hidden="true"
@@ -438,6 +431,7 @@ export function FarmV2AuthenticatedView(props: {
           {flight.icon}
         </span>
       )}
+      <div className="farm-v2-scene-tools-anchor">
       <FarmSceneInteractionLayer
         warehouseTargetRef={warehouseButton}
         plots={data.plots}
@@ -472,42 +466,14 @@ export function FarmV2AuthenticatedView(props: {
         onPlotClick={handlePlotClick}
         onSection={openPanel}
       />
-      <button
-        type="button"
-        className="farm-v2-bag-launcher"
-        aria-label="開啟乾坤寶囊"
-        title="乾坤寶囊"
-        disabled={busy || loading}
-        onClick={() => {
-          setPanelTab("乾坤寶囊");
-          setPanelOpen(true);
-        }}
-        style={{
-          position: "fixed",
-          top: "max(12px, env(safe-area-inset-top, 12px))",
-          right: "max(12px, env(safe-area-inset-right, 12px))",
-          zIndex: 40,
-          width: "clamp(54px, 6vw, 78px)",
-          aspectRatio: "1",
-          padding: 0,
-          border: 0,
-          borderRadius: 16,
-          background: "transparent",
-          cursor: "pointer",
-          filter: "drop-shadow(0 4px 8px rgba(0,0,0,.55))",
-        }}
-      >
-        <img
-          src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`}
-          alt=""
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            display: "block",
-          }}
-        />
-      </button>
+      <div className="farm-v2-corner-tools" aria-label="福田右上角工具" >
+        {data.localCoins && <button type="button" className="farm-v2-coin-launcher" aria-label="金幣轉換：中央與福田金幣轉入回存" title="金幣轉換" disabled={busy||loading} onClick={()=>setWalletOpen(true)}><span className="farm-v2-tool-fallback" aria-hidden="true">🪙<small>金幣轉換</small></span></button>}
+        <button type="button" className="farm-v2-bag-launcher" aria-label="開啟乾坤寶囊" title="乾坤寶囊" disabled={busy||loading} onClick={()=>openPanel("乾坤寶囊")}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`} alt="乾坤寶囊" /></button>
+        <button type="button" className="farm-v2-signin-launcher" aria-label="開啟30日簽到" title="30日簽到" disabled={busy||loading} onClick={()=>void openSignIn()}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-icon.png`} alt="30日簽到" /></button>
+        <button type="button" className="farm-v2-newcomer-launcher" aria-label="查看新手六倍公告" title="新手六倍" onClick={()=>setNewcomerNoticeOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/newcomer-6x-icon.png`} alt="新手六倍" /></button>
+        <button type="button" className="farm-v2-first-recharge-launcher" aria-label="查看首儲獎勵公告" title="首儲獎勵" onClick={()=>setFirstRechargeNoticeOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/first-recharge-icon.png`} alt="首儲獎勵" /></button>
+      </div>
+      </div>
       {friendRetries}
       <Dialog open={panelOpen} onOpenChange={setPanelOpen}>
         <DialogContent
