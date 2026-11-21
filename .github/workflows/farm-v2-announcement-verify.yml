@@ -5,6 +5,7 @@ on:
       - 'artifacts/qiankun-farm/src/game/v2/FarmV2AnnouncementOverlay.tsx'
       - 'artifacts/qiankun-farm/src/main.tsx'
       - '.github/workflows/farm-v2-announcement-verify.yml'
+      - 'artifacts/qiankun-farm/src/game/v2/FarmV2AnnouncementOverlay.test.tsx'
   workflow_dispatch:
 jobs:
   verify:
@@ -22,5 +23,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Typecheck Farm V2
         run: pnpm --filter @workspace/qiankun-farm typecheck
+      - name: Test Farm V2 announcement overlay
+        run: pnpm exec vitest run artifacts/qiankun-farm/src/game/v2/FarmV2AnnouncementOverlay.test.tsx
       - name: Build Farm V2
         run: pnpm --filter @workspace/qiankun-farm build
