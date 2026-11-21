@@ -383,27 +383,34 @@ export function FarmV2AuthenticatedView(props: {
       <Dialog open={signInOpen} onOpenChange={setSignInOpen}>
         <DialogContent style={{background:"#12251f",color:"#f8f1df",width:"min(880px,96vw)",maxWidth:"96vw",top:"calc(50% - 50px)",maxHeight:"calc(100dvh - 2rem)",overflowY:"auto"}}>
           <DialogTitle>30 日簽到</DialogTitle>
-          {signInData && <p style={{fontSize:13,margin:0}}>第 {signInData.cycleNumber} 輪，第 {signInData.cycleDay} 天；補簽額度 {signInData.makeupCreditsAvailable ?? 0}</p>}
-          <div role="grid" aria-label="30 日簽到格，共 30 格" style={{display:"grid",gridTemplateColumns:"repeat(6,minmax(0,1fr))",gap:6}}>
-            {signInRewards.map((reward,i)=>{
+          <div style={{position:"relative",width:"100%",maxWidth:760,margin:"0 auto"}}>
+            <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-panel.png`} alt="30 日簽到正式美術，點選當日格子簽到或補簽" style={{display:"block",width:"100%",height:"auto"}} />
+            {signInData && <>
+              <button type="button" aria-label="簽到" title={signInData.todayClaimable?"領取今日簽到":"今日已簽到或尚未開放"}
+                disabled={signInBusy||!signInData.todayClaimable}
+                onClick={()=>void runSignInAction(claimSignInToday)}
+                style={{position:"absolute",left:"58%",top:"82%",width:"19%",height:"15%",background:"transparent",border:0,cursor:signInData.todayClaimable?"pointer":"default"}} />
+              <button type="button" aria-label="補簽" title={signInData.makeupClaimable?"補簽下一個漏簽日期":"目前無法補簽"}
+                disabled={signInBusy||!signInData.makeupClaimable||signInData.nextMakeupDay==null||signInData.nextMakeupRewardSupported===false}
+                onClick={()=>void runSignInAction(()=>claimSignInMakeup(signInData.nextMakeupDay!))}
+                style={{position:"absolute",left:"78%",top:"82%",width:"19%",height:"15%",background:"transparent",border:0,cursor:signInData.makeupClaimable?"pointer":"default"}} />
+            </>}
+            {signInData && signInRewards.map((reward,i)=>{
               const day=i+1;
-              const signed=signInData?.signedDays?.includes(day)??false;
-              const makeup=signInData?.makeupDays?.includes(day)??false;
-              const today=!!signInData && day===signInData.cycleDay && signInData.todayClaimable;
-              const canMakeup=!!signInData && day===signInData.nextMakeupDay && signInData.makeupClaimable && signInData.nextMakeupRewardSupported!==false;
+              const signed=signInData.signedDays?.includes(day)??false;
+              const makeup=signInData.makeupDays?.includes(day)??false;
+              const today=day===signInData.cycleDay && signInData.todayClaimable;
+              const canMakeup=day===signInData.nextMakeupDay && signInData.makeupClaimable && signInData.nextMakeupRewardSupported!==false;
               const active=!signInBusy && !signed && (today||canMakeup);
               const milestone=day===15||day===30;
-              const done=signed||makeup;
-              return <button type="button" role="gridcell" key={day}
-                aria-label={`第${day}天：${done?"已簽到":today?"領取今日簽到":canMakeup?"補簽":"尚未可領取"}，獎勵 ${reward}`}
+              const column=i%6,row=Math.floor(i/6);
+              return <button type="button" key={day}
+                aria-label={`第${day}天：${signed?"已簽到":today?"領取今日簽到":canMakeup?"補簽":"尚未可領取"}，獎勵 ${reward}`}
                 title={`第${day}天・${reward}`}
                 disabled={!active}
                 onClick={()=>void runSignInAction(today?claimSignInToday:()=>claimSignInMakeup(day))}
-                style={{position:"relative",minHeight:74,display:"grid",gap:2,alignContent:"center",justifyItems:"center",textAlign:"center",padding:"4px 2px",border:active?"2px solid #ffe17b":milestone?"1px solid #f0b34a":"1px solid #3c5a4c",borderRadius:8,background:done?"#1f3a2c":today?"#3a3418":milestone?"#243a2c":"#182f25",cursor:active?"pointer":"default",color:"#f8f1df"}}>
-                <span style={{fontSize:11,fontWeight:800,color:milestone?"#ffd76a":"#b3c2b4"}}>第{day}天</span>
-                <span style={{fontSize:11,lineHeight:1.2}}>{reward}</span>
-                {done&&<span aria-hidden="true" style={{fontSize:20,fontWeight:900,color:"#ffd76a"}}>✓</span>}
-                {active&&<span style={{fontSize:10,color:"#ffe17b"}}>{today?"點擊簽到":"點擊補簽"}</span>}
+                style={{position:"absolute",left:`${5.3+column*11.45}%`,top:`${12.8+row*12.8}%`,width:"11.2%",height:"11.8%",border:active?"2px solid #ffe17b":milestone?"1px solid #f0b34a":"none",borderRadius:4,background:active?"#ffd25b22":"transparent",cursor:active?"pointer":"default",padding:0}}>
+                {(signed||makeup)&&<span aria-hidden="true" style={{position:"absolute",inset:0,display:"grid",placeItems:"center",fontSize:"clamp(20px,3vw,42px)",fontWeight:900,color:"#e71923",textShadow:"1px 2px 0 #ffcf4c,-1px -1px 0 #ffcf4c"}}>✕</span>}
               </button>;
             })}
           </div>
