@@ -43,6 +43,13 @@ describe('Farm V2 canonical time boundaries', () => {
     expect(applyNewbieHarvestMultiplier(1, first, first + 7 * 24 * 60 * 60 * 1000)).toBe(1);
   });
 
+  it('does not treat a missing or invalid first farm entry as a new-player boost', () => {
+    const harvestedAt = ts('2026-11-18T09:00:00+08:00');
+    for (const invalid of [0, -1, NaN, Infinity, -Infinity]) {
+      expect(applyNewbieHarvestMultiplier(20, invalid, harvestedAt)).toBe(20);
+    }
+  });
+
   it('applies newbie x6 only during the exact first 7x24h window', () => {
     const first = ts('2026-09-01T12:34:56+08:00');
     expect(applyNewbieHarvestMultiplier(20, first, first)).toBe(120);

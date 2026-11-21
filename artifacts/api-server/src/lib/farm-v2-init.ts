@@ -21,6 +21,9 @@ export async function ensureFarmV2PlayerInitialized(input: {
   if (!userId) throw new Error("ACTOR_UID_REQUIRED");
   const now = input.now ?? Date.now();
   const enteredAt = new Date(now);
+  if (!Number.isFinite(now) || now <= 0 || !Number.isFinite(enteredAt.getTime())) {
+    throw new Error("INVALID_FIRST_FARM_ENTRY_TIME");
+  }
 
   const snapshot = await db.transaction(async (tx) => {
     await assertFarmAuthorityFence(tx);
