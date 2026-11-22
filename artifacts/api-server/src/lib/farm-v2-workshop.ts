@@ -302,7 +302,8 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
                   ? "farm_pet_food_purchase"
                   : input.command.kind === "buyPet"
                     ? "farm_pet_purchase"
-                    : input.command.kind === "buyFormation"
+                    : input.command.kind === "buyFormation" ||
+                        input.command.kind === "purchaseFormation"
                       ? "farm_formation_purchase"
                       : "farm_decor_purchase";
         try {
