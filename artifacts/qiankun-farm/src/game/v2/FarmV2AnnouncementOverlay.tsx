@@ -23,7 +23,7 @@ type ResponseData = {
 const TARGET = "FARM_V2";
 
 function linkedContent(content: string) {
-  return content.split(/(https:\/\/[^\s<>]+)/g).map((part, index) => {
+  return content.split(/(https:\/\/[^\s<>，。！？、；：]+)/g).map((part, index) => {
     if (!/^https:\/\//i.test(part)) return part;
     const match = part.match(/^(.*?)([.,!?，。！？、；;：:]*)$/);
     const href = match?.[1] ?? part;
