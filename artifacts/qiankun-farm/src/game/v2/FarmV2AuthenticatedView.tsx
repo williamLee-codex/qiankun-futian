@@ -455,6 +455,7 @@ export function FarmV2AuthenticatedView(props: {
             transfer={transferCoins}
             pending={pendingTransfers}
             busy={busy}
+            onClose={() => setWalletOpen(false)}
           />
         </DialogContent>
       </Dialog>
