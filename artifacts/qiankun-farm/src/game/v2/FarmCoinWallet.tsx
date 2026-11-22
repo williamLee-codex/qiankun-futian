@@ -121,8 +121,8 @@ export function FarmCoinWallet(props: {
   }
   // Never replace the working wallet with an image that has not loaded.
   // Keep pending transfers and ledger errors on the established recovery UI.
-  if (artLoaded && balances && transferEnabled && !pending && !readError && props.onClose) {
-    const locked = working || props.busy;
+  if (artLoaded && balances && !pending && !readError && props.onClose) {
+    const locked = working || props.busy || !transferEnabled;
     const available = direction === "in" ? balances.centralCoins : balances.coins;
     return <FarmCoinWalletArtLayout
       centralBalance={balanceText(balances.centralCoins)}
@@ -136,7 +136,7 @@ export function FarmCoinWallet(props: {
       onClose={props.onClose}
       disabled={locked}
       submitDisabled={locked || !valid || number > available}
-      message={message}
+      message={transferEnabled ? message : "福田金幣帳本尚未啟用，暫時無法轉換金幣。"}
     />;
   }
   return (
