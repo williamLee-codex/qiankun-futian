@@ -17,8 +17,8 @@ it("counts down the same server-owned 168h window to the second across all six f
 it("does not present a future first-entry timestamp as an active boost", () => {
   vi.useFakeTimers(); vi.setSystemTime(start);
   render(<FarmNewbieBoost firstFarmEnteredAt={start+3600000}/>);
-  expect(screen.getByRole("status").textContent).not.toContain("剩餘時間");
-  expect(screen.getByRole("status").textContent).not.toContain("活動已結束");
+  expect(screen.getByText("資格待確認")).toBeTruthy();
+  expect(screen.queryByText("活動已結束")).toBeNull();
 });
 it.each([null,undefined,0,-1,NaN,Infinity])("keeps missing/invalid entry evidence separate from expiry (%s)", value => {
  render(<FarmNewbieBoost firstFarmEnteredAt={value}/>);
