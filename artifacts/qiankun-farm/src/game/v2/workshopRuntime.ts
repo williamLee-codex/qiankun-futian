@@ -10,7 +10,10 @@ import type { FarmLandId } from "./canonicalLandData";
 import type { FarmWarehouse } from "./warehouseRuntime";
 import {
   PREMIUM_FORMATION_ID,
-  PREMIUM_FORMATION_PRICE_CRYSTALS,
+  formationPurchaseCost,
+  formationPurchaseReference,
+  getFormationDefinition,
+  highestOwnedFormation,
 } from "./formationCatalog";
 export type PotAsset = {
   id: string;
@@ -42,7 +45,7 @@ export type WorkshopCommand =
   | { kind: "redeemFormationCode"; codeHash: string }
   | { kind: "claimAchievementFormations" }
   | { kind: "buyPet"; petId: "尋星犬" | "辟邪狻猊" }
-  | { kind: "buyFormation" }
+  | { kind: "buyFormation"; formationId?: string }
   | { kind: "switchFormation"; formationId: string | null }
   | { kind: "claimMission"; missionId: string }
   | { kind: "buyFood"; quantity: number }
@@ -239,12 +242,12 @@ export function planWorkshopMutation(
   };
 }
 
-// FORMATION-PREMIUM-001: one permanent purchase at the canonical price, free
-// exclusive switching/off, and no automatic activation on purchase.
+// FORMATION-PREMIUM-001: permanent purchases, upgrade by price difference only,
+// free exclusive switching/off, and no automatic activation on purchase.
 export function planFormationMutation(
   w: WorkshopWarehouse,
   command:
-    | { kind: "buyFormation" }
+    | { kind: "buyFormation"; formationId?: string }
     | { kind: "switchFormation"; formationId: string | null },
   now: number,
 ): {
@@ -257,13 +260,22 @@ export function planFormationMutation(
   state.formations = state.formations ?? [];
 
   if (command.kind === "buyFormation") {
-    if (state.formations.some((f) => f.id === PREMIUM_FORMATION_ID))
+    const target = getFormationDefinition(
+      command.formationId ?? PREMIUM_FORMATION_ID,
+    );
+    if (!target) throw new Error("UNKNOWN_FORMATION");
+    if (state.formations.some((f) => f.id === target.id))
       throw new Error("FORMATION_ALREADY_OWNED");
-    state.formations.push({ id: PREMIUM_FORMATION_ID, expiresAt: null });
+    const owned = highestOwnedFormation(state.formations, now);
+    // Lower and equal tiers are already covered: buying one would either be a
+    // duplicate or a downgrade, so the contract only ever moves upwards.
+    if (owned && owned.priceCrystals >= target.priceCrystals)
+      throw new Error("FORMATION_NOT_UPGRADEABLE");
+    state.formations.push({ id: target.id, expiresAt: null });
     return {
       warehouse: { ...settled, workshop: state },
-      cost: PREMIUM_FORMATION_PRICE_CRYSTALS,
-      referenceId: PREMIUM_FORMATION_ID,
+      cost: formationPurchaseCost(target, owned),
+      referenceId: formationPurchaseReference(target.id, owned?.id ?? null),
     };
   }
 

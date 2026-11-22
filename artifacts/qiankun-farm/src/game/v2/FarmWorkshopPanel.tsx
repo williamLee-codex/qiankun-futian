@@ -1,6 +1,12 @@
 import { PotSynthesisGrid } from "./PotSynthesisGrid";
 const unavailableWallet = async (): Promise<{ coins: number }> => { throw new Error("WALLET_UNAVAILABLE"); };
 import { FORMATION_NAMES } from "./formationSourcesRuntime";
+import {
+  FORMATION_DEFINITIONS,
+  formationPurchaseCost,
+  getFormationDefinition,
+  highestOwnedFormation,
+} from "./formationCatalog";
 import { nextFarmMonthReset } from "./timeRuntime";
 import { useEffect, useState, type ReactNode } from "react";
 import {
@@ -12,6 +18,9 @@ import {
 import { FARM_V2_MISSIONS, rollMissionPeriods, type MissionState } from "./missionRuntime";
 import { FARM_V2_PETS } from "./petRuntime";
 import { RELEASED_DECOR } from "./decorCatalog";
+function formationPercent(ratio: { numerator: number; denominator: number }): number {
+  return Math.round((ratio.numerator / ratio.denominator - 1) * 100);
+}
 const BAG_CATEGORIES = ["材料", "碎片", "傢俱", "外型", "盆栽", "大陣", "其他"] as const;
 type BagSlot = { key: string; name: string; count: number; icon: string | null };
 const slotStyle = { minHeight: 96, border: "1px solid #a98c52", borderRadius: 10, background: "linear-gradient(150deg,#284336,#152c23)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: 6 } as const;
@@ -66,7 +75,11 @@ export function FarmWorkshopPanel(props: {
   const [festivalCode, setFestivalCode] = useState("");
   const [selectedPet, setSelectedPet] = useState<string | null>(props.petId ?? null);
   useEffect(() => setSelectedPet(props.petId ?? null), [props.petId]);
-  const [formationPurchaseOpen, setFormationPurchaseOpen] = useState(false);
+  const [formationPurchase, setFormationPurchase] = useState<{
+    id: string;
+    cost: number;
+    upgradeFrom: string | null;
+  } | null>(null);
   const [bagCategory, setBagCategory] = useState<(typeof BAG_CATEGORIES)[number]>("材料");
   const tab = props.tab ?? localTab;
   const [clock, setClock] = useState(Date.now);
@@ -372,29 +385,61 @@ export function FarmWorkshopPanel(props: {
                 })}
               {(state.formations ?? []).filter((f) => f.expiresAt === null || f.expiresAt > clock).length === 0 && <p style={{ gridColumn: "1/-1", margin: 0 }}>目前沒有持有任何護陣道具。</p>}
             </div>
-            <button
-              disabled={state.formations?.some(
-                (f) => f.id === "FORMATION_PREMIUM_V2",
-              )}
-              onClick={() => setFormationPurchaseOpen(true)}
-            >
-              取得太虛星河大陣
-            </button>
-            {formationPurchaseOpen && (
-              <div role="presentation" onClick={() => setFormationPurchaseOpen(false)} style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(0,0,0,.72)",display:"grid",placeItems:"center",padding:16}}>
-                <section role="dialog" aria-modal="true" aria-labelledby="formation-purchase-title" onClick={(event) => event.stopPropagation()} style={{width:"min(100%,420px)",background:"#1b332a",color:"#f1e5c7",border:"2px solid #b99b58",borderRadius:14,padding:22,display:"grid",gap:14,boxShadow:"0 20px 80px #0009"}}>
-                  <h3 id="formation-purchase-title" style={{margin:0}}>太虛星河大陣</h3>
-                  <p style={{margin:0}}>永久使用權，購買後可於護陣介面裝備或卸下。</p>
-                  <p style={{margin:0,fontSize:13}}>裝備效果：六塊靈田生長速度 +20%、作物收成 +15%、收成金幣 +15%、靈寵輔助效率 +20%。</p>
-                  <p style={{margin:0,fontWeight:700}}>購買價格：388 水晶</p>
-                  <p style={{margin:0,fontSize:13}}>確認後由伺服器驗證資格及扣除水晶；未成功交易不會取得護陣。</p>
-                  <div style={{display:"flex",justifyContent:"flex-end",gap:12}}>
-                    <button type="button" disabled={props.busy} onClick={() => setFormationPurchaseOpen(false)}>取消</button>
-                    <button type="button" disabled={props.busy} onClick={() => { setFormationPurchaseOpen(false); void props.transact({kind:"buyFormation"}); }}>確認購買</button>
+            <h3>玄天陣典</h3>
+            <p>同時只能啟用一座靈陣；已購買靈陣永久保留，已擁有靈陣之間切換免費，升級只支付價格差額。</p>
+            <div role="list" aria-label="玄天陣典靈陣" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(230px,1fr))", gap: 10, padding: "8px 0" }}>
+              {FORMATION_DEFINITIONS.map((definition) => {
+                const owned = (state.formations ?? []).some(
+                  (f) => f.id === definition.id && (f.expiresAt === null || f.expiresAt > clock),
+                );
+                const equipped = state.activeFormation === definition.id;
+                const highest = highestOwnedFormation(state.formations, clock);
+                const cost = formationPurchaseCost(definition, highest);
+                const upgrade = !owned && highest !== null && highest.priceCrystals < definition.priceCrystals;
+                return (
+                  <div role="listitem" key={definition.id} style={{ border: equipped ? "2px solid #ffe17b" : "1px solid #a98c52", borderRadius: 10, padding: 10, background: equipped ? "#2c4030" : "#1b332a", display: "grid", gap: 6 }}>
+                    <strong>{definition.name}</strong>
+                    <span style={{ fontSize: 12, color: "#c6d3c9" }}>永久持有・{definition.priceCrystals} 水晶</span>
+                    <span style={{ fontSize: 12, color: "#c6d3c9" }}>生長 +{formationPercent(definition.bonusRatios.growthSpeed)}%・收成 +{formationPercent(definition.bonusRatios.harvestYield)}%・金幣 +{formationPercent(definition.bonusRatios.coinReward)}%・靈寵 +{formationPercent(definition.bonusRatios.petAssist)}%</span>
+                    <span style={{ fontSize: 12, color: equipped ? "#ffd76a" : "#9fb2a6" }}>{equipped ? "運作中" : owned ? "已持有（於下方裝備）" : "尚未持有"}</span>
+                    {owned ? null : upgrade ? (
+                      <button type="button" disabled={props.busy} onClick={() => setFormationPurchase({ id: definition.id, cost, upgradeFrom: highest.id })}>
+                        升級補差額 {cost} 水晶
+                      </button>
+                    ) : highest && highest.priceCrystals >= definition.priceCrystals ? (
+                      <span style={{ fontSize: 12, color: "#9fb2a6" }}>已持有更高階靈陣，無需購買</span>
+                    ) : (
+                      <button type="button" disabled={props.busy} onClick={() => setFormationPurchase({ id: definition.id, cost, upgradeFrom: null })}>
+                        購買 {definition.priceCrystals} 水晶
+                      </button>
+                    )}
                   </div>
-                </section>
-              </div>
-            )}
+                );
+              })}
+            </div>
+            {formationPurchase && (() => {
+              const definition = getFormationDefinition(formationPurchase.id);
+              if (!definition) return null;
+              return (
+                <div role="presentation" onClick={() => setFormationPurchase(null)} style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(0,0,0,.72)",display:"grid",placeItems:"center",padding:16}}>
+                  <section role="dialog" aria-modal="true" aria-labelledby="formation-purchase-title" onClick={(event) => event.stopPropagation()} style={{width:"min(100%,420px)",background:"#1b332a",color:"#f1e5c7",border:"2px solid #b99b58",borderRadius:14,padding:22,display:"grid",gap:14,boxShadow:"0 20px 80px #0009"}}>
+                    <h3 id="formation-purchase-title" style={{margin:0}}>{definition.name}</h3>
+                    <p style={{margin:0}}>永久使用權，購買後可於護陣介面裝備或卸下；同時只能啟用一座靈陣。</p>
+                    <p style={{margin:0,fontSize:13}}>裝備效果：六塊靈田生長速度 +{formationPercent(definition.bonusRatios.growthSpeed)}%、作物收成 +{formationPercent(definition.bonusRatios.harvestYield)}%、收成金幣 +{formationPercent(definition.bonusRatios.coinReward)}%、靈寵輔助效率 +{formationPercent(definition.bonusRatios.petAssist)}%。</p>
+                    <p style={{margin:0,fontWeight:700}}>
+                      {formationPurchase.upgradeFrom
+                        ? `升級補差額：${formationPurchase.cost} 水晶（原價 ${definition.priceCrystals} 水晶）`
+                        : `購買價格：${definition.priceCrystals} 水晶`}
+                    </p>
+                    <p style={{margin:0,fontSize:13}}>確認後由伺服器驗證資格及扣除水晶；未成功交易不會取得靈陣。</p>
+                    <div style={{display:"flex",justifyContent:"flex-end",gap:12}}>
+                      <button type="button" disabled={props.busy} onClick={() => setFormationPurchase(null)}>取消</button>
+                      <button type="button" disabled={props.busy} onClick={() => { const id = formationPurchase.id; setFormationPurchase(null); void props.transact({ kind: "buyFormation", formationId: id }); }}>確認購買</button>
+                    </div>
+                  </section>
+                </div>
+              );
+            })()}
           </>
         )}
         {tab === "好友" && (

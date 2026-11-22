@@ -87,6 +87,7 @@ describe.skipIf(!enabled)(
         "0130_farm_v2_workshop_wallet_contract.sql",
         "0131_farm_v2_friend_operation_barrier.sql",
         "0132_farm_v2_atomic_pot_settlement.sql",
+        "0136_farm_v2_formation_tier_contract.sql",
       ]) {
         await storage.pool.query(
           readFileSync(`${root}/supabase/migrations/${file}`, "utf8"),
@@ -1195,6 +1196,168 @@ describe.skipIf(!enabled)(
       );
       expect(raw.rows[0].result.result_status).toBe("invalid");
     });
+    it("FORMATION-PREMIUM-001: three tiers and upgrades charge the exact difference once", async () => {
+      const resetWorkshop = (formations: unknown[]) =>
+        storage.pool.query(
+          "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(warehouse_state,'{workshop}',$2) WHERE user_id=$1",
+          [
+            userId,
+            {
+              pots: [],
+              decor: [],
+              potGallery: {},
+              decorGallery: {},
+              materials: { 蘊靈砂: 0, 九霄玉髓: 0 },
+              formations,
+              activeFormation: null,
+            },
+          ],
+        );
+      const crystals = async () =>
+        (
+          await storage.pool.query(
+            "SELECT crystal_balance FROM core_wallets WHERE owner_id=$1",
+            [userId],
+          )
+        ).rows[0].crystal_balance;
+      const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+        await import("./farm-v2-workshop");
+      await resetWorkshop([]);
+      await storage.pool.query(
+        "UPDATE core_wallets SET coin_balance=0,crystal_balance=500 WHERE owner_id=$1",
+        [userId],
+      );
+
+      const first = await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "tier-188",
+        command: { kind: "buyFormation", formationId: "FORMATION_XUANLING_188" },
+      });
+      expect(first.cost).toBe(188);
+      expect(first.state.formations).toEqual([
+        { id: "FORMATION_XUANLING_188", expiresAt: null },
+      ]);
+      expect(first.state.activeFormation ?? null).toBeNull();
+      expect(await crystals()).toBe(312);
+
+      const second = await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "tier-288",
+        command: { kind: "buyFormation", formationId: "FORMATION_JIUXIAO_288" },
+      });
+      expect(second.cost).toBe(100);
+      expect(await crystals()).toBe(212);
+
+      const third = await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "tier-388",
+        command: { kind: "buyFormation", formationId: "FORMATION_PREMIUM_V2" },
+      });
+      expect(third.cost).toBe(100);
+      expect(await crystals()).toBe(112);
+      expect(
+        (third.state.formations as { id: string }[]).map((f) => f.id).sort(),
+      ).toEqual(
+        [
+          "FORMATION_XUANLING_188",
+          "FORMATION_JIUXIAO_288",
+          "FORMATION_PREMIUM_V2",
+        ].sort(),
+      );
+
+      // The ledger holds one debit per step with the contract reference.
+      const ledger = await storage.pool.query(
+        "SELECT amount,reference_id FROM core_wallet_ledger WHERE owner_id=$1 AND reason='farm_formation_purchase' ORDER BY created_at",
+        [userId],
+      );
+      expect(ledger.rows).toEqual([
+        { amount: 188, reference_id: "FORMATION_PURCHASE:FORMATION_XUANLING_188" },
+        {
+          amount: 100,
+          reference_id:
+            "FORMATION_UPGRADE:FORMATION_XUANLING_188:FORMATION_JIUXIAO_288",
+        },
+        {
+          amount: 100,
+          reference_id: "FORMATION_UPGRADE:FORMATION_JIUXIAO_288:FORMATION_PREMIUM_V2",
+        },
+      ]);
+      expect(ledger.rows.reduce((sum, row) => sum + row.amount, 0)).toBe(388);
+
+      // A duplicate tier is rejected without a debit.
+      await expect(
+        mutateFarmV2Workshop({
+          userId,
+          launchToken: "token",
+          requestId: "tier-duplicate",
+          command: { kind: "buyFormation", formationId: "FORMATION_XUANLING_188" },
+        }),
+      ).rejects.toThrow("FORMATION_ALREADY_OWNED");
+      expect(await crystals()).toBe(112);
+
+      // Equipping a lower tier keeps the higher tiers owned and is free.
+      const equipped = await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "tier-equip-188",
+        command: { kind: "switchFormation", formationId: "FORMATION_XUANLING_188" },
+      });
+      expect(equipped.state.activeFormation).toBe("FORMATION_XUANLING_188");
+      expect(await crystals()).toBe(112);
+
+      // Insufficient crystals grant nothing, and a funded retry debits once.
+      await resetWorkshop([]);
+      await storage.pool.query(
+        "UPDATE core_wallets SET crystal_balance=187 WHERE owner_id=$1",
+        [userId],
+      );
+      await expect(
+        mutateFarmV2Workshop({
+          userId,
+          launchToken: "token",
+          requestId: "tier-short",
+          command: { kind: "buyFormation", formationId: "FORMATION_XUANLING_188" },
+        }),
+      ).rejects.toThrow(/INSUFFICIENT_FUNDS|insufficient_funds/);
+      expect(await crystals()).toBe(187);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+            [userId],
+          )
+        ).rows[0].warehouse_state.workshop.formations,
+      ).toEqual([]);
+
+      await storage.pool.query(
+        "UPDATE core_wallets SET crystal_balance=188 WHERE owner_id=$1",
+        [userId],
+      );
+      const retried = await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "tier-short",
+        command: { kind: "buyFormation", formationId: "FORMATION_XUANLING_188" },
+      });
+      expect(retried.state.formations).toEqual([
+        { id: "FORMATION_XUANLING_188", expiresAt: null },
+      ]);
+      expect(await crystals()).toBe(0);
+      const replay = await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "tier-short",
+        command: { kind: "buyFormation", formationId: "FORMATION_XUANLING_188" },
+      });
+      expect(replay.state.formations).toEqual([
+        { id: "FORMATION_XUANLING_188", expiresAt: null },
+      ]);
+      expect(await crystals()).toBe(0);
+    });
+
     it("FORMATION-PREMIUM-001: debit failure grants nothing, retry debits once and ownership persists", async () => {
       await storage.pool.query(
         "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(warehouse_state,'{workshop}',$2) WHERE user_id=$1",

@@ -6,7 +6,7 @@ import {
 import {
   NEUTRAL_FORMATION_BONUS_RATIOS,
   PREMIUM_FORMATION_BONUS_RATIOS,
-  PREMIUM_FORMATION_ID,
+  getFormationDefinition,
   type FormationBonusRatios,
 } from './formationCatalog';
 
@@ -29,7 +29,9 @@ export const PREMIUM_FORMATION_BONUSES: FormationBonuses =
   PREMIUM_FORMATION_BONUS_RATIOS;
 
 /**
- * Benefits only apply while the permanent formation is owned and switched on.
+ * Benefits only apply while a permanent formation is owned and switched on.
+ * The equipped formation supplies its own tier ratios, so a player who owns
+ * several formations always gets exactly the one that is equipped.
  * Timed rights are settled first so an expired entry can never contribute.
  */
 export function formationBonuses(
@@ -37,14 +39,13 @@ export function formationBonuses(
   now: number,
 ): FormationBonuses {
   const state = workshopState(settleWorkshopTimedRights(warehouse, now));
-  if (state.activeFormation !== PREMIUM_FORMATION_ID)
-    return NEUTRAL_FORMATION_BONUSES;
+  const active = getFormationDefinition(state.activeFormation);
+  if (!active) return NEUTRAL_FORMATION_BONUSES;
   const owned = (state.formations ?? []).some(
     (f) =>
-      f.id === PREMIUM_FORMATION_ID &&
-      (f.expiresAt === null || f.expiresAt > now),
+      f.id === active.id && (f.expiresAt === null || f.expiresAt > now),
   );
-  return owned ? PREMIUM_FORMATION_BONUSES : NEUTRAL_FORMATION_BONUSES;
+  return owned ? active.bonusRatios : NEUTRAL_FORMATION_BONUSES;
 }
 
 function assertQuantity(value: number, code: string): void {
