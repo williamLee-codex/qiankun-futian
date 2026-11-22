@@ -436,7 +436,7 @@ export function FarmV2AuthenticatedView(props: {
         </DialogContent>
       </Dialog>
       <Dialog open={newcomerNoticeOpen} onOpenChange={setNewcomerNoticeOpen}>
-        <DialogContent className="farm-v2-newcomer-dialog [&>button.absolute]:hidden" style={{background:"#12251f",color:"#f8f1df",maxHeight:"min(76dvh,720px)",overflowY:"auto",top:"calc(50% - 60px)",padding:12,width:"min(680px,96vw)",maxWidth:"96vw"}}>
+        <DialogContent className="farm-v2-newcomer-dialog [&>button.absolute]:hidden" style={{background:"transparent",border:"none",boxShadow:"none",color:"#f8f1df",maxHeight:"calc(100dvh - 32px)",overflow:"visible",top:"50%",padding:0,width:"min(680px,96vw)",maxWidth:"96vw"}}>
           <DialogTitle>新手 7 日六倍</DialogTitle>
           <FarmNewbieBoost firstFarmEnteredAt={data.firstFarmEnteredAt} onClose={() => setNewcomerNoticeOpen(false)} />
         </DialogContent>
