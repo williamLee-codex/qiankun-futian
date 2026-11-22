@@ -18,8 +18,8 @@ export function FarmCoinWalletArtLayout(props:{
 }){
   const buttonBase:CSSProperties={border:0,background:"transparent",color:"transparent",cursor:"pointer",padding:0};
   const balanceStyle:CSSProperties={color:"#ffe5a0",fontWeight:800,fontSize:"clamp(9px,2vw,25px)",textAlign:"center",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums",textShadow:"0 2px 4px #24101a"};
-  return <section aria-label="金幣轉換" style={{width:"100%",maxWidth:1536}}>
-    <div style={{position:"relative",width:"100%",aspectRatio:"1536 / 1024"}}>
+  return <section aria-label="金幣轉換" style={{width:"100%",maxWidth:1536,margin:"0 auto",maxHeight:"min(90dvh, 1024px)",overflowY:"auto"}}>
+    <div style={{position:"relative",width:"max(100%, 680px)",aspectRatio:"1536 / 1024"}}>
       <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-conversion-approved.png`} alt="" aria-hidden="true" style={{width:"100%",height:"100%",display:"block"}}/>
       <output aria-label="中央金幣餘額" style={{...position("centralBalance"),...balanceStyle}}>{props.centralBalance}</output>
       <output aria-label="福田金幣餘額" style={{...position("farmBalance"),...balanceStyle}}>{props.farmBalance}</output>
