@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { FARM_V2_LANDS } from "./canonicalLandData";
 import { NEWBIE_WINDOW_MS } from "./timeRuntime";
 
 function useNow(active: boolean) {
@@ -34,12 +33,12 @@ export function FarmNewbieBoost({ firstFarmEnteredAt, onClose }: { firstFarmEnte
   const futureStart = active && firstFarmEnteredAt > now;
   const inWindow = endsAt !== null && !futureStart && remaining > 0;
   return (
-    <section aria-label="新手七日六倍活動" style={{ display: "grid", gap: 10 }}>
+    <section aria-label="新手七日六倍活動" style={{ display: "grid", gap: 0 }}>
       <div style={{ position: "relative" }}>
       <img
         src={`${import.meta.env.BASE_URL ?? "/"}images/farm/newcomer-6x-panel.png`}
         alt="新手六倍活動正式公告橫幅"
-        style={{ display: "block", width: "100%", height: "auto", borderRadius: 10 }}
+        style={{ display: "block", width: "100%", maxHeight: "calc(100dvh - 32px)", objectFit: "contain", height: "auto", borderRadius: 10 }}
       />
       {onClose && <button type="button" aria-label="關閉新手六倍公告" onClick={onClose}
         style={{ position: "absolute", right: "1%", top: "1%", width: "8%", height: "12%", background: "transparent", border: 0, cursor: "pointer" }} />}
@@ -47,23 +46,8 @@ export function FarmNewbieBoost({ firstFarmEnteredAt, onClose }: { firstFarmEnte
         {!active || futureStart ? "資格待確認" : inWindow ? formatRemaining(remaining) : "活動已結束"}
       </span>
       </div>
-      {!active && <p role="status">尚未取得首次進入福田的有效時間，無法判定六倍活動資格或顯示倒數；請重新讀取農田資料。</p>}
-      {active && (
-        <>
-          <p role="status" style={{ margin: 0, fontWeight: 700, color: inWindow ? "#ffd76a" : "#9fb2a6" }}>
-            {futureStart ? "首次進入時間晚於目前時間，無法判定活動資格；請確認裝置時間並重新讀取。" : inWindow ? `剩餘時間：${formatRemaining(remaining)}` : "活動已結束，收成回復為一般產量。"}
-          </p>
-          <p style={{ margin: 0, fontSize: 13 }}>
-            活動期間：{new Date(firstFarmEnteredAt).toLocaleString("zh-TW")} 起 7 日。
-            六倍加成適用於下列六塊靈田的收成產量（僅作物數量，不影響種子、兌換比例或合成）。
-          </p>
-          <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.7 }}>
-            {FARM_V2_LANDS.map((land) => (
-              <li key={land.id}>{land.landName}・{land.cropName}</li>
-            ))}
-          </ul>
-        </>
-      )}
+      {!active && <p role="status" className="sr-only">尚未取得首次進入福田的有效時間，無法判定六倍活動資格或顯示倒數；請重新讀取農田資料。</p>}
+
     </section>
   );
 }
