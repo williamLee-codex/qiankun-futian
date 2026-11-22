@@ -1195,6 +1195,109 @@ describe.skipIf(!enabled)(
       );
       expect(raw.rows[0].result.result_status).toBe("invalid");
     });
+    it("FORMATION-PREMIUM-001: debit failure grants nothing, retry debits once and ownership persists", async () => {
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(warehouse_state,'{workshop}',$2) WHERE user_id=$1",
+        [
+          userId,
+          {
+            pots: [],
+            decor: [],
+            potGallery: {},
+            decorGallery: {},
+            materials: { 蘊靈砂: 0, 九霄玉髓: 0 },
+            formations: [],
+            activeFormation: null,
+          },
+        ],
+      );
+      await storage.pool.query(
+        "UPDATE core_wallets SET coin_balance=0,crystal_balance=387 WHERE owner_id=$1",
+        [userId],
+      );
+      const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =
+        await import("./farm-v2-workshop");
+      const command = { kind: "buyFormation" as const };
+      await expect(
+        mutateFarmV2Workshop({
+          userId,
+          launchToken: "token",
+          requestId: "formation-short",
+          command,
+        }),
+      ).rejects.toThrow(/INSUFFICIENT_FUNDS|insufficient_funds/);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT crystal_balance FROM core_wallets WHERE owner_id=$1",
+            [userId],
+          )
+        ).rows[0].crystal_balance,
+      ).toBe(387);
+      const afterFailure = await storage.pool.query(
+        "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+        [userId],
+      );
+      expect(
+        afterFailure.rows[0].warehouse_state.workshop.formations,
+      ).toEqual([]);
+
+      await storage.pool.query(
+        "UPDATE core_wallets SET crystal_balance=388 WHERE owner_id=$1",
+        [userId],
+      );
+      const bought = await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "formation-retry",
+        command,
+      });
+      expect(bought.cost).toBe(388);
+      expect(bought.state.formations).toEqual([
+        { id: "FORMATION_PREMIUM_V2", expiresAt: null },
+      ]);
+      expect(bought.state.activeFormation ?? null).toBeNull();
+
+      // Same request key replays the recorded result without a second debit.
+      const replay = await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "formation-retry",
+        command,
+      });
+      expect(replay.state.formations).toEqual([
+        { id: "FORMATION_PREMIUM_V2", expiresAt: null },
+      ]);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT crystal_balance FROM core_wallets WHERE owner_id=$1",
+            [userId],
+          )
+        ).rows[0].crystal_balance,
+      ).toBe(0);
+
+      // Persisted ownership survives a fresh read (re-login).
+      const persisted = await storage.pool.query(
+        "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+        [userId],
+      );
+      expect(
+        persisted.rows[0].warehouse_state.workshop.formations,
+      ).toEqual([{ id: "FORMATION_PREMIUM_V2", expiresAt: null }]);
+
+      const equipped = await mutateFarmV2Workshop({
+        userId,
+        launchToken: "token",
+        requestId: "formation-equip",
+        command: {
+          kind: "switchFormation",
+          formationId: "FORMATION_PREMIUM_V2",
+        },
+      });
+      expect(equipped.state.activeFormation).toBe("FORMATION_PREMIUM_V2");
+      expect(equipped.cost).toBe(0);
+    });
     it("FRIEND-REL-001/CAVE-VISIT-001: active reciprocal relation only, removal and suspension deny access", async () => {
       const target = "00000000-0000-0000-0000-000000000002";
       await storage.pool.query(

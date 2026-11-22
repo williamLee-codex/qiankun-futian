@@ -385,6 +385,7 @@ export function FarmWorkshopPanel(props: {
                 <section role="dialog" aria-modal="true" aria-labelledby="formation-purchase-title" onClick={(event) => event.stopPropagation()} style={{width:"min(100%,420px)",background:"#1b332a",color:"#f1e5c7",border:"2px solid #b99b58",borderRadius:14,padding:22,display:"grid",gap:14,boxShadow:"0 20px 80px #0009"}}>
                   <h3 id="formation-purchase-title" style={{margin:0}}>太虛星河大陣</h3>
                   <p style={{margin:0}}>永久使用權，購買後可於護陣介面裝備或卸下。</p>
+                  <p style={{margin:0,fontSize:13}}>裝備效果：六塊靈田生長速度 +20%、作物收成 +15%、收成金幣 +15%、靈寵輔助效率 +20%。</p>
                   <p style={{margin:0,fontWeight:700}}>購買價格：388 水晶</p>
                   <p style={{margin:0,fontSize:13}}>確認後由伺服器驗證資格及扣除水晶；未成功交易不會取得護陣。</p>
                   <div style={{display:"flex",justifyContent:"flex-end",gap:12}}>

@@ -186,7 +186,7 @@ Remaining: final 2D cave/scene/art, decor gallery images, rest-position pet rend
 | FORMATION-ATTEND-003 | 洞府護陣 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
 | FORMATION-FEST-002 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
 | FORMATION-EXPIRE-001 | 洞府護陣 | Server logic + management UI; isolated local verification, not production acceptance |
-| FORMATION-EFFECT-001 | 洞府護陣 | Pending integration or focused verification |
+| FORMATION-EFFECT-001 | 洞府護陣 | Server-side integration complete (sow / harvest / crop exchange / pet assist / farmer settlement); focused isolated verification |
 | FORMATION-RPG-002 | 洞府護陣 | PARTIAL: trusted source adapter implemented; official source mapping/code configuration BLOCKED |
 | RULE-PROVENANCE-001 | 治理 | Pending integration or focused verification |
 | RULE-ID-001 | 治理 | Pending integration or focused verification |
@@ -205,7 +205,7 @@ Remaining: final 2D cave/scene/art, decor gallery images, rest-position pet rend
 | DECOR-PRICE-001 | 洞府陳設 | Server logic + management UI; isolated local verification, not production acceptance |
 | DECOR-GALLERY-003 | 洞府陳設 | Pending integration or focused verification |
 | FORMATION-NOUPGRADE-001 | 洞府護陣 | Pending integration or focused verification |
-| FORMATION-PREMIUM-001 | 洞府護陣 | Server logic + management UI; isolated local verification, not production acceptance |
+| FORMATION-PREMIUM-001 | 洞府護陣 | Server logic + management UI; isolated local verification incl. debit failure, same-key retry and re-login persistence; not production acceptance |
 | FORMATION-ATTEND-004 | 洞府護陣 | Server/API integrated; focused isolated local verification; final artwork/production acceptance pending |
 | CAVE-BRAND-001 | 洞府 | Pending integration or focused verification |
 | CAVE-NEXT-001 | 洞府外觀 | Pending integration or focused verification |

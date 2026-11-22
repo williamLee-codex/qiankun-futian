@@ -8,6 +8,10 @@ import { potDisplayBonus } from "./potDisplayRuntime";
 import { RELEASED_DECOR } from "./decorCatalog";
 import type { FarmLandId } from "./canonicalLandData";
 import type { FarmWarehouse } from "./warehouseRuntime";
+import {
+  PREMIUM_FORMATION_ID,
+  PREMIUM_FORMATION_PRICE_CRYSTALS,
+} from "./formationCatalog";
 export type PotAsset = {
   id: string;
   species: FarmLandId;
@@ -233,6 +237,41 @@ export function planWorkshopMutation(
     referenceId,
     ...workshopPublicState(warehouse),
   };
+}
+
+// FORMATION-PREMIUM-001: one permanent purchase at the canonical price, free
+// exclusive switching/off, and no automatic activation on purchase.
+export function planFormationMutation(
+  w: WorkshopWarehouse,
+  command:
+    | { kind: "buyFormation" }
+    | { kind: "switchFormation"; formationId: string | null },
+  now: number,
+): {
+  warehouse: WorkshopWarehouse;
+  cost: number;
+  referenceId: string;
+} {
+  const settled = settleWorkshopTimedRights(w, now);
+  const state = structuredClone(workshopState(settled));
+  state.formations = state.formations ?? [];
+
+  if (command.kind === "buyFormation") {
+    if (state.formations.some((f) => f.id === PREMIUM_FORMATION_ID))
+      throw new Error("FORMATION_ALREADY_OWNED");
+    state.formations.push({ id: PREMIUM_FORMATION_ID, expiresAt: null });
+    return {
+      warehouse: { ...settled, workshop: state },
+      cost: PREMIUM_FORMATION_PRICE_CRYSTALS,
+      referenceId: PREMIUM_FORMATION_ID,
+    };
+  }
+
+  const id = command.formationId;
+  if (id !== null && !state.formations.some((f) => f.id === id))
+    throw new Error("FORMATION_NOT_OWNED");
+  state.activeFormation = id;
+  return { warehouse: { ...settled, workshop: state }, cost: 0, referenceId: "" };
 }
 
 // FORMATION-EXPIRE-001: expired limited rights disappear, without fallback/history.
