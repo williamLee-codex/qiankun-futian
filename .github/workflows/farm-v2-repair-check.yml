@@ -1,0 +1,24 @@
+name: Farm V2 repair verification
+on:
+  pull_request:
+    paths:
+      - "artifacts/qiankun-farm/**"
+      - ".github/workflows/farm-v2-repair-check.yml"
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @workspace/qiankun-farm run typecheck
+      - run: pnpm exec vitest run artifacts/qiankun-farm/src/game/v2/FarmNewbieBoost.test.tsx artifacts/qiankun-farm/src/game/v2/FarmNoticeModal.regression.test.ts artifacts/qiankun-farm/src/game/v2/FarmSceneInteractionLayer.formationOverlay.test.ts
