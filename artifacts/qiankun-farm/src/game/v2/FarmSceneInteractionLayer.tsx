@@ -204,11 +204,17 @@ export function FarmSceneInteractionLayer(props: {
               className="farm-v2-formation"
               style={position(layout.formation)}
               disabled={props.readOnly || props.busy}
+              aria-label={`太虛星河大陣，${props.state.activeFormation && !formationExpired ? (FORMATION_NAMES[props.state.activeFormation] ?? "洞府護陣") + "運作中" : "護陣平台"}，開啟護陣管理`}
+              title={props.state.activeFormation && !formationExpired ? (FORMATION_NAMES[props.state.activeFormation] ?? "洞府護陣") : "護陣平台"}
               onClick={() => section("護陣")}
             >
-              {props.state.activeFormation && !formationExpired
-                ? (FORMATION_NAMES[props.state.activeFormation] ?? "洞府護陣")
-                : "護陣平台"}
+              <img
+                src={`${import.meta.env.BASE_URL ?? "/"}images/farm/formations/taixu-xinghe-formation.webp`}
+                alt=""
+                width={1536}
+                height={1024}
+                draggable={false}
+              />
             </button>
             {/* One entitled farmer is a single character, not one clone per field. */}
             {props.state.farmer?.entitled && plots.some(p => p.unlocked) && (

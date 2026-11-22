@@ -12,7 +12,7 @@ import {
 import { FARM_V2_MISSIONS, rollMissionPeriods, type MissionState } from "./missionRuntime";
 import { FARM_V2_PETS } from "./petRuntime";
 import { RELEASED_DECOR } from "./decorCatalog";
-const BAG_CATEGORIES = ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"] as const;
+const BAG_CATEGORIES = ["材料", "碎片", "傢俱", "外型", "盆栽", "大陣", "其他"] as const;
 type BagSlot = { key: string; name: string; count: number; icon: string | null };
 const slotStyle = { minHeight: 96, border: "1px solid #a98c52", borderRadius: 10, background: "linear-gradient(150deg,#284336,#152c23)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: 6 } as const;
 function BagGrid({ slots, label }: { slots: readonly BagSlot[]; label: string }) {
@@ -124,6 +124,20 @@ export function FarmWorkshopPanel(props: {
             )}
             {bagInventoryAvailable && bagCategory === "外型" && <p>外型與稱號庫存尚未接入。</p>}
             {bagCategory === "盆栽" && <p>36 種盆栽的持有數量與合成操作統一在「盆栽合成」介面查看，不另設寶囊盆栽庫存。<button type="button" onClick={() => (props.onTabChange ?? setLocalTab)("盆栽")}>前往盆栽合成</button></p>}
+            {bagCategory === "大陣" && (
+              <>
+                <BagGrid label="大陣道具格子" slots={(state.formations ?? []).map(f => ({
+                  key: f.id,
+                  name: FORMATION_NAMES[f.id] ?? "洞府護陣",
+                  count: 1,
+                  icon: `${import.meta.env.BASE_URL ?? "/"}images/farm/formations/taixu-xinghe-formation.webp`,
+                }))} />
+                <p>
+                  裝備、卸下與購買資格一律在護陣管理介面處理，與農場主頁的大陣熱區開啟同一個介面。
+                  <button type="button" onClick={() => (props.onTabChange ?? setLocalTab)("護陣")}>前往護陣管理</button>
+                </p>
+              </>
+            )}
             {bagInventoryAvailable && bagCategory === "其他" && (
               <BagGrid label="其他物品格子" slots={[
                 { key: "petFood", name: "靈獸百味糧", count: state.petFood ?? 0, icon: null },
