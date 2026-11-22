@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { FARM_V2_LANDS } from "./canonicalLandData";
 import { NEWBIE_WINDOW_MS } from "./timeRuntime";
 
 function useNow(active: boolean) {
