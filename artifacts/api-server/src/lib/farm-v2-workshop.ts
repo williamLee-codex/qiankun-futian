@@ -61,6 +61,7 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
       "feedPet",
       "buyPet",
       "buyFormation",
+      "purchaseFormation",
       "switchFormation",
     ].includes(input.command.kind)
   )
@@ -72,6 +73,7 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
     "buyFood",
     "buyPet",
     "buyFormation",
+    "purchaseFormation",
   ].includes(input.command.kind);
   const where = and(
     eq(farmV2MutationTable.userId, input.userId),
@@ -166,6 +168,7 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
         };
       } else if (
         input.command.kind === "buyFormation" ||
+        input.command.kind === "purchaseFormation" ||
         input.command.kind === "switchFormation"
       ) {
         const formation = planFormationMutation(before, input.command, now);

@@ -434,7 +434,7 @@ export function FarmWorkshopPanel(props: {
                     <p style={{margin:0,fontSize:13}}>確認後由伺服器驗證資格及扣除水晶；未成功交易不會取得靈陣。</p>
                     <div style={{display:"flex",justifyContent:"flex-end",gap:12}}>
                       <button type="button" disabled={props.busy} onClick={() => setFormationPurchase(null)}>取消</button>
-                      <button type="button" disabled={props.busy} onClick={() => { const id = formationPurchase.id; setFormationPurchase(null); void props.transact({ kind: "buyFormation", formationId: id }); }}>確認購買</button>
+                      <button type="button" disabled={props.busy} onClick={() => { const id = formationPurchase.id; setFormationPurchase(null); void props.transact({ kind: "purchaseFormation", formationId: id }); }}>確認購買</button>
                     </div>
                   </section>
                 </div>

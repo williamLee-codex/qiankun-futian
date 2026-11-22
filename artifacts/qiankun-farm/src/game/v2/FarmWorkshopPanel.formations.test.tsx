@@ -54,7 +54,7 @@ describe('玄天陣典 formation storefront', () => {
     expect(transact).not.toHaveBeenCalled();
     fireEvent.click(dialog.getByRole('button', { name: '確認購買' }));
     expect(transact).toHaveBeenCalledWith({
-      kind: 'buyFormation',
+      kind: 'purchaseFormation',
       formationId: 'FORMATION_XUANLING_188',
     });
   });
@@ -75,7 +75,7 @@ describe('玄天陣典 formation storefront', () => {
     expect(dialog.getByText('升級補差額：100 水晶（原價 288 水晶）')).toBeTruthy();
     fireEvent.click(dialog.getByRole('button', { name: '確認購買' }));
     expect(transact).toHaveBeenCalledWith({
-      kind: 'buyFormation',
+      kind: 'purchaseFormation',
       formationId: 'FORMATION_JIUXIAO_288',
     });
   });

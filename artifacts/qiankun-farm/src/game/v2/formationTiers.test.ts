@@ -36,7 +36,7 @@ function buy(
   formationId: string,
   now = NOW,
 ) {
-  return planFormationMutation(warehouse, { kind: 'buyFormation', formationId }, now);
+  return planFormationMutation(warehouse, { kind: 'purchaseFormation', formationId }, now);
 }
 
 describe('玄天陣典 catalog', () => {

@@ -1232,7 +1232,7 @@ describe.skipIf(!enabled)(
         userId,
         launchToken: "token",
         requestId: "tier-188",
-        command: { kind: "buyFormation", formationId: "FORMATION_XUANLING_188" },
+        command: { kind: "purchaseFormation", formationId: "FORMATION_XUANLING_188" },
       });
       expect(first.cost).toBe(188);
       expect(first.state.formations).toEqual([
@@ -1245,7 +1245,7 @@ describe.skipIf(!enabled)(
         userId,
         launchToken: "token",
         requestId: "tier-288",
-        command: { kind: "buyFormation", formationId: "FORMATION_JIUXIAO_288" },
+        command: { kind: "purchaseFormation", formationId: "FORMATION_JIUXIAO_288" },
       });
       expect(second.cost).toBe(100);
       expect(await crystals()).toBe(212);
@@ -1254,7 +1254,7 @@ describe.skipIf(!enabled)(
         userId,
         launchToken: "token",
         requestId: "tier-388",
-        command: { kind: "buyFormation", formationId: "FORMATION_PREMIUM_V2" },
+        command: { kind: "purchaseFormation", formationId: "FORMATION_PREMIUM_V2" },
       });
       expect(third.cost).toBe(100);
       expect(await crystals()).toBe(112);
@@ -1293,7 +1293,7 @@ describe.skipIf(!enabled)(
           userId,
           launchToken: "token",
           requestId: "tier-duplicate",
-          command: { kind: "buyFormation", formationId: "FORMATION_XUANLING_188" },
+          command: { kind: "purchaseFormation", formationId: "FORMATION_XUANLING_188" },
         }),
       ).rejects.toThrow("FORMATION_ALREADY_OWNED");
       expect(await crystals()).toBe(112);
@@ -1319,7 +1319,7 @@ describe.skipIf(!enabled)(
           userId,
           launchToken: "token",
           requestId: "tier-short",
-          command: { kind: "buyFormation", formationId: "FORMATION_XUANLING_188" },
+          command: { kind: "purchaseFormation", formationId: "FORMATION_XUANLING_188" },
         }),
       ).rejects.toThrow(/INSUFFICIENT_FUNDS|insufficient_funds/);
       expect(await crystals()).toBe(187);
@@ -1340,7 +1340,7 @@ describe.skipIf(!enabled)(
         userId,
         launchToken: "token",
         requestId: "tier-short",
-        command: { kind: "buyFormation", formationId: "FORMATION_XUANLING_188" },
+        command: { kind: "purchaseFormation", formationId: "FORMATION_XUANLING_188" },
       });
       expect(retried.state.formations).toEqual([
         { id: "FORMATION_XUANLING_188", expiresAt: null },
@@ -1350,7 +1350,7 @@ describe.skipIf(!enabled)(
         userId,
         launchToken: "token",
         requestId: "tier-short",
-        command: { kind: "buyFormation", formationId: "FORMATION_XUANLING_188" },
+        command: { kind: "purchaseFormation", formationId: "FORMATION_XUANLING_188" },
       });
       expect(replay.state.formations).toEqual([
         { id: "FORMATION_XUANLING_188", expiresAt: null },

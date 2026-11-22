@@ -46,6 +46,7 @@ export type WorkshopCommand =
   | { kind: "claimAchievementFormations" }
   | { kind: "buyPet"; petId: "尋星犬" | "辟邪狻猊" }
   | { kind: "buyFormation"; formationId?: string }
+  | { kind: "purchaseFormation"; formationId: string }
   | { kind: "switchFormation"; formationId: string | null }
   | { kind: "claimMission"; missionId: string }
   | { kind: "buyFood"; quantity: number }
@@ -248,6 +249,7 @@ export function planFormationMutation(
   w: WorkshopWarehouse,
   command:
     | { kind: "buyFormation"; formationId?: string }
+    | { kind: "purchaseFormation"; formationId: string }
     | { kind: "switchFormation"; formationId: string | null },
   now: number,
 ): {
@@ -259,7 +261,7 @@ export function planFormationMutation(
   const state = structuredClone(workshopState(settled));
   state.formations = state.formations ?? [];
 
-  if (command.kind === "buyFormation") {
+  if (command.kind === "buyFormation" || command.kind === "purchaseFormation") {
     const target = getFormationDefinition(
       command.formationId ?? PREMIUM_FORMATION_ID,
     );
