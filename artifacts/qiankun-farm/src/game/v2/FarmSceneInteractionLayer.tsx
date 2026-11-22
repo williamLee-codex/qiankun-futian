@@ -208,13 +208,10 @@ export function FarmSceneInteractionLayer(props: {
               title={props.state.activeFormation && !formationExpired ? (FORMATION_NAMES[props.state.activeFormation] ?? "洞府護陣") : "護陣平台"}
               onClick={() => section("護陣")}
             >
-              <img
-                src={`${import.meta.env.BASE_URL ?? "/"}images/farm/formations/taixu-xinghe-formation.webp`}
-                alt=""
-                width={1536}
-                height={1024}
-                draggable={false}
-              />
+              {/* The approved scene artwork already contains the platform.
+                  Keep its interactive hotspot, but do not paint a fixed,
+                  oversized formation illustration over the farm scene.
+                  Formation selection and bonuses remain server-authoritative. */}
             </button>
             {/* One entitled farmer is a single character, not one clone per field. */}
             {props.state.farmer?.entitled && plots.some(p => p.unlocked) && (
