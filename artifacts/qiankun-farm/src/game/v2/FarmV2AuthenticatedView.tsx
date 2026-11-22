@@ -437,15 +437,13 @@ export function FarmV2AuthenticatedView(props: {
       </Dialog>
       <Dialog open={newcomerNoticeOpen} onOpenChange={setNewcomerNoticeOpen}>
         <DialogContent className="farm-v2-newcomer-dialog [&>button.absolute]:hidden" style={{background:"transparent",border:"none",boxShadow:"none",color:"#f8f1df",maxHeight:"calc(100dvh - 32px)",overflow:"visible",top:"50%",padding:0,width:"min(680px,96vw)",maxWidth:"96vw"}}>
-          <DialogTitle>新手 7 日六倍</DialogTitle>
+          <DialogTitle className="sr-only">新手 7 日六倍</DialogTitle>
           <FarmNewbieBoost firstFarmEnteredAt={data.firstFarmEnteredAt} onClose={() => setNewcomerNoticeOpen(false)} />
         </DialogContent>
       </Dialog>
       <Dialog open={firstRechargeNoticeOpen} onOpenChange={setFirstRechargeNoticeOpen}>
         <DialogContent className="farm-v2-first-purchase-dialog [&>button.absolute]:hidden" style={{background:"transparent",border:"none",boxShadow:"none",color:"#f8f1df",maxHeight:"calc(100dvh - 32px)",overflowY:"auto",top:"50%",padding:0,width:"min(660px,96vw)",maxWidth:"96vw",scrollbarWidth:"none"}}>
-          <DialogTitle>首儲獎勵</DialogTitle>
-          <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/first-recharge-panel.png`} alt="首儲獎勵正式公告橫幅" style={{display:"block",width:"100%",height:"auto",borderRadius:10}} />
-          <p style={{margin:0}}>獎勵是否符合領取資格，以正式儲值與伺服器紀錄為準；下方卡片為實際領取與儲值入口。</p>
+          <DialogTitle className="sr-only">首儲獎勵</DialogTitle>
           <FarmFirstPurchaseRewards apiBaseUrl={props.apiBaseUrl} launchToken={props.launchToken} />
         </DialogContent>
       </Dialog>
