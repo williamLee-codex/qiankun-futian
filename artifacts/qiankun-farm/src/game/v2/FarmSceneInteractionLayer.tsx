@@ -204,7 +204,7 @@ export function FarmSceneInteractionLayer(props: {
               className="farm-v2-formation"
               style={position(layout.formation)}
               disabled={props.readOnly || props.busy}
-              aria-label={`太虛星河大陣，${props.state.activeFormation && !formationExpired ? (FORMATION_NAMES[props.state.activeFormation] ?? "洞府護陣") + "運作中" : "護陣平台"}，開啟護陣管理`}
+              aria-label={`${props.state.activeFormation && !formationExpired ? (FORMATION_NAMES[props.state.activeFormation] ?? "洞府護陣") + "運作中" : "護陣平台"}，開啟護陣管理`}
               title={props.state.activeFormation && !formationExpired ? (FORMATION_NAMES[props.state.activeFormation] ?? "洞府護陣") : "護陣平台"}
               onClick={() => section("護陣")}
             >
