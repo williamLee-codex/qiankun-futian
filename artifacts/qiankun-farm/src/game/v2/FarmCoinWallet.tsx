@@ -138,7 +138,7 @@ export function FarmCoinWallet(props: {
           福田金幣帳本尚未啟用，目前僅顯示中央金幣餘額；啟用後即可手動轉入或回存。
         </p>
       )}
-      {!transferEnabled ? null : pending ? (
+      {pending ? (
         <p role="alert">
           原轉帳尚未確認：{pending.direction === "in" ? "轉入福田" : "回存中央"}{" "}
           {pending.amount} 金幣。請重試原轉帳，確認前不可另開轉帳。
@@ -146,10 +146,10 @@ export function FarmCoinWallet(props: {
       ) : (
         <>
           <div role="group" aria-label="金幣轉帳方向" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <button type="button" aria-label="向下箭頭，中央金幣轉入福田" aria-pressed={direction === "in"} disabled={working || props.busy} onClick={() => setDirection("in")} style={{ ...controlStyle, cursor: "pointer", fontWeight: 700, background: direction === "in" ? "#d6b76c" : "#f8f3e7", borderWidth: direction === "in" ? 2 : 1 }}>
+            <button type="button" aria-label="向下箭頭，中央金幣轉入福田" aria-pressed={direction === "in"} disabled={working || props.busy || !transferEnabled} onClick={() => setDirection("in")} style={{ ...controlStyle, cursor: "pointer", fontWeight: 700, background: direction === "in" ? "#d6b76c" : "#f8f3e7", borderWidth: direction === "in" ? 2 : 1 }}>
               <span aria-hidden="true" style={{ fontSize: 26, display: "block", lineHeight: 1.2 }}>↓</span>中央 → 福田
             </button>
-            <button type="button" aria-label="向上箭頭，福田金幣回存中央" aria-pressed={direction === "out"} disabled={working || props.busy} onClick={() => setDirection("out")} style={{ ...controlStyle, cursor: "pointer", fontWeight: 700, background: direction === "out" ? "#d6b76c" : "#f8f3e7", borderWidth: direction === "out" ? 2 : 1 }}>
+            <button type="button" aria-label="向上箭頭，福田金幣回存中央" aria-pressed={direction === "out"} disabled={working || props.busy || !transferEnabled} onClick={() => setDirection("out")} style={{ ...controlStyle, cursor: "pointer", fontWeight: 700, background: direction === "out" ? "#d6b76c" : "#f8f3e7", borderWidth: direction === "out" ? 2 : 1 }}>
               <span aria-hidden="true" style={{ fontSize: 26, display: "block", lineHeight: 1.2 }}>↑</span>福田 → 中央
             </button>
           </div>
@@ -161,7 +161,7 @@ export function FarmCoinWallet(props: {
               inputMode="numeric"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              disabled={working || props.busy}
+              disabled={working || props.busy || !transferEnabled}
             />
           </label>
         </>
