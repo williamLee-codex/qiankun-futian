@@ -46,7 +46,7 @@ export function FarmNewbieBoost({ firstFarmEnteredAt, onClose }: { firstFarmEnte
         {!active || futureStart ? "資格待確認" : inWindow ? formatRemaining(remaining) : "活動已結束"}
       </span>
       </div>
-      {!active && <p role="status">尚未取得首次進入福田的有效時間，無法判定六倍活動資格或顯示倒數；請重新讀取農田資料。</p>}
+      {!active && <p role="status" className="sr-only">尚未取得首次進入福田的有效時間，無法判定六倍活動資格或顯示倒數；請重新讀取農田資料。</p>}
 
     </section>
   );
