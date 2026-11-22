@@ -3,7 +3,9 @@ vi.mock('@vercel/oidc',()=>({getVercelOidcToken:async()=> 'runtime-identity'}));
 import handler from '../api/preview-bridge-check.mjs';
 afterEach(()=>{vi.unstubAllEnvs();vi.restoreAllMocks();});
 function response(){const out={code:0,body:null as unknown,headers:{} as Record<string,string>,setHeader(name:string,value:string){this.headers[name]=value;},status(code:number){this.code=code;return this;},json(body:unknown){this.body=body;return this;}};return out;}
-function configure(){vi.stubEnv('VERCEL_ENV','preview');vi.stubEnv('FARM_V2_ENTRY_ENABLED','0');vi.stubEnv('FARM_V2_ATOMIC_POT_ENABLED','1');vi.stubEnv('FARM_V2_PLATFORM_AUTOMATION_SECRET','server-target-secret');vi.stubEnv('REPLIT_APP_SHARED_SECRET','application-secret');vi.stubEnv('PLATFORM_BASE_URL','https://old-test.example');}
+// Pin every variable the handler reads: the deployment environment supplies
+// FARM_V2_BRIDGE_SHARED_SECRET, which would otherwise change credential selection.
+function configure(){vi.stubEnv('VERCEL_ENV','preview');vi.stubEnv('FARM_V2_ENTRY_ENABLED','0');vi.stubEnv('FARM_V2_ATOMIC_POT_ENABLED','1');vi.stubEnv('FARM_V2_PLATFORM_AUTOMATION_SECRET','server-target-secret');vi.stubEnv('REPLIT_APP_SHARED_SECRET','application-secret');vi.stubEnv('FARM_V2_BRIDGE_SHARED_SECRET','');vi.stubEnv('PLATFORM_BASE_URL','https://old-test.example');}
 it('authenticates the fixed callback target without forwarding any browser bypass credential',async()=>{
  configure();const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({error:'FARM_SESSION_NOT_ACTIVE'},{status:401}));const out=response();
  await handler({method:'GET',headers:{'x-vercel-protection-bypass':'browser-spoof'}},out);
