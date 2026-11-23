@@ -74,3 +74,11 @@ it("clears the amount when the transfer direction changes", async () => {
   expect(amountInput().value).toBe("");
   expect((screen.getByRole("button", { name: "確認轉換" }) as HTMLButtonElement).disabled).toBe(true);
 });
+it("keeps the approved art on screen while the balances are still loading", async () => {
+  loadArt();
+  render(<FarmCoinWallet read={() => new Promise(() => {})} transfer={vi.fn(async () => balances)} pending={() => []} busy={false} onClose={() => {}} />);
+  await waitFor(() => expect(screen.getByRole("button", { name: "增加 1 金幣" })).toBeTruthy());
+  expect(screen.getAllByText("讀取中…").length).toBeGreaterThan(0);
+  expect((screen.getByRole("button", { name: "確認轉換" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "最大可轉換金額" }) as HTMLButtonElement).disabled).toBe(true);
+});
