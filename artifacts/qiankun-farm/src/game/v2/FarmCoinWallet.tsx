@@ -128,10 +128,14 @@ export function FarmCoinWallet(props: {
       centralBalance={balanceText(balances.centralCoins)}
       farmBalance={balanceText(balances.coins)}
       direction={direction}
-      onDirectionChange={setDirection}
+      onDirectionChange={(next)=>{ setDirection(next); setAmount(""); }}
       amount={amount}
       onAmountChange={setAmount}
       onMax={() => setAmount(String(Math.min(available, 2147483647)))}
+      onAdd={(value) => setAmount((current) => {
+        const base = /^\d+$/.test(current) ? Number(current) : 0;
+        return String(Math.min(base + value, available, 2147483647));
+      })}
       onSubmit={() => void submit()}
       onClose={props.onClose}
       disabled={locked}
