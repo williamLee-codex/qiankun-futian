@@ -462,7 +462,7 @@ export function FarmV2AuthenticatedView(props: {
         </DialogContent>
       </Dialog>
       <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
-        <DialogContent className="[&>button.absolute]:hidden" style={{ background: "#12251f", color: "#f8f1df", border: "none", padding: 0, gap: 0, top: "50%", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(1536px, calc(100vw - 16px), calc((100dvh - 16px) * 1.5))", maxWidth: "calc(100vw - 16px)", maxHeight: "calc(100dvh - 16px)", overflow: "hidden", lineHeight: 1.6 }}>
+        <DialogContent className="[&>button.absolute]:hidden" style={{ background: "transparent", color: "#f8f1df", border: "none", padding: 0, gap: 0, top: "50%", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(1536px, calc(100vw - 16px), calc((100dvh - 64px) * 1.5))", maxWidth: "calc(100vw - 16px)", maxHeight: "calc(100dvh - 16px)", overflow: "hidden", lineHeight: 1.6 }}>
           <DialogTitle className="sr-only">福田金幣錢包</DialogTitle>
           <FarmCoinWallet
             read={readWallet}
