@@ -22,6 +22,7 @@ import { isDeepStrictEqual } from "node:util";
 import { and, eq, isNull } from "drizzle-orm";
 import { farmV2PlayerStateTable, farmV2MutationTable } from "@workspace/db";
 import {
+  planFormationMutation,
   planWorkshopMutation,
   workshopPublicState,
   workshopState,
@@ -60,6 +61,7 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
       "feedPet",
       "buyPet",
       "buyFormation",
+      "purchaseFormation",
       "switchFormation",
     ].includes(input.command.kind)
   )
@@ -71,6 +73,7 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
     "buyFood",
     "buyPet",
     "buyFormation",
+    "purchaseFormation",
   ].includes(input.command.kind);
   const where = and(
     eq(farmV2MutationTable.userId, input.userId),
@@ -165,36 +168,17 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
         };
       } else if (
         input.command.kind === "buyFormation" ||
+        input.command.kind === "purchaseFormation" ||
         input.command.kind === "switchFormation"
       ) {
-        const state = structuredClone(workshopState(before));
-        state.formations = (state.formations ?? []).filter(
-          (f) => f.expiresAt === null || f.expiresAt > now,
-        );
-        if (!state.formations.some((f) => f.id === state.activeFormation))
-          state.activeFormation = null;
-        const buying = input.command.kind === "buyFormation";
-        if (buying) {
-          if (state.formations.some((f) => f.id === "FORMATION_PREMIUM_V2"))
-            throw new Error("FORMATION_ALREADY_OWNED");
-          state.formations.push({
-            id: "FORMATION_PREMIUM_V2",
-            expiresAt: null,
-          });
-        } else if (input.command.kind === "switchFormation") {
-          const id = input.command.formationId;
-          if (id !== null && !state.formations.some((f) => f.id === id))
-            throw new Error("FORMATION_NOT_OWNED");
-          state.activeFormation = id;
-        }
-        const warehouse = { ...before, workshop: state };
+        const formation = planFormationMutation(before, input.command, now);
         plan = {
-          warehouse,
-          cost: buying ? 388 : 0,
+          warehouse: formation.warehouse,
+          cost: formation.cost,
           reward: 0,
           currency: "crystal",
-          referenceId: buying ? "FORMATION_PREMIUM_V2" : "",
-          ...workshopPublicState(warehouse),
+          referenceId: formation.referenceId,
+          ...workshopPublicState(formation.warehouse),
           ...snapshots,
         };
       } else if (input.command.kind === "claimMission") {
@@ -318,7 +302,8 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
                   ? "farm_pet_food_purchase"
                   : input.command.kind === "buyPet"
                     ? "farm_pet_purchase"
-                    : input.command.kind === "buyFormation"
+                    : input.command.kind === "buyFormation" ||
+                        input.command.kind === "purchaseFormation"
                       ? "farm_formation_purchase"
                       : "farm_decor_purchase";
         try {

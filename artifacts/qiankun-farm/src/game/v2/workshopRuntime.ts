@@ -8,6 +8,13 @@ import { potDisplayBonus } from "./potDisplayRuntime";
 import { RELEASED_DECOR } from "./decorCatalog";
 import type { FarmLandId } from "./canonicalLandData";
 import type { FarmWarehouse } from "./warehouseRuntime";
+import {
+  PREMIUM_FORMATION_ID,
+  formationPurchaseCost,
+  formationPurchaseReference,
+  getFormationDefinition,
+  highestOwnedFormation,
+} from "./formationCatalog";
 export type PotAsset = {
   id: string;
   species: FarmLandId;
@@ -38,7 +45,8 @@ export type WorkshopCommand =
   | { kind: "redeemFormationCode"; codeHash: string }
   | { kind: "claimAchievementFormations" }
   | { kind: "buyPet"; petId: "尋星犬" | "辟邪狻猊" }
-  | { kind: "buyFormation" }
+  | { kind: "buyFormation"; formationId?: string }
+  | { kind: "purchaseFormation"; formationId: string }
   | { kind: "switchFormation"; formationId: string | null }
   | { kind: "claimMission"; missionId: string }
   | { kind: "buyFood"; quantity: number }
@@ -233,6 +241,51 @@ export function planWorkshopMutation(
     referenceId,
     ...workshopPublicState(warehouse),
   };
+}
+
+// FORMATION-PREMIUM-001: permanent purchases, upgrade by price difference only,
+// free exclusive switching/off, and no automatic activation on purchase.
+export function planFormationMutation(
+  w: WorkshopWarehouse,
+  command:
+    | { kind: "buyFormation"; formationId?: string }
+    | { kind: "purchaseFormation"; formationId: string }
+    | { kind: "switchFormation"; formationId: string | null },
+  now: number,
+): {
+  warehouse: WorkshopWarehouse;
+  cost: number;
+  referenceId: string;
+} {
+  const settled = settleWorkshopTimedRights(w, now);
+  const state = structuredClone(workshopState(settled));
+  state.formations = state.formations ?? [];
+
+  if (command.kind === "buyFormation" || command.kind === "purchaseFormation") {
+    const target = getFormationDefinition(
+      command.formationId ?? PREMIUM_FORMATION_ID,
+    );
+    if (!target) throw new Error("UNKNOWN_FORMATION");
+    if (state.formations.some((f) => f.id === target.id))
+      throw new Error("FORMATION_ALREADY_OWNED");
+    const owned = highestOwnedFormation(state.formations, now);
+    // Lower and equal tiers are already covered: buying one would either be a
+    // duplicate or a downgrade, so the contract only ever moves upwards.
+    if (owned && owned.priceCrystals >= target.priceCrystals)
+      throw new Error("FORMATION_NOT_UPGRADEABLE");
+    state.formations.push({ id: target.id, expiresAt: null });
+    return {
+      warehouse: { ...settled, workshop: state },
+      cost: formationPurchaseCost(target, owned),
+      referenceId: formationPurchaseReference(target.id, owned?.id ?? null),
+    };
+  }
+
+  const id = command.formationId;
+  if (id !== null && !state.formations.some((f) => f.id === id))
+    throw new Error("FORMATION_NOT_OWNED");
+  state.activeFormation = id;
+  return { warehouse: { ...settled, workshop: state }, cost: 0, referenceId: "" };
 }
 
 // FORMATION-EXPIRE-001: expired limited rights disappear, without fallback/history.

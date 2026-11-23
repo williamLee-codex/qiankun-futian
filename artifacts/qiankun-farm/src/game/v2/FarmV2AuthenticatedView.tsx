@@ -1,6 +1,7 @@
 import type { FarmSeedRecovery } from "./farmV2ApiClient";
 import { FarmCoinWallet } from "./FarmCoinWallet";
 import { FarmFirstPurchaseRewards } from "./FarmFirstPurchaseRewards";
+import { FarmNewbieBoost } from "./FarmNewbieBoost";
 import { farmV2ErrorMessage } from "./farmV2ErrorMessage";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
@@ -73,6 +74,20 @@ export function FarmV2AuthenticatedView(props: {
   const [seedRecoveries,setSeedRecoveries]=useState<FarmSeedRecovery[]>([]);
   const [checkingSeeds,setCheckingSeeds]=useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  // Radix locks the scroll container it finds, but the game shell also scrolls
+  // documentElement on some browsers. Pin both while the art modal is open and
+  // restore the exact previous values on close.
+  useEffect(() => {
+    if (!walletOpen) return;
+    const { body, documentElement } = document;
+    const previous = { body: body.style.overflow, root: documentElement.style.overflow };
+    body.style.overflow = "hidden";
+    documentElement.style.overflow = "hidden";
+    return () => {
+      body.style.overflow = previous.body;
+      documentElement.style.overflow = previous.root;
+    };
+  }, [walletOpen]);
   const [signInOpen, setSignInOpen] = useState(false);
   const [newcomerNoticeOpen, setNewcomerNoticeOpen] = useState(false);
   const [firstRechargeNoticeOpen, setFirstRechargeNoticeOpen] = useState(false);
@@ -83,7 +98,9 @@ export function FarmV2AuthenticatedView(props: {
   const [visited, setVisited] = useState<FarmV2PublicCave | null>(null);
   const [panelTab, setPanelTab] = useState("盆栽");
   const [activityNotice, setActivityNotice] = useState("");
-  function openPanel(tab: string) {
+  const [focusedPetId, setFocusedPetId] = useState<string | null>(null);
+  function openPanel(tab: string, petId: string | null = null) {
+    setFocusedPetId(petId);
     setPanelTab(tab);
     setPanelOpen(true);
     const inspection = tab === "福田倉庫" ? "warehouse" : tab === "靈寵" ? "pet" : null;
@@ -111,33 +128,40 @@ export function FarmV2AuthenticatedView(props: {
 
   const sceneRoot = useRef<HTMLElement>(null);
   const warehouseButton = useRef<HTMLButtonElement>(null);
+  const actionInFlight = useRef(false);
+  const flightId = useRef(0);
   const [flight, setFlight] = useState<{
+    id: number;
+    landId: number;
+    kind: "sow" | "harvest";
+    confirmed: boolean;
     icon: string;
     style: CSSProperties;
   } | null>(null);
 
-  function playLandFlight(kind: "sow" | "harvest", landId: number) {
+  function playLandFlight(kind: "sow" | "harvest", landId: number, target?: { x: number; y: number }) {
     const field = sceneRoot.current?.querySelector(
       `[data-farm-plot="${landId}"]`,
     );
-    const fieldBox = field?.getBoundingClientRect();
+    const fieldBox = (field?.querySelector(".farm-v2-crop-stage") ?? field)?.getBoundingClientRect();
     const warehouseBox = warehouseButton.current?.getBoundingClientRect();
     const plot = data?.plots.find((p) => p.id + 1 === landId);
     if (!fieldBox || !warehouseBox || !plot) return;
     const from = kind === "sow" ? warehouseBox : fieldBox;
     const to = kind === "sow" ? fieldBox : warehouseBox;
     setFlight({
+      id: ++flightId.current, landId, kind, confirmed: false,
       icon: kind === "sow" ? "🫘" : plot.cropEmoji,
       style: {
         left: from.x + from.width / 2,
-        top: from.y + from.height / 2,
-        "--farm-flight-x": `${to.x + to.width / 2 - from.x - from.width / 2}px`,
-        "--farm-flight-y": `${to.y + to.height / 2 - from.y - from.height / 2}px`,
+        top: kind === "sow" ? from.y + from.height * 0.8 : from.y + from.height / 2,
+        "--farm-flight-x": `${(kind === "sow" && target ? target.x : to.x + to.width / 2) - from.x - from.width / 2}px`,
+        "--farm-flight-y": `${(kind === "harvest" ? to.y + to.height * 0.8 : target?.y ?? to.y + to.height / 2) - (kind === "sow" ? from.y + from.height * 0.8 : from.y + from.height / 2)}px`,
       } as CSSProperties,
     });
   }
 
-  function handlePlotClick(plot: Plot) {
+  function handlePlotClick(plot: Plot, target?: { x: number; y: number }) {
     const id = plot.id + 1;
     if (plot.unlocked && plot.state === "ready") {
       void execute("harvest", id);
@@ -146,7 +170,7 @@ export function FarmV2AuthenticatedView(props: {
       plot.state === "empty" &&
       (data?.seedInventory[plot.cropId] ?? 0) >= plot.maxSeeds
     ) {
-      void execute("sow", id);
+      void execute("sow", id, undefined, target);
     } else {
       setBuySeedsOnOpen(plot.unlocked && plot.state === "empty" && plot.id < 5);
       setSelectedLand(id);
@@ -216,7 +240,10 @@ export function FarmV2AuthenticatedView(props: {
       | "unlockCoinLand",
     landId: number,
     quantity?: number,
+    target?: { x: number; y: number },
   ) {
+    if (actionInFlight.current || busy) return;
+    actionInFlight.current = true;
     setNotice(null);
     const showFeedback =
       operation === "sow" ||
@@ -234,15 +261,25 @@ export function FarmV2AuthenticatedView(props: {
           purchaseSeeds: "購買種子確認中…",
         }[operation],
       );
-    if (
-      operation === "sow" ||
-      (operation === "harvest" && selectedLand === null)
-    ) {
-      if (operation === "sow") setSelectedLand(null);
-      playLandFlight(operation, landId);
+    if (operation === "sow" || operation === "harvest") {
+      setSelectedLand(null);
+      playLandFlight(operation, landId, target);
     }
-    const ok = await mutate(operation, landId, quantity);
-    if (!ok) setFlight(null);
+    let ok = false;
+    try {
+      const result = mutate(operation, landId, quantity);
+      const flightTime = operation === "sow" || operation === "harvest"
+        ? new Promise<void>(resolve => setTimeout(resolve, 420))
+        : Promise.resolve();
+      [ok] = await Promise.all([result, flightTime]);
+    } catch {
+      // A rejected transport is an unknown result, never a confirmed rollback.
+      // The API retains its original request key; only remove visual feedback.
+      ok = false;
+    } finally {
+      actionInFlight.current = false;
+      setFlight(current => ok && current ? { ...current, confirmed: true } : null);
+    }
     setLandFeedback(
       ok && showFeedback ? { landId, kind: operation, confirmed: true } : null,
     );
@@ -360,10 +397,10 @@ export function FarmV2AuthenticatedView(props: {
       style={{ maxWidth: 1200, margin: "0 auto" }}
     >
       <Dialog open={signInOpen} onOpenChange={setSignInOpen}>
-        <DialogContent style={{maxHeight:"min(80dvh,760px)",overflowY:"auto",background:"#12251f",color:"#f8f1df",width:"min(820px,96vw)",maxWidth:"96vw",top:"calc(50% - 50px)"}}>
+        <DialogContent style={{background:"#12251f",color:"#f8f1df",width:"min(880px,96vw)",maxWidth:"96vw",top:"calc(50% - 50px)",maxHeight:"calc(100dvh - 2rem)",overflowY:"auto"}}>
           <DialogTitle>30 日簽到</DialogTitle>
           <div style={{position:"relative",width:"100%",maxWidth:760,margin:"0 auto"}}>
-            <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-panel.png`} alt="30 日簽到日曆，點選當日格子簽到或補簽" style={{display:"block",width:"100%",height:"auto"}} />
+            <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-panel.png`} alt="30 日簽到正式美術，點選當日格子簽到或補簽" style={{display:"block",width:"100%",height:"auto"}} />
             {signInData && <>
               <button type="button" aria-label="簽到" title={signInData.todayClaimable?"領取今日簽到":"今日已簽到或尚未開放"}
                 disabled={signInBusy||!signInData.todayClaimable}
@@ -374,27 +411,27 @@ export function FarmV2AuthenticatedView(props: {
                 onClick={()=>void runSignInAction(()=>claimSignInMakeup(signInData.nextMakeupDay!))}
                 style={{position:"absolute",left:"78%",top:"82%",width:"19%",height:"15%",background:"transparent",border:0,cursor:signInData.makeupClaimable?"pointer":"default"}} />
             </>}
-            {signInData && signInRewards.map((_,i)=>{
+            {signInData && signInRewards.map((reward,i)=>{
               const day=i+1;
               const signed=signInData.signedDays?.includes(day)??false;
               const makeup=signInData.makeupDays?.includes(day)??false;
               const today=day===signInData.cycleDay && signInData.todayClaimable;
               const canMakeup=day===signInData.nextMakeupDay && signInData.makeupClaimable && signInData.nextMakeupRewardSupported!==false;
               const active=!signInBusy && !signed && (today||canMakeup);
+              const milestone=day===15||day===30;
               const column=i%6,row=Math.floor(i/6);
               return <button type="button" key={day}
-                aria-label={`第${day}天：${signed?"已簽到":today?"領取今日簽到":canMakeup?"補簽":"尚未可領取"}`}
-                title={`第${day}天 ${signed?"已簽到":today?"點擊簽到":canMakeup?"點擊補簽":"尚未開放"}`}
+                aria-label={`第${day}天：${signed?"已簽到":today?"領取今日簽到":canMakeup?"補簽":"尚未可領取"}，獎勵 ${reward}`}
+                title={`第${day}天・${reward}`}
                 disabled={!active}
                 onClick={()=>void runSignInAction(today?claimSignInToday:()=>claimSignInMakeup(day))}
-                style={{position:"absolute",left:`${5.3+column*11.45}%`,top:`${12.8+row*12.8}%`,width:"11.2%",height:"11.8%",border:active?"2px solid #ffe17b":"none",borderRadius:4,background:active?"#ffd25b22":"transparent",cursor:active?"pointer":"default",padding:0}}>
+                style={{position:"absolute",left:`${5.3+column*11.45}%`,top:`${12.8+row*12.8}%`,width:"11.2%",height:"11.8%",border:active?"2px solid #ffe17b":milestone?"1px solid #f0b34a":"none",borderRadius:4,background:active?"#ffd25b22":"transparent",cursor:active?"pointer":"default",padding:0}}>
                 {(signed||makeup)&&<span aria-hidden="true" style={{position:"absolute",inset:0,display:"grid",placeItems:"center",fontSize:"clamp(20px,3vw,42px)",fontWeight:900,color:"#e71923",textShadow:"1px 2px 0 #ffcf4c,-1px -1px 0 #ffcf4c"}}>✕</span>}
               </button>;
             })}
           </div>
-          <p style={{fontSize:13}}>補簽計入全勤，每日台灣時間 05:00 換日。點選大圖中的當日格子即可簽到；可補簽日期直接點選補簽。</p>
+          <p style={{fontSize:13,margin:0}}>補簽計入全勤，依序補簽下一個漏簽日期；每日台灣時間 05:00 換日。第 15 日、第 30 日為里程碑獎勵。</p>
           {signInData && <>
-            <p style={{fontSize:13}}>第 {signInData.cycleNumber} 輪，第 {signInData.cycleDay} 天；補簽額度 {signInData.makeupCreditsAvailable ?? 0}</p>
             <p>全勤獎勵：徽章 ×1、水晶 ×3、金幣 ×200、蘊靈砂 ×2、九霄玉髓 ×2</p>
             {signInData.pendingPerfectCycle != null &&
               signInData.pendingPerfectCycle !== signInData.cycleNumber &&
@@ -413,42 +450,36 @@ export function FarmV2AuthenticatedView(props: {
         </DialogContent>
       </Dialog>
       <Dialog open={newcomerNoticeOpen} onOpenChange={setNewcomerNoticeOpen}>
-        <DialogContent style={{background:"#12251f",color:"#f8f1df",maxHeight:"min(76dvh,720px)",overflowY:"auto",top:"calc(50% - 60px)",padding:12,width:"min(660px,96vw)",maxWidth:"96vw"}}>
-          <DialogTitle>新手 7 日六倍公告</DialogTitle>
-          <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/newcomer-6x-panel.png`} alt="新手六倍活動公告" style={{display:"block",width:"100%",height:"auto"}} />
-          <p>實際加成資格與期限依伺服器帳號資料為準。</p>
+        <DialogContent className="farm-v2-newcomer-dialog [&>button.absolute]:hidden" style={{background:"transparent",border:"none",boxShadow:"none",color:"#f8f1df",maxHeight:"calc(100dvh - 32px)",overflow:"visible",top:"50%",padding:0,width:"min(680px,96vw)",maxWidth:"96vw"}}>
+          <DialogTitle className="sr-only">新手 7 日六倍</DialogTitle>
+          <FarmNewbieBoost firstFarmEnteredAt={data.firstFarmEnteredAt} onClose={() => setNewcomerNoticeOpen(false)} />
         </DialogContent>
       </Dialog>
       <Dialog open={firstRechargeNoticeOpen} onOpenChange={setFirstRechargeNoticeOpen}>
-        <DialogContent style={{background:"#12251f",color:"#f8f1df",maxHeight:"min(76dvh,720px)",overflowY:"auto",top:"calc(50% - 60px)",padding:12,width:"min(660px,96vw)",maxWidth:"96vw"}}>
-          <DialogTitle>首儲獎勵公告</DialogTitle>
-          <div style={{position:"relative",width:"100%"}}>
-             <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/first-recharge-panel.png`} alt="首儲獎勵正式公告" style={{display:"block",width:"100%",height:"auto"}} />
-             {[0,1,2].map(i=><a key={i} href="/top-up" target="_top" aria-label={`前往儲值，第${i+1}方案`} style={{position:"absolute",left:`${7.5+i*30.5}%`,top:"82%",width:"25%",height:"14%",borderRadius:20,background:"transparent"}} />)}
-           </div>
-          <p>獎勵是否符合領取資格，以正式儲值與伺服器紀錄為準。</p>
+        <DialogContent className="farm-v2-first-purchase-dialog [&>button.absolute]:hidden" style={{background:"transparent",border:"none",boxShadow:"none",color:"#f8f1df",maxHeight:"calc(100dvh - 32px)",overflowY:"auto",top:"50%",padding:0,width:"min(660px,96vw)",maxWidth:"96vw",scrollbarWidth:"none"}}>
+          <DialogTitle className="sr-only">首儲獎勵</DialogTitle>
           <FarmFirstPurchaseRewards apiBaseUrl={props.apiBaseUrl} launchToken={props.launchToken} />
         </DialogContent>
       </Dialog>
-      {data.localCoins && (
-        <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
-          <DialogContent style={{ background: "#12251f", color: "#f8f1df", border: "1px solid #bda365", top:"calc(50% - 60px)", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(32rem, calc(100vw - 2rem))", maxHeight: "calc(100dvh - 2rem)", overflowY: "auto", lineHeight: 1.6 }}>
-            <DialogTitle style={{ color: "#f8f1df", fontFamily: "inherit" }}>福田金幣錢包</DialogTitle>
-            <FarmCoinWallet
-              read={readWallet}
-              transfer={transferCoins}
-              pending={pendingTransfers}
-              busy={busy}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
+        <DialogContent className="[&>button.absolute]:hidden" style={{ background: "#12251f", color: "#f8f1df", border: "none", padding: 0, gap: 0, top: "50%", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(1536px, calc(100vw - 16px), calc((100dvh - 16px) * 1.5))", maxWidth: "calc(100vw - 16px)", maxHeight: "calc(100dvh - 16px)", overflow: "hidden", lineHeight: 1.6 }}>
+          <DialogTitle className="sr-only">福田金幣錢包</DialogTitle>
+          <FarmCoinWallet
+            read={readWallet}
+            transfer={transferCoins}
+            pending={pendingTransfers}
+            busy={busy}
+            onClose={() => setWalletOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
       {flight && (
         <span
           aria-hidden="true"
-          className="farm-v2-flight"
+          key={flight.id + ":" + flight.confirmed}
+          className={"farm-v2-flight " + (flight.confirmed ? "confirmed" : "pending")}
           style={flight.style}
-          onAnimationEnd={() => setFlight(null)}
+          onAnimationEnd={(event) => { if (event.animationName === "farm-v2-fly-confirmed" && flight.confirmed) setFlight(current => current?.id === flight.id ? null : current); }}
         >
           {flight.icon}
         </span>
@@ -456,6 +487,7 @@ export function FarmV2AuthenticatedView(props: {
       <div className="farm-v2-scene-tools-anchor">
       <FarmSceneInteractionLayer
         warehouseTargetRef={warehouseButton}
+        flyingSowLand={flight?.kind === "sow" ? flight.landId : undefined}
         plots={data.plots}
         state={{
           pots: workshopState(data.warehouse).pots.filter((p) => p.displayed),
@@ -486,10 +518,11 @@ export function FarmV2AuthenticatedView(props: {
             : undefined
         }
         onPlotClick={handlePlotClick}
+        onPetSelect={(petId) => openPanel("靈寵", petId)}
         onSection={openPanel}
       />
       <div className="farm-v2-corner-tools" aria-label="福田右上角工具" >
-        {data.localCoins && <button type="button" className="farm-v2-coin-launcher" aria-label="金幣轉換：中央與福田金幣轉入回存" title="金幣轉換" disabled={busy||loading} onClick={()=>setWalletOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-conversion.png`} alt="金幣轉換" /></button>}
+        <button type="button" className="farm-v2-coin-launcher" aria-label="金幣轉換：中央與福田金幣轉入回存" title="金幣轉換" disabled={busy||loading} onClick={()=>setWalletOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-conversion.png`} alt="金幣轉換" /></button>
         <button type="button" className="farm-v2-bag-launcher" aria-label="開啟乾坤寶囊" title="乾坤寶囊" disabled={busy||loading} onClick={()=>openPanel("乾坤寶囊")}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`} alt="乾坤寶囊" /></button>
         <button type="button" className="farm-v2-signin-launcher" aria-label="開啟30日簽到" title="30日簽到" disabled={busy||loading} onClick={()=>void openSignIn()}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-icon.png`} alt="30日簽到" /></button>
         <button type="button" className="farm-v2-newcomer-launcher" aria-label="查看新手六倍公告" title="新手六倍" onClick={()=>setNewcomerNoticeOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/newcomer-6x-icon.png`} alt="新手六倍" /></button>
@@ -506,7 +539,6 @@ export function FarmV2AuthenticatedView(props: {
           {panelTab === "福田倉庫" ? (
             <section aria-label="福田倉庫庫存">
               <p>以下數量來自目前伺服器回傳的農田庫存。</p>
-              {data.localCoins && <button type="button" onClick={() => setWalletOpen(true)}>🪙 福田金幣・轉入／回存</button>}
               <button type="button" disabled={busy || loading || checkingSeeds} onClick={async () => {
                 setCheckingSeeds(true);
                 try { const result = await readSeedRecoveries(); setSeedRecoveries(result.purchases); setNotice(result.purchases.length ? "請接續原買種子交易，系統會先查核原扣款。" : "沒有待接續的買種子交易。"); }
@@ -544,7 +576,9 @@ export function FarmV2AuthenticatedView(props: {
                     ]
                 ).map(item => (
                   <div role="listitem" key={item.key} title={item.name} style={{ minHeight: 88, border: "1px solid #a99565", borderRadius: 8, padding: 6, background: "#25392e", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-                    <span aria-hidden="true" style={{ fontSize: 24 }}>{item.icon}</span>
+                    {item.key.startsWith("crop-") ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/plants/${item.key.slice(5)}-0.webp`} alt="" width={48} height={48} style={{ objectFit: "contain" }} />
+                      : item.key.startsWith("material-") ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/items/${item.name}.png`} alt="" width={48} height={48} style={{ objectFit: "contain" }} />
+                      : <span aria-hidden="true" style={{ fontSize: 24 }}>{item.icon}</span>}
                     <span style={{ fontSize: 12 }}>{item.name}</span>
                     <strong style={{ fontSize: 12 }}>{item.qty === null ? "資料缺失" : "×" + item.qty}</strong>
                   </div>
@@ -555,6 +589,7 @@ export function FarmV2AuthenticatedView(props: {
           ) : (
             <FarmWorkshopPanel
               tab={panelTab}
+              petId={focusedPetId}
               onTabChange={openPanel}
               readFriends={readFriends}
               visitCave={async (id) => {
@@ -650,7 +685,7 @@ export function FarmV2AuthenticatedView(props: {
         結束遊玩並登出
       </button>
       {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
-      {error === "FARM_COIN_INSUFFICIENT" && data.localCoins && <button onClick={()=>{setSelectedLand(null);setPanelOpen(false);setWalletOpen(true);}}>轉入福田金幣</button>}
+      {error === "FARM_COIN_INSUFFICIENT" && <p role="status">金幣不足，請透過上方福田金幣錢包查看餘額與轉換狀態。</p>}
       {notice && <p role="status">{notice}</p>}
       <button
         type="button"

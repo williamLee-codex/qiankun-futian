@@ -42,3 +42,18 @@ test('paid unlocks ignore gifted crystal ledger even after all three plans',()=>
   assert.equal(all.divinePet,false);
   assert.equal(all.dedicatedFarmer,false);
 });
+
+test('C plan first and third day preserve two separate random pot claims',()=>{
+  const plan=FIRST_PURCHASE_PLANS.C;
+  const dayOne=FIRST_PURCHASE_DAILY_GIFTS.C[0];
+  const dayThree=FIRST_PURCHASE_DAILY_GIFTS.C[2];
+  const potGift=plan.gifts.find(g=>g.item.includes('pot'));
+  assert.ok(potGift,'C plan must include a pot reward');
+  assert.equal(potGift.quantity,2);
+  assert.equal(dayOne.find(g=>g.item===potGift.item)?.quantity,1);
+  assert.equal(dayThree.find(g=>g.item===potGift.item)?.quantity,1);
+  const purchase={planId:'C' as const,paidAt:'2026-11-16T10:00:00Z',paymentConfirmed:true,claimedDays:[] as number[]};
+  assert.equal(evaluateFirstPurchaseClaim(purchase,1,'2026-11-16T10:01:00Z').gifts?.find(g=>g.item===potGift.item)?.quantity,1);
+  assert.equal(evaluateFirstPurchaseClaim(purchase,3,'2026-11-18T10:01:00Z').gifts?.find(g=>g.item===potGift.item)?.quantity,1);
+  assert.equal(evaluateFirstPurchaseClaim({...purchase,claimedDays:[1]},1,'2026-11-18T10:01:00Z').reason,'ALREADY_CLAIMED');
+});

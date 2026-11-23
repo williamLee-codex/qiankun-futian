@@ -39,3 +39,9 @@ test('newcomer sixfold applies across all plots for exactly seven days', () => {
   assert.equal(newcomerHarvestMultiplier(start,startMs-1),1);
   assert.throws(()=>newcomerHarvestYield(-1,start,start));
 });
+
+test('newcomer helper agrees with the canonical runtime on invalid first entries', () => {
+  for (const started of [0,-1,NaN,Infinity,-Infinity,'not-a-date']) {
+    assert.equal(newcomerHarvestMultiplier(started,1),1);
+  }
+});

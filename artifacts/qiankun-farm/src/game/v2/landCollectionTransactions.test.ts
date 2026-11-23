@@ -24,15 +24,15 @@ describe('Farm V2 land collection transactions', () => {
   });
 
   it('harvests selected mature land and preserves all other lands', () => {
-    const enteredAt = 0;
-    const now = 5 * 60 * 60 * 1000;
+    const enteredAt = Date.parse("2026-11-01T00:00:00Z");
+    const now = enteredAt + 5 * 60 * 60 * 1000;
     const lands = createInitialLandEntities(new Set([1, 2]));
     lands[0] = {
       ...lands[0],
       lifecycle: 'MATURE',
       plantedQuantity: 20,
-      plantedAt: 0,
-      maturesAt: 4 * 60 * 60 * 1000,
+      plantedAt: enteredAt,
+      maturesAt: enteredAt + 4 * 60 * 60 * 1000,
     };
     const land2Before = lands[1];
 
@@ -51,4 +51,20 @@ describe('Farm V2 land collection transactions', () => {
     expect(result.lands[1]).toEqual(land2Before);
     expect(result.missions.progress.MISSION_D02.progress).toBe(1);
   });
+});
+
+describe('all six lands share the persisted first-entry boundary', () => {
+  for (const landId of [1,2,3,4,5,6] as const) {
+    for (const [offset,multiplier] of [[7*86400000-1,6],[7*86400000,1]] as const) {
+      it(`settles field ${landId} with x${multiplier} at offset ${offset}`, () => {
+        const first = Date.parse('2026-11-01T00:00:00Z');
+        const now = first+offset;
+        const lands = createInitialLandEntities(new Set([1,2,3,4,5,6]));
+        lands[landId-1] = {...lands[landId-1],lifecycle:'MATURE',plantedQuantity:20,plantedAt:first,maturesAt:now};
+        const result=executeOwnerHarvestOnLand({state:{lands,warehouse:createEmptyFarmWarehouse(),missions:createMissionState(now)},landId,firstFarmEnteredAt:first,now});
+        expect(result.creditedQuantity).toBe(20*multiplier);
+        expect(result.warehouse.crops[landId]).toBe(20*multiplier);
+      });
+    }
+  }
 });

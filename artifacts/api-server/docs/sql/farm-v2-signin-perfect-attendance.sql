@@ -35,6 +35,15 @@ begin
  select warehouse_state into v_state from public.farm_v2_player_state where user_id=p_user_id for update;
  if not found then return jsonb_build_object('status','player_not_found'); end if;
  v_materials:=v_state#>'{workshop,materials}';
+ if coalesce(jsonb_typeof(v_materials),'null')='null' then
+   if coalesce(jsonb_typeof(v_state->'workshop'),'null')='null' then
+     v_state:=jsonb_set(v_state,'{workshop}','{}'::jsonb,true);
+   elsif jsonb_typeof(v_state->'workshop')<>'object' then
+     return jsonb_build_object('status','invalid_inventory');
+   end if;
+   v_materials:='{}'::jsonb;
+   v_state:=jsonb_set(v_state,'{workshop,materials}',v_materials,true);
+ end if;
  if jsonb_typeof(v_materials)<>'object'
  or (v_materials ? '蘊靈砂' and jsonb_typeof(v_materials->'蘊靈砂')<>'number')
  or (v_materials ? '九霄玉髓' and jsonb_typeof(v_materials->'九霄玉髓')<>'number')
