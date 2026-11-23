@@ -430,6 +430,8 @@ export function FarmV2AuthenticatedView(props: {
               </button>;
             })}
           </div>
+          <button type="button" aria-label="關閉簽到" onClick={()=>setSignInOpen(false)}
+            style={{position:"absolute",left:"92.8%",top:"1.5%",width:"5.9%",height:"8.8%",background:"transparent",border:0,cursor:"pointer",padding:0}} />
           {signInData && <button type="button"
             aria-label={signInData.pendingPerfectCycle != null && signInData.pendingPerfectCycle !== signInData.cycleNumber
               ? "補領上一輪全勤獎勵" : signInData.perfectAttendanceClaimed ? "本輪全勤已領取" : "領取全勤獎勵"}
@@ -447,7 +449,7 @@ export function FarmV2AuthenticatedView(props: {
         </DialogContent>
       </Dialog>
       <Dialog open={firstRechargeNoticeOpen} onOpenChange={setFirstRechargeNoticeOpen}>
-        <DialogContent className="farm-v2-first-purchase-dialog [&>button.absolute]:hidden" style={{background:"transparent",border:"none",boxShadow:"none",color:"#f8f1df",maxHeight:"calc(100dvh - 32px)",overflowY:"auto",top:"50%",padding:0,width:"min(660px,96vw)",maxWidth:"96vw",scrollbarWidth:"none"}}>
+        <DialogContent className="farm-v2-first-purchase-dialog [&>button.absolute]:hidden" style={{background:"transparent",border:"none",boxShadow:"none",color:"#f8f1df",top:"50%",padding:0,gap:0,overflow:"hidden",maxHeight:"calc(100dvh - 16px)",width:"min(1100px, calc(100vw - 16px), calc((100dvh - 64px) * 2))",maxWidth:"calc(100vw - 16px)"}}>
           <DialogTitle className="sr-only">首儲獎勵</DialogTitle>
           <FarmFirstPurchaseRewards apiBaseUrl={props.apiBaseUrl} launchToken={props.launchToken} />
         </DialogContent>
