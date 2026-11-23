@@ -1,4 +1,4 @@
-import { useEffect,useMemo,useState } from "react";
+import { useEffect,useMemo,useRef,useState } from "react";
 import { createFarmV2Api } from "./farmV2ApiClient";
 type Plan="A"|"B"|"C";
 type Status={plans:{plan_id:Plan;paid_at:string;purchased_crystals:number;bonus_crystals_total:number}[];claimedDays:{plan_id:string;claim_day:number}[]};
@@ -38,6 +38,14 @@ const BAR_TOP = 72;
 const BAR_W = 28.2;
 const BAR_H = 12;
 const RECHARGE_ICON = "/farm-v2/images/farm/recharge-cta.png";
+const SWIPE_MIN = 40;
+
+const arrowBase:React.CSSProperties = {
+  position:"absolute",top:"50%",transform:"translateY(-50%)",width:"clamp(28px,4vw,52px)",height:"clamp(28px,4vw,52px)",
+  borderRadius:"50%",border:"2px solid #f0c14b",background:"rgba(24,14,4,.72)",color:"#ffe9a8",
+  fontSize:"clamp(18px,2.6vw,32px)",fontWeight:900,lineHeight:1,padding:0,zIndex:3,
+  display:"grid",placeItems:"center",
+};
 
 export function FarmFirstPurchaseRewards({apiBaseUrl,launchToken}:{apiBaseUrl:string;launchToken:string}){
  const api=useMemo(()=>createFarmV2Api({baseUrl:apiBaseUrl,launchToken}),[apiBaseUrl,launchToken]);
@@ -45,7 +53,14 @@ export function FarmFirstPurchaseRewards({apiBaseUrl,launchToken}:{apiBaseUrl:st
  const [error,setError]=useState(false);
  const [bannerFailures,setBannerFailures]=useState<Partial<Record<Plan,boolean>>>({});
  const [iconFailures,setIconFailures]=useState<Partial<Record<Plan,boolean>>>({});
- async function refresh(){try{setData(await api.readFirstPurchase());setMessage("");setError(false);}catch{setError(true);setMessage("首儲資料讀取失敗，請稍後重試");}}
+ const [index,setIndex]=useState(0);
+ const touchStart=useRef<number|null>(null);
+ const plan=plans[index];
+ async function refresh(){
+  try{setData(await api.readFirstPurchase());setMessage("");setError(false);}
+  catch(e){const status=(e as {status?:number})?.status;setError(true);
+   setMessage(status?`首儲資料讀取失敗（HTTP ${status}），請稍後重試`:"首儲資料讀取失敗，請稍後重試");}
+ }
  useEffect(()=>{void refresh();},[api]);
  async function claim(planId:Plan,day:1|2|3){
   if(busy)return;setBusy(true);
@@ -53,11 +68,22 @@ export function FarmFirstPurchaseRewards({apiBaseUrl,launchToken}:{apiBaseUrl:st
   catch{setMessage("領取未確認，請重新查詢後再試，系統不會重複發獎");}
   finally{setBusy(false);}
  }
- return <section aria-label="首儲三日獎勵" style={{padding:"12px 0",display:"grid",gap:12}}>
-  {error && <p role="alert">{message}<button type="button" onClick={()=>void refresh()} disabled={busy} style={{marginLeft:8}}>重新讀取</button></p>}
-  {plans.map((plan)=>{
-   const purchased=data?.plans.find(p=>p.plan_id===plan.id);const available=purchased?availableDay(purchased.paid_at):0;
-   return <article key={plan.id} aria-label={`${plan.id} 方案 ${plan.name} 首儲獎勵`} style={{position:"relative",padding:0,background:"transparent"}}>
+ function go(delta:number){setIndex(current=>Math.min(plans.length-1,Math.max(0,current+delta)));}
+ function onTouchStart(event:React.TouchEvent){touchStart.current=event.touches[0]?.clientX??null;}
+ function onTouchEnd(event:React.TouchEvent){
+  const start=touchStart.current;touchStart.current=null;
+  if(start==null)return;
+  const delta=(event.changedTouches[0]?.clientX??start)-start;
+  if(Math.abs(delta)>=SWIPE_MIN)go(delta<0?1:-1);
+ }
+ const purchased=data?.plans.find(p=>p.plan_id===plan.id);
+ const available=purchased?availableDay(purchased.paid_at):0;
+ return <section aria-label="首儲三日獎勵" style={{display:"grid",gap:6}}>
+  {error && <p role="alert" style={{margin:0,fontSize:"clamp(10px,1.2vw,15px)",color:"#ffd0c0"}}>{message}
+    <button type="button" onClick={()=>void refresh()} disabled={busy} style={{marginLeft:8}}>重新讀取</button></p>}
+  <div role="group" aria-roledescription="輪播" aria-label={`首儲方案 ${index+1}／${plans.length}：${plan.name} ${plan.price}`}
+    onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{position:"relative",touchAction:"pan-y"}}>
+   <article aria-label={`${plan.id} 方案 ${plan.name} 首儲獎勵`} style={{position:"relative",padding:0,background:"transparent"}}>
     {!bannerFailures[plan.id] && <div style={{position:"relative",marginTop:0}}>
       <img
         src={`/farm-v2/first-purchase/${plan.id}.png`}
@@ -95,9 +121,22 @@ export function FarmFirstPurchaseRewards({apiBaseUrl,launchToken}:{apiBaseUrl:st
           : <img src={RECHARGE_ICON} alt="" onError={()=>setIconFailures(current=>({...current,[plan.id]:true}))} style={{display:"block",width:"100%",height:"100%"}} />}
       </button>
     </form>
-   </article>;
-  })}
-  {!error && message && <p role="status">{message}</p>}
-  <button type="button" onClick={()=>void refresh()} disabled={busy}>重新查詢領獎狀態</button>
+   </article>
+   <button type="button" aria-label="上一檔首儲方案" onClick={()=>go(-1)} disabled={index===0}
+     style={{...arrowBase,left:"-2%",opacity:index===0?0.25:1,cursor:index===0?"default":"pointer"}}>‹</button>
+   <button type="button" aria-label="下一檔首儲方案" onClick={()=>go(1)} disabled={index===plans.length-1}
+     style={{...arrowBase,right:"-2%",opacity:index===plans.length-1?0.25:1,cursor:index===plans.length-1?"default":"pointer"}}>›</button>
+  </div>
+  <div role="tablist" aria-label="首儲方案切換" style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8}}>
+   {plans.map((item,i)=>
+    <button type="button" role="tab" key={item.id} aria-selected={i===index} aria-label={`${item.name} ${item.price}`}
+      onClick={()=>setIndex(i)}
+      style={{padding:"2px 10px",borderRadius:999,border:i===index?"1px solid #f0c14b":"1px solid transparent",
+        background:i===index?"rgba(240,193,75,.22)":"transparent",color:i===index?"#ffe9a8":"#cbb894",
+        fontSize:"clamp(9px,1.1vw,14px)",fontWeight:i===index?800:600,cursor:"pointer"}}>
+      {item.price}
+    </button>)}
+  </div>
+  {!error && message && <p role="status" style={{margin:0,fontSize:"clamp(10px,1.2vw,15px)"}}>{message}</p>}
  </section>;
 }

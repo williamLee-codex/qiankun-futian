@@ -451,6 +451,8 @@ export function FarmV2AuthenticatedView(props: {
       <Dialog open={firstRechargeNoticeOpen} onOpenChange={setFirstRechargeNoticeOpen}>
         <DialogContent className="farm-v2-first-purchase-dialog [&>button.absolute]:hidden" style={{background:"transparent",border:"none",boxShadow:"none",color:"#f8f1df",top:"50%",padding:0,gap:0,overflow:"hidden",maxHeight:"calc(100dvh - 16px)",width:"min(1100px, calc(100vw - 16px), calc((100dvh - 64px) * 2))",maxWidth:"calc(100vw - 16px)"}}>
           <DialogTitle className="sr-only">首儲獎勵</DialogTitle>
+          <button type="button" aria-label="關閉首儲獎勵" onClick={()=>setFirstRechargeNoticeOpen(false)}
+            style={{position:"absolute",right:6,top:6,width:"clamp(30px,4vw,46px)",height:"clamp(30px,4vw,46px)",borderRadius:"50%",background:"#c62828",color:"#fff",border:"2px solid #ffe3e3",fontSize:"clamp(16px,2.2vw,26px)",fontWeight:900,lineHeight:1,padding:0,cursor:"pointer",zIndex:5,display:"grid",placeItems:"center",boxShadow:"0 4px 14px rgba(0,0,0,.6)"}}>✕</button>
           <FarmFirstPurchaseRewards apiBaseUrl={props.apiBaseUrl} launchToken={props.launchToken} />
         </DialogContent>
       </Dialog>
