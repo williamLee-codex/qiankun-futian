@@ -38,7 +38,17 @@ begin
  select warehouse_state into v_state from public.farm_v2_player_state where user_id=p_user_id for update;
  if not found then return jsonb_build_object('status','player_not_found'); end if;
  v_pots:=v_state #> '{workshop,pots}';
- if jsonb_typeof(v_pots)<>'array' then return jsonb_build_object('status','invalid_workshop'); end if;
+ if coalesce(jsonb_typeof(v_pots),'null')='null' then
+   if coalesce(jsonb_typeof(v_state->'workshop'),'null')='null' then
+     v_state:=jsonb_set(v_state,'{workshop}','{}'::jsonb,true);
+   elsif jsonb_typeof(v_state->'workshop')<>'object' then
+     return jsonb_build_object('status','invalid_workshop');
+   end if;
+   v_pots:='[]'::jsonb;
+   v_state:=jsonb_set(v_state,'{workshop,pots}',v_pots,true);
+ elsif jsonb_typeof(v_pots)<>'array' then
+   return jsonb_build_object('status','invalid_workshop');
+ end if;
  v_species:=1+floor(random()*6)::integer;
  v_pot:=jsonb_build_object('id',v_id,'grade',v_grade,'species',v_species,
    'displayed',false,'acquiredAt',floor(extract(epoch from clock_timestamp())*1000)::bigint);

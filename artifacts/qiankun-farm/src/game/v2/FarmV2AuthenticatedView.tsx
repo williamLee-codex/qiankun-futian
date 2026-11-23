@@ -74,6 +74,20 @@ export function FarmV2AuthenticatedView(props: {
   const [seedRecoveries,setSeedRecoveries]=useState<FarmSeedRecovery[]>([]);
   const [checkingSeeds,setCheckingSeeds]=useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  // Radix locks the scroll container it finds, but the game shell also scrolls
+  // documentElement on some browsers. Pin both while the art modal is open and
+  // restore the exact previous values on close.
+  useEffect(() => {
+    if (!walletOpen) return;
+    const { body, documentElement } = document;
+    const previous = { body: body.style.overflow, root: documentElement.style.overflow };
+    body.style.overflow = "hidden";
+    documentElement.style.overflow = "hidden";
+    return () => {
+      body.style.overflow = previous.body;
+      documentElement.style.overflow = previous.root;
+    };
+  }, [walletOpen]);
   const [signInOpen, setSignInOpen] = useState(false);
   const [newcomerNoticeOpen, setNewcomerNoticeOpen] = useState(false);
   const [firstRechargeNoticeOpen, setFirstRechargeNoticeOpen] = useState(false);
@@ -84,7 +98,9 @@ export function FarmV2AuthenticatedView(props: {
   const [visited, setVisited] = useState<FarmV2PublicCave | null>(null);
   const [panelTab, setPanelTab] = useState("盆栽");
   const [activityNotice, setActivityNotice] = useState("");
-  function openPanel(tab: string) {
+  const [focusedPetId, setFocusedPetId] = useState<string | null>(null);
+  function openPanel(tab: string, petId: string | null = null) {
+    setFocusedPetId(petId);
     setPanelTab(tab);
     setPanelOpen(true);
     const inspection = tab === "福田倉庫" ? "warehouse" : tab === "靈寵" ? "pet" : null;
@@ -381,73 +397,76 @@ export function FarmV2AuthenticatedView(props: {
       style={{ maxWidth: 1200, margin: "0 auto" }}
     >
       <Dialog open={signInOpen} onOpenChange={setSignInOpen}>
-        <DialogContent style={{background:"#12251f",color:"#f8f1df",width:"min(880px,96vw)",maxWidth:"96vw",top:"calc(50% - 50px)",maxHeight:"calc(100dvh - 2rem)",overflowY:"auto"}}>
-          <DialogTitle>30 日簽到</DialogTitle>
-          {signInData && <p style={{fontSize:13,margin:0}}>第 {signInData.cycleNumber} 輪，第 {signInData.cycleDay} 天；補簽額度 {signInData.makeupCreditsAvailable ?? 0}</p>}
-          <div role="grid" aria-label="30 日簽到格，共 30 格" style={{display:"grid",gridTemplateColumns:"repeat(6,minmax(0,1fr))",gap:6}}>
-            {signInRewards.map((reward,i)=>{
+        <DialogContent className="[&>button.absolute]:hidden" style={{ background: "transparent", color: "#f8f1df", border: "none", padding: 0, gap: 0, top: "50%", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(1536px, calc(100vw - 16px), calc((100dvh - 64px) * 1.5))", maxWidth: "calc(100vw - 16px)", maxHeight: "calc(100dvh - 16px)", overflow: "hidden", lineHeight: 1.6 }}>
+          <DialogTitle className="sr-only">30 日簽到</DialogTitle>
+          <div style={{position:"relative",width:"100%",margin:"0 auto"}}>
+            <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-panel.png`} alt="30 日簽到正式美術，點選當日格子簽到或補簽" style={{display:"block",width:"100%",height:"auto"}} />
+            {signInData && <>
+              <button type="button" aria-label="簽到" title={signInData.todayClaimable?"領取今日簽到":"今日已簽到或尚未開放"}
+                disabled={signInBusy||!signInData.todayClaimable}
+                onClick={()=>void runSignInAction(claimSignInToday)}
+                style={{position:"absolute",left:"59.57%",top:"83.5%",width:"19.2%",height:"11.7%",background:"transparent",border:0,cursor:signInData.todayClaimable?"pointer":"default"}} />
+              <button type="button" aria-label="補簽" title={signInData.makeupClaimable?"補簽下一個漏簽日期":"目前無法補簽"}
+                disabled={signInBusy||!signInData.makeupClaimable||signInData.nextMakeupDay==null||signInData.nextMakeupRewardSupported===false}
+                onClick={()=>void runSignInAction(()=>claimSignInMakeup(signInData.nextMakeupDay!))}
+                style={{position:"absolute",left:"79.1%",top:"83.5%",width:"17.9%",height:"11.7%",background:"transparent",border:0,cursor:signInData.makeupClaimable?"pointer":"default"}} />
+            </>}
+            {signInData && signInRewards.map((reward,i)=>{
               const day=i+1;
-              const signed=signInData?.signedDays?.includes(day)??false;
-              const makeup=signInData?.makeupDays?.includes(day)??false;
-              const today=!!signInData && day===signInData.cycleDay && signInData.todayClaimable;
-              const canMakeup=!!signInData && day===signInData.nextMakeupDay && signInData.makeupClaimable && signInData.nextMakeupRewardSupported!==false;
+              const signed=signInData.signedDays?.includes(day)??false;
+              const makeup=signInData.makeupDays?.includes(day)??false;
+              const today=day===signInData.cycleDay && signInData.todayClaimable;
+              const canMakeup=day===signInData.nextMakeupDay && signInData.makeupClaimable && signInData.nextMakeupRewardSupported!==false;
               const active=!signInBusy && !signed && (today||canMakeup);
               const milestone=day===15||day===30;
-              const done=signed||makeup;
-              return <button type="button" role="gridcell" key={day}
-                aria-label={`第${day}天：${done?"已簽到":today?"領取今日簽到":canMakeup?"補簽":"尚未可領取"}，獎勵 ${reward}`}
+              const column=i%6,row=Math.floor(i/6);
+              return <button type="button" key={day}
+                aria-label={`第${day}天：${signed?"已簽到":today?"領取今日簽到":canMakeup?"補簽":"尚未可領取"}，獎勵 ${reward}`}
                 title={`第${day}天・${reward}`}
                 disabled={!active}
                 onClick={()=>void runSignInAction(today?claimSignInToday:()=>claimSignInMakeup(day))}
-                style={{position:"relative",minHeight:74,display:"grid",gap:2,alignContent:"center",justifyItems:"center",textAlign:"center",padding:"4px 2px",border:active?"2px solid #ffe17b":milestone?"1px solid #f0b34a":"1px solid #3c5a4c",borderRadius:8,background:done?"#1f3a2c":today?"#3a3418":milestone?"#243a2c":"#182f25",cursor:active?"pointer":"default",color:"#f8f1df"}}>
-                <span style={{fontSize:11,fontWeight:800,color:milestone?"#ffd76a":"#b3c2b4"}}>第{day}天</span>
-                <span style={{fontSize:11,lineHeight:1.2}}>{reward}</span>
-                {done&&<span aria-hidden="true" style={{fontSize:20,fontWeight:900,color:"#ffd76a"}}>✓</span>}
-                {active&&<span style={{fontSize:10,color:"#ffe17b"}}>{today?"點擊簽到":"點擊補簽"}</span>}
+                style={{position:"absolute",left:`${6.84+column*11.39}%`,top:`${13.87+row*13.96}%`,width:"9.77%",height:"11.33%",border:active?"2px solid #ffe17b":milestone?"1px solid #f0b34a":"none",borderRadius:6,background:active?"#ffd25b22":"transparent",cursor:active?"pointer":"default",padding:0}}>
+                {(signed||makeup)&&<span aria-hidden="true" style={{position:"absolute",inset:0,display:"grid",placeItems:"center",fontSize:"clamp(16px,2.4vw,34px)",fontWeight:900,color:"#ffeaa8",textShadow:"0 0 8px #d9a233,1px 2px 0 #7a4a10"}}>{makeup?"補":"✓"}</span>}
               </button>;
             })}
           </div>
-          <p style={{fontSize:13,margin:0}}>補簽計入全勤，依序補簽下一個漏簽日期；每日台灣時間 05:00 換日。第 15 日、第 30 日為里程碑獎勵。</p>
-          {signInData && <>
-            <p>全勤獎勵：徽章 ×1、水晶 ×3、金幣 ×200、蘊靈砂 ×2、九霄玉髓 ×2</p>
-            {signInData.pendingPerfectCycle != null &&
-              signInData.pendingPerfectCycle !== signInData.cycleNumber &&
-              <p role="status">第 {signInData.pendingPerfectCycle} 輪全勤獎勵尚未領取，可在本輪補領。</p>}
-            <button type="button"
-              disabled={signInBusy||!signInData.perfectAttendanceReady}
-              onClick={()=>void runSignInAction(claimSignInPerfect)}>
-              {signInData.pendingPerfectCycle != null &&
-               signInData.pendingPerfectCycle !== signInData.cycleNumber
-                ? "補領上一輪全勤獎勵" : signInData.perfectAttendanceClaimed
-                  ? "本輪全勤已領取" : "領取全勤獎勵"}
-            </button>
-          </>}
+          {signInData && <button type="button"
+            aria-label={signInData.pendingPerfectCycle != null && signInData.pendingPerfectCycle !== signInData.cycleNumber
+              ? "補領上一輪全勤獎勵" : signInData.perfectAttendanceClaimed ? "本輪全勤已領取" : "領取全勤獎勵"}
+            disabled={signInBusy||!signInData.perfectAttendanceReady}
+            onClick={()=>void runSignInAction(claimSignInPerfect)}
+            style={{position:"absolute",left:"74.5%",top:"41%",width:"23.1%",height:"37%",background:"transparent",border:0,cursor:signInData.perfectAttendanceReady?"pointer":"default",padding:0}} />}
           {signInError && <p role="alert">{signInError}</p>}
           {!signInData && !signInError && <p>正在讀取簽到資料…</p>}
         </DialogContent>
       </Dialog>
       <Dialog open={newcomerNoticeOpen} onOpenChange={setNewcomerNoticeOpen}>
-        <DialogContent style={{background:"#12251f",color:"#f8f1df",maxHeight:"min(76dvh,720px)",overflowY:"auto",top:"calc(50% - 60px)",padding:12,width:"min(680px,96vw)",maxWidth:"96vw"}}>
-          <DialogTitle>新手 7 日六倍</DialogTitle>
-          <FarmNewbieBoost firstFarmEnteredAt={data.firstFarmEnteredAt} />
+        <DialogContent className="farm-v2-newcomer-dialog [&>button.absolute]:hidden" style={{background:"transparent",border:"none",boxShadow:"none",color:"#f8f1df",maxHeight:"calc(100dvh - 32px)",overflow:"visible",top:"50%",padding:0,width:"min(680px,96vw)",maxWidth:"96vw"}}>
+          <DialogTitle className="sr-only">新手 7 日六倍</DialogTitle>
+          <FarmNewbieBoost firstFarmEnteredAt={data.firstFarmEnteredAt} onClose={() => setNewcomerNoticeOpen(false)} />
         </DialogContent>
       </Dialog>
       <Dialog open={firstRechargeNoticeOpen} onOpenChange={setFirstRechargeNoticeOpen}>
-        <DialogContent style={{background:"#12251f",color:"#f8f1df",maxHeight:"min(76dvh,720px)",overflowY:"auto",top:"calc(50% - 60px)",padding:12,width:"min(660px,96vw)",maxWidth:"96vw"}}>
-          <DialogTitle>首儲獎勵</DialogTitle>
-          <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/first-recharge-panel.png`} alt="首儲獎勵正式公告橫幅" style={{display:"block",width:"100%",height:"auto",borderRadius:10}} />
-          <p style={{margin:0}}>獎勵是否符合領取資格，以正式儲值與伺服器紀錄為準；下方卡片為實際領取與儲值入口。</p>
+        <DialogContent className="farm-v2-first-purchase-dialog [&>button.absolute]:hidden" style={{background:"transparent",border:"none",boxShadow:"none",color:"#f8f1df",maxHeight:"calc(100dvh - 32px)",overflowY:"auto",top:"50%",padding:0,width:"min(660px,96vw)",maxWidth:"96vw",scrollbarWidth:"none"}}>
+          <DialogTitle className="sr-only">首儲獎勵</DialogTitle>
           <FarmFirstPurchaseRewards apiBaseUrl={props.apiBaseUrl} launchToken={props.launchToken} />
         </DialogContent>
       </Dialog>
       <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
-        <DialogContent style={{ background: "#12251f", color: "#f8f1df", border: "1px solid #bda365", top:"calc(50% - 60px)", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(32rem, calc(100vw - 2rem))", maxHeight: "calc(100dvh - 2rem)", overflowY: "auto", lineHeight: 1.6 }}>
-          <DialogTitle style={{ color: "#f8f1df", fontFamily: "inherit" }}>福田金幣錢包</DialogTitle>
+        <DialogContent className="[&>button.absolute]:hidden" style={{ background: "transparent", color: "#f8f1df", border: "none", padding: 0, gap: 0, top: "50%", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(1536px, calc(100vw - 16px), calc((100dvh - 64px) * 1.5))", maxWidth: "calc(100vw - 16px)", maxHeight: "calc(100dvh - 16px)", overflow: "hidden", lineHeight: 1.6 }}>
+          <DialogTitle className="sr-only">福田金幣錢包</DialogTitle>
           <FarmCoinWallet
             read={readWallet}
-            transfer={transferCoins}
+            transfer={async (direction, amount) => {
+              const result = await transferCoins(direction, amount);
+              // The platform Header renders the central coin balance on the
+              // server, so it has to re-render after a transfer.
+              window.parent.postMessage({ type: "qiankun-farm-v2:wallet-updated" }, window.location.origin);
+              return result;
+            }}
             pending={pendingTransfers}
             busy={busy}
+            onClose={() => setWalletOpen(false)}
           />
         </DialogContent>
       </Dialog>
@@ -496,6 +515,7 @@ export function FarmV2AuthenticatedView(props: {
             : undefined
         }
         onPlotClick={handlePlotClick}
+        onPetSelect={(petId) => openPanel("靈寵", petId)}
         onSection={openPanel}
       />
       <div className="farm-v2-corner-tools" aria-label="福田右上角工具" >
@@ -553,7 +573,9 @@ export function FarmV2AuthenticatedView(props: {
                     ]
                 ).map(item => (
                   <div role="listitem" key={item.key} title={item.name} style={{ minHeight: 88, border: "1px solid #a99565", borderRadius: 8, padding: 6, background: "#25392e", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-                    <span aria-hidden="true" style={{ fontSize: 24 }}>{item.icon}</span>
+                    {item.key.startsWith("crop-") ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/plants/${item.key.slice(5)}-0.webp`} alt="" width={48} height={48} style={{ objectFit: "contain" }} />
+                      : item.key.startsWith("material-") ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/items/${item.name}.png`} alt="" width={48} height={48} style={{ objectFit: "contain" }} />
+                      : <span aria-hidden="true" style={{ fontSize: 24 }}>{item.icon}</span>}
                     <span style={{ fontSize: 12 }}>{item.name}</span>
                     <strong style={{ fontSize: 12 }}>{item.qty === null ? "資料缺失" : "×" + item.qty}</strong>
                   </div>
@@ -564,6 +586,7 @@ export function FarmV2AuthenticatedView(props: {
           ) : (
             <FarmWorkshopPanel
               tab={panelTab}
+              petId={focusedPetId}
               onTabChange={openPanel}
               readFriends={readFriends}
               visitCave={async (id) => {

@@ -2,6 +2,7 @@ import type { FarmLandEntity } from './landRuntime';
 import type { FarmWarehouse } from './warehouseRuntime';
 import type { FriendInteractionState } from './friendInteractionRuntime';
 import { executeAssistHarvestTransaction } from './assistHarvestTransaction';
+import { formationBonuses, type FormationBonuses } from './formationEffects';
 
 export function executeLockedAssistLandTransaction(input: {
   interactionState: FriendInteractionState;
@@ -13,6 +14,8 @@ export function executeLockedAssistLandTransaction(input: {
   ownerWarehouse: FarmWarehouse;
   helperWarehouse: FarmWarehouse;
   ownerFirstFarmEnteredAt: number | null;
+  ownerBonuses?: FormationBonuses;
+  helperBonuses?: FormationBonuses;
 }): {
   interactionState: FriendInteractionState;
   land: FarmLandEntity;
@@ -36,6 +39,10 @@ export function executeLockedAssistLandTransaction(input: {
     ownerWarehouse: input.ownerWarehouse,
     helperWarehouse: input.helperWarehouse,
     ownerFirstFarmEnteredAt: input.ownerFirstFarmEnteredAt,
+    ownerBonuses:
+      input.ownerBonuses ?? formationBonuses(input.ownerWarehouse, input.now),
+    helperBonuses:
+      input.helperBonuses ?? formationBonuses(input.helperWarehouse, input.now),
   });
 
   if (!result.successful) return { ...result, land: input.land };

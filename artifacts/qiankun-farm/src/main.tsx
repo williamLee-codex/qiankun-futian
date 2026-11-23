@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { FarmV2AuthenticatedView } from "./game/v2/FarmV2AuthenticatedView";
+import { FarmV2AnnouncementOverlay } from "./game/v2/FarmV2AnnouncementOverlay";
 import "./index.css";
 
 // The platform issues a short-lived launch token in the redirect URL.
@@ -32,10 +33,13 @@ const launchToken = urlLaunchToken || (apiBaseUrl && new URL(apiBaseUrl).origin 
 const root = createRoot(document.getElementById("root")!);
 if (launchToken && apiBaseUrl) {
   root.render(
+    <>
     <FarmV2AuthenticatedView
       apiBaseUrl={apiBaseUrl}
       launchToken={launchToken}
-    />,
+    />
+    <FarmV2AnnouncementOverlay />
+    </>,
   );
 } else if (import.meta.env.DEV && !launchToken) {
   // Legacy demo is permitted only for local development, never production.
