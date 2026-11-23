@@ -23,7 +23,7 @@ test("approved newcomer and first-purchase panel art stay wired", () => {
   const view = read("game/v2/FarmV2AuthenticatedView.tsx");
   const newcomer = read("game/v2/FarmNewbieBoost.tsx");
   expect(newcomer).toContain("images/farm/newcomer-6x-panel.png");
-  expect(view).toContain("images/farm/first-recharge-panel.png");
+  expect(view).toContain("<FarmFirstPurchaseRewards");
 });
 
 test("first-purchase renders the three approved plan images, not a nine-card grid", () => {

@@ -31,11 +31,20 @@ function availableDay(paidAt:string){
  if(Date.now()<Date.parse(paidAt))return 0;
  return Math.min(3,1+Math.floor((rewardDate(new Date().toISOString())-rewardDate(paidAt))/86400000));
 }
+// The three empty bars painted at the foot of each day column of the approved
+// art (A/C 1774x887, B 1672x941) now carry the claim state.
+const BAR_LEFT = [5.0, 36.2, 67.4];
+const BAR_TOP = 72;
+const BAR_W = 28.2;
+const BAR_H = 12;
+const RECHARGE_ICON = "/farm-v2/images/farm/recharge-cta.png";
+
 export function FarmFirstPurchaseRewards({apiBaseUrl,launchToken}:{apiBaseUrl:string;launchToken:string}){
  const api=useMemo(()=>createFarmV2Api({baseUrl:apiBaseUrl,launchToken}),[apiBaseUrl,launchToken]);
  const [data,setData]=useState<Status|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
  const [error,setError]=useState(false);
  const [bannerFailures,setBannerFailures]=useState<Partial<Record<Plan,boolean>>>({});
+ const [iconFailures,setIconFailures]=useState<Partial<Record<Plan,boolean>>>({});
  async function refresh(){try{setData(await api.readFirstPurchase());setMessage("");setError(false);}catch{setError(true);setMessage("首儲資料讀取失敗，請稍後重試");}}
  useEffect(()=>{void refresh();},[api]);
  async function claim(planId:Plan,day:1|2|3){
@@ -45,44 +54,45 @@ export function FarmFirstPurchaseRewards({apiBaseUrl,launchToken}:{apiBaseUrl:st
   finally{setBusy(false);}
  }
  return <section aria-label="首儲三日獎勵" style={{padding:"12px 0",display:"grid",gap:12}}>
-  <p style={{margin:0}}>三種首儲方案各限購一次。付款完成後，每日 05:00（台灣時間）開放下一日獎勵，未領取可補領。每張卡依購買資格開放領取。</p>
   {error && <p role="alert">{message}<button type="button" onClick={()=>void refresh()} disabled={busy} style={{marginLeft:8}}>重新讀取</button></p>}
   {plans.map((plan)=>{
    const purchased=data?.plans.find(p=>p.plan_id===plan.id);const available=purchased?availableDay(purchased.paid_at):0;
-   return <article key={plan.id} aria-label={`${plan.id} 方案 ${plan.name} 首儲獎勵`} style={{border:"1px solid #90794e",borderRadius:10,padding:12,background:"#16281f"}}>
-    <header style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
-      <strong>{plan.id} 方案・{plan.name}・{plan.price}</strong>
-      <span style={{fontSize:13,color:"#d4c6a5"}}>{plan.crystals} 水晶・每日贈 {plan.dailyCrystals} 水晶</span>
-    </header>
-    {!bannerFailures[plan.id] && <div style={{marginTop:8}}>
+   return <article key={plan.id} aria-label={`${plan.id} 方案 ${plan.name} 首儲獎勵`} style={{position:"relative",padding:0,background:"transparent"}}>
+    {!bannerFailures[plan.id] && <div style={{position:"relative",marginTop:0}}>
       <img
         src={`/farm-v2/first-purchase/${plan.id}.png`}
         alt={`${plan.name}三日獎勵：${plan.days.map(([day,reward])=>`${day} ${reward}`).join("；")}`}
         onError={()=>setBannerFailures(current=>({...current,[plan.id]:true}))}
         style={{display:"block",width:"100%",height:"auto",borderRadius:9}}
       />
+      {plan.days.map(([,],i)=>{
+        const day=(i+1) as 1|2|3;
+        const claimed=data?.claimedDays.some(c=>c.plan_id===plan.id&&c.claim_day===day)??false;
+        const open=!!purchased&&day<=available&&!claimed;
+        const label=claimed?"已領取":open?"點擊領取":purchased?`第${day}天尚未開放`:"購買後開放";
+        return <button type="button" key={day} disabled={busy||!open} onClick={()=>void claim(plan.id,day)}
+          aria-label={`${plan.name}第${day}天：${label}`}
+          style={{position:"absolute",left:`${BAR_LEFT[i]}%`,top:`${BAR_TOP}%`,width:`${BAR_W}%`,height:`${BAR_H}%`,background:"transparent",border:0,padding:0,cursor:open?"pointer":"default",
+            display:"grid",placeItems:"center",fontSize:"clamp(9px,1.35vw,20px)",fontWeight:800,letterSpacing:1,
+            color:claimed?"#ffe9a8":open?"#fff6c8":"#e8dfc4",textShadow:"0 2px 4px #123018",whiteSpace:"nowrap"}}>
+          {label}
+        </button>;
+      })}
     </div>}
     {bannerFailures[plan.id] && <div role="list" aria-label={`${plan.id} 方案三日獎勵卡`} style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8,marginTop:8}}>
       {plan.days.map(([label,reward],i)=><div role="listitem" key={i} style={{border:"1px solid #4d6a58",borderRadius:9,padding:10,background:"#1b332a"}}>
         <strong style={{color:"#ffd76a"}}>{label}</strong><p style={{fontSize:13}}>{reward}</p>
       </div>)}
     </div>}
-    <div role="group" aria-label={`${plan.name}三日領獎操作`} style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8,marginTop:8}}>
-      {plan.days.map(([,],i)=>{
-        const day=(i+1) as 1|2|3;
-        const claimed=data?.claimedDays.some(c=>c.plan_id===plan.id&&c.claim_day===day)??false;
-        const open=!!purchased&&day<=available&&!claimed;
-        return <button type="button" key={day} disabled={busy||!open} onClick={()=>void claim(plan.id,day)}
-          aria-label={`${plan.name}第${day}天：${claimed?"已領取":open?"領取獎勵":day>available&&purchased?"尚未開放":"未符合資格"}`}
-          style={{minWidth:0,padding:"8px 2px",border:"1px solid #bda66c",borderRadius:6,background:open?"#d6b76c":"#243b30",color:open?"#14221c":"#9fb2a6",cursor:open?"pointer":"not-allowed"}}>
-          {claimed?"已領取":open?"領取獎勵":day>available&&purchased?"尚未開放":"未符合資格"}
-        </button>;
-      })}
-    </div>
-    <form action="/api/checkout/create" method="post" target="_top" style={{marginTop:10}}>
+    <form action="/api/checkout/create" method="post" target="_top" style={iconFailures[plan.id]?{margin:0}:{position:"absolute",left:"0.6%",top:"0.6%",width:"11%",zIndex:2,margin:0}}>
       <input name="packageId" type="hidden" value={plan.packageId} />
-      <button type="submit" style={{padding:"8px 14px",border:0,borderRadius:8,background:"#d6b76c",color:"#14221c",fontWeight:700,cursor:"pointer"}}>
-        我要儲值（{plan.id} 方案 {plan.price}）
+      <button type="submit" aria-label={`我要儲值（${plan.id} 方案 ${plan.price}）`}
+        style={iconFailures[plan.id]
+          ? {marginTop:10,padding:"8px 14px",border:0,borderRadius:8,background:"#d6b76c",color:"#14221c",fontWeight:700,cursor:"pointer"}
+          : {display:"block",width:"100%",aspectRatio:1,padding:0,border:0,background:"transparent",cursor:"pointer"}}>
+        {iconFailures[plan.id]
+          ? `我要儲值（${plan.id} 方案 ${plan.price}）`
+          : <img src={RECHARGE_ICON} alt="" onError={()=>setIconFailures(current=>({...current,[plan.id]:true}))} style={{display:"block",width:"100%",height:"100%"}} />}
       </button>
     </form>
    </article>;

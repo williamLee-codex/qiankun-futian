@@ -4,6 +4,12 @@ import type { FarmWarehouse } from './warehouseRuntime';
 import type { FriendInteractionState } from './friendInteractionRuntime';
 import { executeAssistAction } from './assistAction';
 import type { AssistTarget } from './assistRuntime';
+import {
+  applyHarvestYield,
+  applyPetAssistBonus,
+  NEUTRAL_FORMATION_BONUSES,
+  type FormationBonuses,
+} from './formationEffects';
 
 export interface AssistHarvestActionResult {
   interactionState: FriendInteractionState;
@@ -39,6 +45,9 @@ export function executeAssistHarvestTransaction(input: {
   ownerWarehouse: FarmWarehouse;
   helperWarehouse: FarmWarehouse;
   ownerFirstFarmEnteredAt: number | null;
+  /** FORMATION-EFFECT-001: the owner's yield and the helper's pet assist. */
+  ownerBonuses?: FormationBonuses;
+  helperBonuses?: FormationBonuses;
 }): AssistHarvestActionResult {
   const base = executeAssistAction({
     interactionState: input.interactionState,
@@ -62,8 +71,14 @@ export function executeAssistHarvestTransaction(input: {
 
   const multiplier = input.ownerFirstFarmEnteredAt !== null &&
     isNewbieHarvestWindow(input.ownerFirstFarmEnteredAt, input.now) ? 6 : 1;
-  const ownerHarvestQuantity = base.settlement.ownerHarvestQuantity * multiplier;
-  const helperBonusQuantity = Math.ceil(ownerHarvestQuantity * 0.1);
+  const ownerHarvestQuantity = applyHarvestYield(
+    base.settlement.ownerHarvestQuantity,
+    input.ownerBonuses ?? NEUTRAL_FORMATION_BONUSES,
+  ) * multiplier;
+  const helperBonusQuantity = applyPetAssistBonus(
+    ownerHarvestQuantity,
+    input.helperBonuses ?? NEUTRAL_FORMATION_BONUSES,
+  );
   const landId = base.settlement.landId;
 
   return {

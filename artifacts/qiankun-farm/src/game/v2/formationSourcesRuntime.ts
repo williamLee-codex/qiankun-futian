@@ -10,6 +10,8 @@ import {
 } from "./workshopRuntime";
 export const FORMATION_NAMES: Record<string, string> = {
   FORMATION_PREMIUM_V2: "太虛星河大陣",
+  FORMATION_XUANLING_188: "玄靈聚元大陣",
+  FORMATION_JIUXIAO_288: "九霄造化大陣",
   FORMATION_ATTEND: "天道酬勤",
   FORMATION_FESTIVAL_SPRING: "春節節慶護陣",
   FORMATION_FESTIVAL_MOON: "中秋節慶護陣",

@@ -12,6 +12,21 @@ Base Farm commit: `57842d9d57324fa6a628caa9004a2dbe0ab962a8`. Both uploaded work
 - `GET /farm/v2/friends` and `/farm/v2/friends/:targetId/cave`: platform-owned active reciprocal relationships and active identities. Cave projection excludes warehouse, wallet, instance IDs and private RPG data. Removed/blocked/inactive relationships deny access. No friend borrow/assist write has been implemented.
 - Management controls use real API snapshots, server actor identity, session validation, authority fences and the existing default-off entry gate. Interrupted commands expose same-key retry, including when the state read is blocked by a reservation.
 
+## Formation benefits (FORMATION-EFFECT-001)
+
+The 388-crystal 太虛星河大陣 pays out only while it is owned, unexpired and switched on. Ratios are integer numerator/denominator pairs in `formationCatalog.ts`, so no floating-point drift reaches a settlement:
+
+| Benefit | Ratio | Settled in |
+| --- | --- | --- |
+| Six-land growth speed | 120/100 (4h → 3h20m) | `landRuntime.plantLand` (sow) |
+| Harvest quantity | 115/100 | `harvestSettlement`, `farmerLandTransaction` (offline farmer) |
+| Coins from crop exchange | 115/100 | `warehouseRuntime.exchangeCrops` → `farm-v2-crop-exchange` |
+| Pet assist efficiency | 120/100 (helper share 10% → 12%) | `assistHarvestTransaction` / `assistLandTransaction` |
+
+Ordering is fixed so bonuses never compound twice: base quantity → formation yield → newbie blessing; coin value → formation coin bonus → owner/helper split. Pots affect lingyun only, and pet borrow/steal is not an assist, so neither is multiplied here.
+
+`planFormationMutation` in `workshopRuntime.ts` is the single purchase/switch authority; the API server delegates to it, so the 388 price, the duplicate-purchase rejection, permanent `expiresAt: null` ownership and free exclusive switching are unit-testable without a database. The crystal debit itself stays in the existing Core wallet saga (`farm_formation_purchase`), which owns idempotency, insufficient-funds release and retry on the same request key.
+
 ## Integrity and important limitation
 
 All Farm mutations lock the owner row. Pending workshop plans durably reserve inputs across the Core network boundary; another request cannot consume them. Request IDs bind the exact action. Recovery replays the immutable wallet intent, checks reserved snapshots, and commits asset/gallery/material/mission/pet changes in one Farm transaction. Permanent conflicts invoke the existing audited, once-only compensation and closure guards. Definitive insufficient funds releases inputs while retaining decline evidence; uncertain outcomes remain reserved.

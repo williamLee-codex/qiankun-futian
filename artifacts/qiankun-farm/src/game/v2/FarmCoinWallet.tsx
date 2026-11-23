@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
+import { FarmCoinWalletArtLayout, FARM_COIN_ART_PATH } from "./FarmCoinWalletArtLayout";
 import type { FarmCoinBalances } from "./farmV2ApiClient";
 import { farmV2ErrorMessage } from "./farmV2ErrorMessage";
+const ART_SRC = `${import.meta.env.BASE_URL ?? "/"}${FARM_COIN_ART_PATH}`;
+// Start the download at module load so the first paint of the wallet is already
+// the approved art, never the plain fallback panel.
+const preloadedArt: HTMLImageElement | null =
+  typeof window === "undefined" ? null : new Image();
+if (preloadedArt) preloadedArt.src = ART_SRC;
 const controlStyle = { background: "#f8f3e7", color: "#14221c", border: "1px solid #bda365", borderRadius: 8, padding: "10px 12px", width: "100%", font: "inherit" };
 type Transfer = { direction: "in" | "out"; amount: number };
 function validatedBalances(value: FarmCoinBalances): FarmCoinBalances {
@@ -25,10 +32,26 @@ export function FarmCoinWallet(props: {
   ) => Promise<FarmCoinBalances>;
   pending: () => Transfer[];
   busy: boolean;
+  onClose?: () => void;
 }) {
   const [balances, setBalances] = useState<FarmCoinBalances | null>(null),
     [amount, setAmount] = useState(""),
     [direction, setDirection] = useState<"in" | "out">("in");
+  const [artLoaded, setArtLoaded] = useState(
+    () => preloadedArt?.complete === true && preloadedArt.naturalWidth > 0,
+  );
+  useEffect(() => {
+    if (artLoaded) return;
+    if (preloadedArt?.complete && preloadedArt.naturalWidth > 0) {
+      setArtLoaded(true);
+      return;
+    }
+    const art = new Image();
+    art.onload = () => setArtLoaded(true);
+    art.onerror = () => setArtLoaded(false);
+    art.src = ART_SRC;
+    return () => { art.onload = null; art.onerror = null; };
+  }, [artLoaded]);
   const [working, setWorking] = useState(false),
     [message, setMessage] = useState(""),
     [readError, setReadError] = useState<string | null>(null),
@@ -108,6 +131,40 @@ export function FarmCoinWallet(props: {
       setWorking(false);
     }
   }
+  // Never replace the working wallet with an image that has not loaded.
+  // Keep pending transfers and ledger errors on the established recovery UI.
+  // The art stays on screen while balances load: only the values change, so the
+  // player never sees the plain fallback panel flash before the art.
+  if (artLoaded && !pending && !readError && props.onClose) {
+    const locked = working || props.busy;
+    const enabled = transferEnabled && !locked;
+    const available = balances ? (direction === "in" ? balances.centralCoins : balances.coins) : 0;
+    const note =
+      message ||
+      (!balances
+        ? "餘額讀取中…"
+        : !transferEnabled
+          ? "福田金幣帳本尚未啟用，目前僅顯示中央金幣餘額；啟用後即可手動轉入或回存。"
+          : "");
+    return <FarmCoinWalletArtLayout
+      centralBalance={balanceText(balances?.centralCoins)}
+      farmBalance={balanceText(balances?.coins)}
+      direction={direction}
+      onDirectionChange={(next)=>{ setDirection(next); setAmount(""); }}
+      amount={amount}
+      onAmountChange={setAmount}
+      onMax={() => setAmount(String(Math.min(available, 2147483647)))}
+      onAdd={(value) => setAmount((current) => {
+        const base = /^\d+$/.test(current) ? Number(current) : 0;
+        return String(Math.min(base + value, available, 2147483647));
+      })}
+      onSubmit={() => void submit()}
+      onClose={props.onClose}
+      disabled={!enabled}
+      submitDisabled={!enabled || !valid || number > available}
+      message={note}
+    />;
+  }
   return (
     <div aria-label="福田金幣錢包" style={{ display: "grid", gap: 12 }}>
       <div aria-label="金幣餘額" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -138,7 +195,7 @@ export function FarmCoinWallet(props: {
           福田金幣帳本尚未啟用，目前僅顯示中央金幣餘額；啟用後即可手動轉入或回存。
         </p>
       )}
-      {!transferEnabled ? null : pending ? (
+      {pending ? (
         <p role="alert">
           原轉帳尚未確認：{pending.direction === "in" ? "轉入福田" : "回存中央"}{" "}
           {pending.amount} 金幣。請重試原轉帳，確認前不可另開轉帳。
@@ -146,10 +203,10 @@ export function FarmCoinWallet(props: {
       ) : (
         <>
           <div role="group" aria-label="金幣轉帳方向" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <button type="button" aria-label="向下箭頭，中央金幣轉入福田" aria-pressed={direction === "in"} disabled={working || props.busy} onClick={() => setDirection("in")} style={{ ...controlStyle, cursor: "pointer", fontWeight: 700, background: direction === "in" ? "#d6b76c" : "#f8f3e7", borderWidth: direction === "in" ? 2 : 1 }}>
+            <button type="button" aria-label="向下箭頭，中央金幣轉入福田" aria-pressed={direction === "in"} disabled={working || props.busy || !transferEnabled} onClick={() => setDirection("in")} style={{ ...controlStyle, cursor: "pointer", fontWeight: 700, background: direction === "in" ? "#d6b76c" : "#f8f3e7", borderWidth: direction === "in" ? 2 : 1 }}>
               <span aria-hidden="true" style={{ fontSize: 26, display: "block", lineHeight: 1.2 }}>↓</span>中央 → 福田
             </button>
-            <button type="button" aria-label="向上箭頭，福田金幣回存中央" aria-pressed={direction === "out"} disabled={working || props.busy} onClick={() => setDirection("out")} style={{ ...controlStyle, cursor: "pointer", fontWeight: 700, background: direction === "out" ? "#d6b76c" : "#f8f3e7", borderWidth: direction === "out" ? 2 : 1 }}>
+            <button type="button" aria-label="向上箭頭，福田金幣回存中央" aria-pressed={direction === "out"} disabled={working || props.busy || !transferEnabled} onClick={() => setDirection("out")} style={{ ...controlStyle, cursor: "pointer", fontWeight: 700, background: direction === "out" ? "#d6b76c" : "#f8f3e7", borderWidth: direction === "out" ? 2 : 1 }}>
               <span aria-hidden="true" style={{ fontSize: 26, display: "block", lineHeight: 1.2 }}>↑</span>福田 → 中央
             </button>
           </div>
@@ -161,7 +218,7 @@ export function FarmCoinWallet(props: {
               inputMode="numeric"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              disabled={working || props.busy}
+              disabled={working || props.busy || !transferEnabled}
             />
           </label>
         </>
