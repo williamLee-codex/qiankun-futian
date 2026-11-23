@@ -27,14 +27,14 @@ export async function requireFarmV2LaunchIdentity(
       res.status(401).json({ error: "MISSING_LAUNCH_TOKEN" });
       return;
     }
-    const sharedSecret = process.env.REPLIT_APP_SHARED_SECRET,
+    const isFarmSession = /^fvs1\.[A-Za-z0-9_-]{43}$/.test(launchToken);
+    const sharedSecret = process.env.REPLIT_APP_SHARED_SECRET ?? "",
       platformBaseUrl = process.env.PLATFORM_BASE_URL;
-    if (!sharedSecret || !platformBaseUrl) {
+    if (!platformBaseUrl || (isFarmSession ? !(process.env.FARM_V2_BRIDGE_SHARED_SECRET || sharedSecret) : !sharedSecret)) {
       res.status(503).json({ error: "LAUNCH_VALIDATE_NOT_CONFIGURED" });
       return;
     }
-    const connection = farmV2PlatformConnection(),
-      isFarmSession = /^fvs1\.[A-Za-z0-9_-]{43}$/.test(launchToken);
+    const connection = farmV2PlatformConnection();
     const load = async () => {
       const response = await farmV2PlatformFetch(
         new URL(

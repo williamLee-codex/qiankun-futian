@@ -2,8 +2,8 @@ import { farmV2PlatformFetch } from "./farm-v2-platform-fetch";
 export function farmV2PlatformConnection() {
   const baseUrl = process.env.PLATFORM_BASE_URL;
   const bridgeSecret = process.env.FARM_V2_BRIDGE_SHARED_SECRET;
-  const secret = process.env.REPLIT_APP_SHARED_SECRET;
-  if (!baseUrl || !secret) throw new Error("FARM_SESSION_NOT_CONFIGURED");
+  const secret = process.env.REPLIT_APP_SHARED_SECRET ?? "";
+  if (!baseUrl || (!secret && !bridgeSecret)) throw new Error("FARM_SESSION_NOT_CONFIGURED");
   const base = new URL(baseUrl);
   const local =
     base.protocol === "http:" &&

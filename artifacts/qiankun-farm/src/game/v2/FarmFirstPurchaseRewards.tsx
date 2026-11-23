@@ -45,16 +45,11 @@ export function FarmFirstPurchaseRewards({apiBaseUrl,launchToken}:{apiBaseUrl:st
   finally{setBusy(false);}
  }
  return <section aria-label="首儲三日獎勵" style={{padding:"12px 0",display:"grid",gap:12}}>
-  <p style={{margin:0}}>三種首儲方案各限購一次。付款完成後，每日 05:00（台灣時間）開放下一日獎勵，未領取可補領。每張卡依購買資格開放領取。</p>
   {error && <p role="alert">{message}<button type="button" onClick={()=>void refresh()} disabled={busy} style={{marginLeft:8}}>重新讀取</button></p>}
   {plans.map((plan)=>{
    const purchased=data?.plans.find(p=>p.plan_id===plan.id);const available=purchased?availableDay(purchased.paid_at):0;
-   return <article key={plan.id} aria-label={`${plan.id} 方案 ${plan.name} 首儲獎勵`} style={{border:"1px solid #90794e",borderRadius:10,padding:12,background:"#16281f"}}>
-    <header style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
-      <strong>{plan.id} 方案・{plan.name}・{plan.price}</strong>
-      <span style={{fontSize:13,color:"#d4c6a5"}}>{plan.crystals} 水晶・每日贈 {plan.dailyCrystals} 水晶</span>
-    </header>
-    {!bannerFailures[plan.id] && <div style={{marginTop:8}}>
+   return <article key={plan.id} aria-label={`${plan.id} 方案 ${plan.name} 首儲獎勵`} style={{padding:0,background:"transparent"}}>
+    {!bannerFailures[plan.id] && <div style={{marginTop:0}}>
       <img
         src={`/farm-v2/first-purchase/${plan.id}.png`}
         alt={`${plan.name}三日獎勵：${plan.days.map(([day,reward])=>`${day} ${reward}`).join("；")}`}

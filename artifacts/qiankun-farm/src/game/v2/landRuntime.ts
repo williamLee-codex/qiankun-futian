@@ -6,6 +6,7 @@ import {
   getFarmV2Land,
   growthDurationMs,
 } from './canonicalLandData';
+import { applyGrowthSpeed, type FormationBonuses } from './formationEffects';
 
 export interface FarmLandEntity {
   landId: FarmLandId;
@@ -20,6 +21,8 @@ export interface PlantLandInput {
   land: FarmLandEntity;
   availableSeeds: number;
   now: number;
+  /** FORMATION-EFFECT-001 growth speed; neutral when absent. */
+  bonuses?: FormationBonuses;
 }
 
 export interface PlantLandResult {
@@ -50,7 +53,9 @@ export function plantFullBatch(input: PlantLandInput): PlantLandResult {
       lifecycle: 'GROWING',
       plantedQuantity: definition.capacity,
       plantedAt: input.now,
-      maturesAt: input.now + growthDurationMs(input.land.landId),
+      maturesAt:
+        input.now +
+        applyGrowthSpeed(growthDurationMs(input.land.landId), input.bonuses),
     },
   };
 }

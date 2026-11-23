@@ -20,7 +20,7 @@ const warehouse: WorkshopWarehouse = {
 };
 
 describe("Qiankun bag initial render", () => {
-  it("renders six categories and the server-derived material quantities", () => {
+  it("renders seven categories and the server-derived material quantities", () => {
     const html = renderToStaticMarkup(
       <FarmWorkshopPanel
         tab="乾坤寶囊"
@@ -29,8 +29,8 @@ describe("Qiankun bag initial render", () => {
         transact={async () => true}
       />,
     );
-    expect((html.match(/aria-pressed=/g) ?? []).length).toBe(6);
-    for (const name of ["材料", "碎片", "傢俱", "外型", "盆栽", "其他"]) {
+    expect((html.match(/aria-pressed=/g) ?? []).length).toBe(7);
+    for (const name of ["材料", "碎片", "傢俱", "外型", "盆栽", "大陣", "其他"]) {
       expect(html).toContain(`>${name}</button>`);
     }
     expect(html).toMatch(/蘊靈砂<\/span>[\s\S]*?×2<\/strong>/);

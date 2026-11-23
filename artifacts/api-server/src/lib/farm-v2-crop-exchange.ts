@@ -1,6 +1,10 @@
 import { eq } from "drizzle-orm";
 import { farmV2PlayerStateTable } from "@workspace/db";
 import { getExchangeRate } from "../../../qiankun-farm/src/game/v2/canonicalEconomyData";
+import {
+  applyCoinReward,
+  formationBonuses,
+} from "../../../qiankun-farm/src/game/v2/formationEffects";
 import type { FarmLandId } from "../../../qiankun-farm/src/game/v2/canonicalLandData";
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
 import type { MissionState } from "../../../qiankun-farm/src/game/v2/missionRuntime";
@@ -109,7 +113,13 @@ export async function exchangeFarmV2Crops(input: {
           const units = Math.floor(requested / rate.cropQuantity);
           if (units <= 0) throw new Error("INSUFFICIENT_CROPS_FOR_EXCHANGE");
           const cropsConsumed = units * rate.cropQuantity;
-          const rewardQuantity = units * rate.rewardQuantity;
+          const rewardQuantity =
+            rate.currency === "coins"
+              ? applyCoinReward(
+                  units * rate.rewardQuantity,
+                  formationBonuses(warehouse, input.now ?? Date.now()),
+                )
+              : units * rate.rewardQuantity;
 
           await applyFarmV2WalletStep({
             userId: input.userId,
