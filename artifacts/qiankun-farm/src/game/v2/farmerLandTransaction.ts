@@ -4,6 +4,7 @@ import type { FarmLandEntity } from "./landRuntime";
 import type { FarmWarehouse } from "./warehouseRuntime";
 import { depositHarvest } from "./warehouseRuntime";
 import { applyNewbieHarvestMultiplier } from "./timeRuntime";
+import { applyHarvestYield, formationBonuses } from "./formationEffects";
 import { FARM_V2_LANDS } from "./canonicalLandData";
 
 export function executeFarmerLandTransaction(input: {
@@ -27,6 +28,9 @@ export function executeFarmerLandTransaction(input: {
     now: input.now,
   });
 
+  // FORMATION-EFFECT-001: the yield bonus is settled once, on the base batch,
+  // before the newbie blessing — the same order as the manual harvest path.
+  const bonuses = formationBonuses(input.warehouse, input.now);
   // FARMER-NEWBIE-001: apply blessing at each original harvest timestamp.
   let creditedHarvestQuantity = 0;
   if (settlement.completedCycles > 0 && input.land.maturesAt !== null) {
@@ -34,7 +38,7 @@ export function executeFarmerLandTransaction(input: {
       FARM_V2_LANDS.find((x) => x.id === landId)!.growthHours * 3600000;
     const capacity = FARM_V2_LANDS.find((x) => x.id === landId)!.capacity;
     creditedHarvestQuantity = applyNewbieHarvestMultiplier(
-      input.land.plantedQuantity,
+      applyHarvestYield(input.land.plantedQuantity, bonuses),
       input.firstFarmEnteredAt,
       input.land.maturesAt,
     );
@@ -44,7 +48,8 @@ export function executeFarmerLandTransaction(input: {
       0,
       Math.min(later, Math.ceil((end - input.land.maturesAt) / growthMs) - 1),
     );
-    creditedHarvestQuantity += capacity * (blessed * 6 + later - blessed);
+    creditedHarvestQuantity +=
+      applyHarvestYield(capacity, bonuses) * (blessed * 6 + later - blessed);
   }
 
   return {

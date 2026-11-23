@@ -29,3 +29,12 @@ it('never runs the diagnostic in production or with the entry open',async()=>{
 it('rejects write methods before any upstream call',async()=>{
  configure();const fetch=vi.spyOn(globalThis,'fetch');const out=response();await handler({method:'POST'},out);expect(out.code).toBe(405);expect(fetch).not.toHaveBeenCalled();
 });
+
+it('uses the existing dedicated bridge credential when the legacy secret is absent',async()=>{
+ configure();vi.stubEnv('REPLIT_APP_SHARED_SECRET','');vi.stubEnv('FARM_V2_BRIDGE_SHARED_SECRET','dedicated-bridge');
+ const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({error:'FARM_SESSION_NOT_ACTIVE'},{status:401}));const out=response();
+ await handler({method:'GET'},out);
+ const headers=new Headers(fetch.mock.calls[0][1]?.headers);
+ expect(headers.get('x-farm-v2-shared-secret')).toBe('dedicated-bridge');expect(headers.has('x-replit-shared-secret')).toBe(false);
+ expect(out.code).toBe(200);
+});

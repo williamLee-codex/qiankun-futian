@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, type Ref } from "react";
 import { SCENE_LAYOUTS, type SceneRegion } from "./sceneInteractionRuntime";
+import { DECOR_CATALOG } from "./decorCatalog";
 import { FARM_V2_LANDS } from "./canonicalLandData";
 import { FORMATION_NAMES } from "./formationSourcesRuntime";
 import type { Plot } from "../types";
@@ -16,6 +17,7 @@ export function FarmSceneInteractionLayer(props: {
   onPlotClick?: (plot: Plot, target?: { x: number; y: number }) => void;
   onFriendAction?: (kind: "BORROW" | "ASSIST", id: number) => Promise<void>;
   onSection?: (section: string) => void;
+  onPetSelect?: (petId: string) => void;
   warehouseTargetRef?: Ref<HTMLButtonElement>;
   flyingSowLand?: number;
   onReturnHome?: () => void;
@@ -163,7 +165,18 @@ export function FarmSceneInteractionLayer(props: {
               height={desktop ? 941 : 1672}
               draggable={false}
             />
-
+            {Array.from({ length: 6 }, (_, i) => {
+              const decor = props.state.decor.find((item) => item.slot === i + 1);
+              const name = decor ? DECOR_CATALOG.find((item) => item.id === decor.catalogId)?.name ?? "已擺放陳設" : "空位";
+              const column = i < 3 ? 0 : 1;
+              const row = i % 3;
+              return <button key={i} type="button" className="farm-v2-decor"
+                aria-label={`洞府陳設位 ${i + 1}：${name}`}
+                style={{ left: (desktop ? column === 0 ? [11, 3, 2][row] : [78, 84, 80][row] : column === 0 ? [5, 1, 2][row] : [75, 76, 75][row]) + "%", top: (desktop ? [42, 52, 63][row] : [39, 53, 71][row]) + "%", width: desktop ? "19%" : "23%", height: desktop ? "13%" : "9%" }}
+                disabled={props.readOnly || props.busy} onClick={() => section("洞府")}>
+                {decor ? name : "陳設位 " + (i + 1)}
+              </button>;
+            })}
           </>
         ) : (
           <>
@@ -191,11 +204,14 @@ export function FarmSceneInteractionLayer(props: {
               className="farm-v2-formation"
               style={position(layout.formation)}
               disabled={props.readOnly || props.busy}
+              aria-label={`${props.state.activeFormation && !formationExpired ? (FORMATION_NAMES[props.state.activeFormation] ?? "洞府護陣") + "運作中" : "護陣平台"}，開啟護陣管理`}
+              title={props.state.activeFormation && !formationExpired ? (FORMATION_NAMES[props.state.activeFormation] ?? "洞府護陣") : "護陣平台"}
               onClick={() => section("護陣")}
             >
-              {props.state.activeFormation && !formationExpired
-                ? (FORMATION_NAMES[props.state.activeFormation] ?? "洞府護陣")
-                : "護陣平台"}
+              {/* The approved scene artwork already contains the platform.
+                  Keep its interactive hotspot, but do not paint a fixed,
+                  oversized formation illustration over the farm scene.
+                  Formation selection and bonuses remain server-authoritative. */}
             </button>
             {/* One entitled farmer is a single character, not one clone per field. */}
             {props.state.farmer?.entitled && plots.some(p => p.unlocked) && (
@@ -316,7 +332,7 @@ export function FarmSceneInteractionLayer(props: {
                   key={pet}
                   style={position(layout.pets[i])}
                   disabled={props.readOnly || props.busy}
-                  onClick={() => section("靈寵")}
+                  onClick={() => props.onPetSelect ? props.onPetSelect(pet) : section("靈寵")}
                 >
                   {props.state.pets?.owned.includes(pet) && <span className="farm-v2-pet-character" role="img" aria-label={pet}><img src={`${artBase}${pet}.png`} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}} /></span>}
                   <span className="farm-v2-hotspot-label">

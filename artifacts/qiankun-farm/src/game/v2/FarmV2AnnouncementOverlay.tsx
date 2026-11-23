@@ -107,7 +107,7 @@ export function FarmV2AnnouncementOverlay() {
     const action = hideForever && current.allowDismissForever ? "FOREVER" :
       hideToday && current.allowHideToday ? "TODAY" : "SEEN";
     try {
-      if (authenticated) {
+      if (authenticated && action !== "SEEN") {
         const response = await fetch("/api/announcements/receipts", {
           method: "POST", credentials: "same-origin",
           headers: { "content-type": "application/json" },
@@ -136,7 +136,7 @@ export function FarmV2AnnouncementOverlay() {
         overflowY: "auto", padding: 24, borderRadius: 16, background: "#fff", color: "#172033",
       }}>
         <p>{current.category}</p>
-        {current.imageUrl ? <img src={current.imageUrl} alt="" style={{ width: "100%", maxHeight: 280, objectFit: "contain" }} /> : null}
+        {current.imageUrl ? <img src={current.imageUrl} alt="公告附圖" style={{ width: "100%", maxHeight: 280, objectFit: "contain" }} /> : null}
         <h2 id="farm-announcement-title">{current.title}</h2>
         <p style={{ whiteSpace: "pre-wrap" }}>{linkedContent(current.content)}</p>
         {current.actionUrl && (/^\/(?!\/)/.test(current.actionUrl) || /^https:\/\//i.test(current.actionUrl)) ?

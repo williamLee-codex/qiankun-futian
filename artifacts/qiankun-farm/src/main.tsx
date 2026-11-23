@@ -34,11 +34,11 @@ const root = createRoot(document.getElementById("root")!);
 if (launchToken && apiBaseUrl) {
   root.render(
     <>
-      <FarmV2AuthenticatedView
-        apiBaseUrl={apiBaseUrl}
-        launchToken={launchToken}
-      />
-      <FarmV2AnnouncementOverlay />
+    <FarmV2AuthenticatedView
+      apiBaseUrl={apiBaseUrl}
+      launchToken={launchToken}
+    />
+    <FarmV2AnnouncementOverlay />
     </>,
   );
 } else if (import.meta.env.DEV && !launchToken) {

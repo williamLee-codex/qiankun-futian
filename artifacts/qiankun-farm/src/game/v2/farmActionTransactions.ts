@@ -4,6 +4,7 @@ import type { FarmWarehouse } from './warehouseRuntime';
 import { settleHarvestToWarehouse } from './harvestSettlement';
 import type { MissionState } from './missionRuntime';
 import { recordMissionEvent } from './missionRuntime';
+import { formationBonuses } from './formationEffects';
 
 export interface FarmActionState {
   land: FarmLandEntity;
@@ -20,6 +21,7 @@ export function executeSowTransaction(input: {
     land: input.state.land,
     availableSeeds,
     now: input.now,
+    bonuses: formationBonuses(input.state.warehouse, input.now),
   });
 
   return {
@@ -48,6 +50,7 @@ export function executeOwnerHarvestTransaction(input: {
     baseHarvestQuantity: harvested.harvestedQuantity,
     firstFarmEnteredAt: input.firstFarmEnteredAt,
     harvestedAt: input.now,
+    bonuses: formationBonuses(input.state.warehouse, input.now),
   });
 
   return {

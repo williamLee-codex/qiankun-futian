@@ -28,7 +28,6 @@ import BottomMenu       from './components/BottomMenu';
 import PanelOverlay     from './components/PanelOverlay';
 import PetOverlay        from './components/PetOverlay';
 import { FarmV2AuthenticatedView } from './game/v2/FarmV2AuthenticatedView';
-import { FarmV2AnnouncementOverlay } from './game/v2/FarmV2AnnouncementOverlay';
 
 /* ── 設計稿尺寸（與底圖寬高比一致）──────────────────────────
    底圖原始：853 × 1844 px  →  比例 ≈ 390 / 843
@@ -108,10 +107,7 @@ export default function App(props: { farmV2Session?: { apiBaseUrl: string; launc
   // Only the authenticated platform host may supply a V2 session.
   // Do not infer it from query parameters or prototype local storage.
   if (props.farmV2Session) {
-    return <>
-      <FarmV2AuthenticatedView key={props.farmV2Session.launchToken} {...props.farmV2Session} />
-      <FarmV2AnnouncementOverlay />
-    </>;
+    return <FarmV2AuthenticatedView key={props.farmV2Session.launchToken} {...props.farmV2Session} />;
   }
   return (
     <GameProvider>

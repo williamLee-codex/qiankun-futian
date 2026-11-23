@@ -1,5 +1,6 @@
 import type { FarmLandId } from './canonicalLandData';
 import { getExchangeRate, getSeedPack } from './canonicalEconomyData';
+import { applyCoinReward, type FormationBonuses } from './formationEffects';
 
 export type FarmQuantityByLand = Record<FarmLandId, number>;
 
@@ -55,6 +56,8 @@ export function exchangeCrops(input: {
   wallet: Wallet;
   landId: FarmLandId;
   cropQuantity: number;
+  /** FORMATION-EFFECT-001 coin bonus; ignored for crystal exchanges. */
+  bonuses?: FormationBonuses;
 }): {
   warehouse: FarmWarehouse;
   wallet: Wallet;
@@ -71,7 +74,11 @@ export function exchangeCrops(input: {
   if (units <= 0) throw new Error('INSUFFICIENT_CROPS_FOR_EXCHANGE');
 
   const cropsConsumed = units * rate.cropQuantity;
-  const rewardQuantity = units * rate.rewardQuantity;
+  const baseReward = units * rate.rewardQuantity;
+  const rewardQuantity =
+    rate.currency === 'coins'
+      ? applyCoinReward(baseReward, input.bonuses)
+      : baseReward;
 
   return {
     warehouse: {

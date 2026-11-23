@@ -33,8 +33,17 @@ begin
  where user_id=p_user_id for update;
  if not found then return jsonb_build_object('status','player_not_found'); end if;
  v_workshop:=v_state->'workshop';
+ if coalesce(jsonb_typeof(v_workshop),'null')='null' then
+   v_workshop:='{}'::jsonb;
+   v_state:=jsonb_set(v_state,'{workshop}',v_workshop,true);
+ elsif jsonb_typeof(v_workshop)<>'object' then
+   return jsonb_build_object('status','invalid_inventory');
+ end if;
  v_materials:=v_workshop->'materials';
- if jsonb_typeof(v_materials)<>'object' then
+ if coalesce(jsonb_typeof(v_materials),'null')='null' then
+   v_materials:='{}'::jsonb;
+   v_state:=jsonb_set(v_state,'{workshop,materials}',v_materials,true);
+ elsif jsonb_typeof(v_materials)<>'object' then
    return jsonb_build_object('status','invalid_inventory');
  end if;
  if v_materials ? v_material and jsonb_typeof(v_materials->v_material)<>'number' then

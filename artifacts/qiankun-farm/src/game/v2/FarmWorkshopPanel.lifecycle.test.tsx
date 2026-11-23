@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { FarmWorkshopPanel } from "./FarmWorkshopPanel";
 import type { WorkshopWarehouse } from "./workshopRuntime";
 afterEach(()=>{cleanup();vi.useRealTimers();});
@@ -18,8 +18,9 @@ it("moves an expired owned pet into its resting state without unlocking or feedi
 it("expires timed formation slots live while preserving the permanent premium formation",()=>{
  vi.useFakeTimers();vi.setSystemTime(start);const transact=vi.fn(async()=>true);
  render(<FarmWorkshopPanel tab="護陣" warehouse={warehouse()} busy={false} transact={transact}/>);
- expect(screen.getByText('天道酬勤')).toBeTruthy();expect(screen.getByText('太虛星河大陣')).toBeTruthy();
+ const owned=()=>within(screen.getByRole("list",{name:"持有護陣道具"}));
+ expect(owned().getByText('天道酬勤')).toBeTruthy();expect(owned().getByText('太虛星河大陣')).toBeTruthy();
  act(()=>vi.advanceTimersByTime(2000));
- expect(screen.queryByText('天道酬勤')).toBeNull();expect(screen.getByText('太虛星河大陣')).toBeTruthy();
- expect(screen.getByText('永久有效')).toBeTruthy();expect(transact).not.toHaveBeenCalled();
+ expect(screen.queryByText('天道酬勤')).toBeNull();expect(owned().getByText('太虛星河大陣')).toBeTruthy();
+ expect(owned().getByText('永久有效')).toBeTruthy();expect(transact).not.toHaveBeenCalled();
 });
