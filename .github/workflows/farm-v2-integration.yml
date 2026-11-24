@@ -72,6 +72,11 @@ jobs:
       - name: Apply migrations
         run: |
           for f in $(ls lib/db/migrations/*.sql | sort); do
+            case "$f" in
+              *0004_farm_v2_local_coin_bank.sql)
+                # The extracted production schema already creates this bank.
+                echo "skip $f"; continue ;;
+            esac
             echo "== $f"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
           done
