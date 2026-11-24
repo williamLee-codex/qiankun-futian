@@ -15,6 +15,21 @@ const enabled = Boolean(
   process.env.FARM_V2_TEST_DATABASE_URL &&
   process.env.FARM_V2_PLATFORM_CHECKOUT,
 );
+// The harness may already own an object a fixture file declares. Only
+// duplicate definitions are tolerated; any other error still fails the run.
+const DUPLICATE_OBJECT = new Set(["42P06", "42P07", "42710", "42P16"]);
+async function applyDdl(
+  runner: { query: (sql: string) => Promise<unknown> },
+  sql: string,
+) {
+  try {
+    await runner.query(sql);
+  } catch (error) {
+    if (DUPLICATE_OBJECT.has((error as { code?: string }).code ?? "")) return;
+    throw error;
+  }
+}
+
 describe.skipIf(!enabled)(
   "durable Farm/Core transaction integration on isolated PostgreSQL",
   () => {
@@ -47,7 +62,8 @@ describe.skipIf(!enabled)(
       await storage.pool.query(
         "CREATE TABLE platform_friendships(user_a_id uuid,user_b_id uuid,status text,PRIMARY KEY(user_a_id,user_b_id))",
       );
-      await storage.pool.query(
+      await applyDdl(
+        storage.pool,
         readFileSync(
           `${root}/supabase/migrations/0019_create_core_wallet_runtime.sql`,
           "utf8",
@@ -89,9 +105,7 @@ describe.skipIf(!enabled)(
         "0132_farm_v2_atomic_pot_settlement.sql",
         "0136_farm_v2_formation_tier_contract.sql",
       ]) {
-        await storage.pool.query(
-          readFileSync(`${root}/supabase/migrations/${file}`, "utf8"),
-        );
+        await applyDdl(storage.pool, readFileSync(`${root}/supabase/migrations/${file}`, "utf8"));
       }
       await storage.pool.query(
         readFileSync(
