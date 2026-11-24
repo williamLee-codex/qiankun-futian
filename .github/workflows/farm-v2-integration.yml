@@ -51,24 +51,10 @@ jobs:
           DO $$ BEGIN CREATE ROLE service_role NOLOGIN BYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
           DO $$ BEGIN CREATE ROLE farm_v2_runtime NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
           CREATE EXTENSION IF NOT EXISTS pgcrypto;
-          -- Legacy Core wallet parents: the extracted constraint file only
-          -- holds ALTER TABLE/INDEX statements and needs these relations.
+          -- The legacy extract creates core.wallets and core.wallet_ledgers
+          -- itself; only their parent schema and users table are needed first.
           CREATE SCHEMA IF NOT EXISTS core;
           CREATE TABLE IF NOT EXISTS core.users (id uuid PRIMARY KEY, created_at timestamptz NOT NULL DEFAULT now());
-          CREATE TABLE IF NOT EXISTS core.wallets (
-            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id uuid NOT NULL REFERENCES core.users(id),
-            status text NOT NULL DEFAULT 'active',
-            created_at timestamptz NOT NULL DEFAULT now()
-          );
-          CREATE TABLE IF NOT EXISTS core.wallet_ledgers (
-            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-            wallet_id uuid NOT NULL REFERENCES core.wallets(id),
-            currency_type text NOT NULL,
-            entry_type text NOT NULL,
-            amount integer NOT NULL DEFAULT 0,
-            occurred_at timestamptz NOT NULL DEFAULT now()
-          );
           SQL
       - name: Apply extracted production schema
         run: |
