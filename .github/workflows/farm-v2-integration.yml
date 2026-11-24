@@ -67,6 +67,16 @@ jobs:
           # extracts, so the extracts never pre-empt its plain CREATE SCHEMA.
           psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q \
             -f artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0019_create_core_wallet_runtime.sql
+      - name: Create the core identity table
+        run: |
+          # The legacy wallet extract hangs its foreign keys off core.users.
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q <<'SQL'
+          CREATE SCHEMA IF NOT EXISTS core;
+          CREATE TABLE IF NOT EXISTS core.users (
+            id uuid PRIMARY KEY,
+            created_at timestamptz NOT NULL DEFAULT now()
+          );
+          SQL
       - name: Apply extracted production schema
         run: |
           # 0019 already owns core_wallets and core_wallet_ledger. Only the
