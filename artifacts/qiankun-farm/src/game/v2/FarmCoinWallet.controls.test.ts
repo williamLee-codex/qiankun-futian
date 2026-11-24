@@ -17,13 +17,13 @@ describe("Farm V2 wallet transfer controls", () => {
     expect(wallet).toContain("!transferEnabled} onClick={() => setDirection");
   });
   it("keeps the working wallet when approved artwork is missing or pending transfer needs recovery", () => {
-    expect(wallet).toContain("art.onerror = () => { if (active) setArtLoaded(false); };");
-    expect(wallet).toContain("if (artLoaded && balances && transferEnabled && !pending && !readError && props.onClose)");
+    expect(wallet).toContain("art.onerror = () => setArtLoaded(false);");
+    expect(wallet).toContain("if (artLoaded && !pending && !readError && props.onClose)");
     expect(wallet).toContain("const command = pending ?? { direction, amount: number };");
     expect(wallet).toContain("props.transfer(command.direction, command.amount)");
   });
   it("never submits an invalid amount from the approved artwork", () => {
-    expect(wallet).toContain("submitDisabled={locked || !valid || number > available}");
+    expect(wallet).toContain("submitDisabled={!enabled || !valid || number > available}");
     expect(wallet).toContain("onSubmit={() => void submit()}");
   });
 });

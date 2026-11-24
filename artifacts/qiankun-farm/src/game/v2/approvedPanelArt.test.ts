@@ -26,8 +26,10 @@ test("approved newcomer and first-purchase panel art stay wired", () => {
   expect(view).toContain("<FarmFirstPurchaseRewards");
 });
 
-test("first-purchase renders the three approved plan images, not a nine-card grid", () => {
+test("first-purchase renders the approved plan art, day art and both layouts", () => {
   const source = read("game/v2/FarmFirstPurchaseRewards.tsx");
-  expect(source).toContain("first-purchase/${plan.id}.png");
+  expect(source).toContain("first-purchase/${plan}.png");
+  expect(source).toContain("first-purchase/daily/${plan}-${day}.png");
+  expect(source).toContain('matchMedia("(min-width:900px)")');
   for (const id of ['id:"A"', 'id:"B"', 'id:"C"']) expect(source).toContain(id);
 });

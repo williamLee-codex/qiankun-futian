@@ -15,7 +15,7 @@ describe("Farm V2 approved notice artwork", () => {
   it("preserves actual purchase and claim actions while removing duplicate plan headers", () => {
     expect(firstPurchase).toContain('action="/api/checkout/create"');
     expect(firstPurchase).toContain("api.claimFirstPurchase(planId,day)");
-    expect(firstPurchase).toContain('/farm-v2/first-purchase/${plan.id}.png');
+    expect(firstPurchase).toContain('/farm-v2/first-purchase/${plan}');
     expect(firstPurchase).not.toContain("三種首儲方案各限購一次。付款完成後");
     expect(firstPurchase).not.toContain("<header");
   });
