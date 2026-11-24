@@ -62,7 +62,6 @@ jobs:
           CREATE EXTENSION IF NOT EXISTS pgcrypto;
           -- The legacy extract creates core.wallets and core.wallet_ledgers
           -- itself; only their parent schema and users table are needed first.
-          CREATE SCHEMA IF NOT EXISTS core;
           CREATE TABLE IF NOT EXISTS core.users (id uuid PRIMARY KEY, created_at timestamptz NOT NULL DEFAULT now());
           SQL
       - name: Apply extracted production schema
