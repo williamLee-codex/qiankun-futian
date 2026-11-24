@@ -101,23 +101,29 @@ jobs:
       - name: Apply extracted security policies
         shell: bash
         run: |
-          set -uo pipefail
+          set -euo pipefail
           F=scripts/dev/core-schema-security-extract.sql
           OUT=/tmp/drop-objects.sql
-          : > "$OUT"
-          grep -ohiE 'CREATE POLICY +[A-Za-z0-9_]+ +ON +[A-Za-z0-9_.]+' "$F" \
-            | sed -Ei 's/CREATE POLICY +([A-Za-z0-9_]+) +ON +([A-Za-z0-9_.]+)/DROP POLICY IF EXISTS \1 ON \2;/I' >> "$OUT" || true
-          grep -ohiE 'CREATE TRIGGER +[A-Za-z0-9_]+[^;]*ON +[A-Za-z0-9_.]+' "$F" \
-            | sed -Ei 's/.*CREATE TRIGGER +([A-Za-z0-9_]+).* ON +([A-Za-z0-9_.]+).*/DROP TRIGGER IF EXISTS \1 ON \2;/I' >> "$OUT" || true
-          grep -ohiE 'CREATE +(UNIQUE +)?INDEX +[A-Za-z0-9_]+' "$F" \
-            | sed -Ei 's/.*INDEX +([A-Za-z0-9_]+).*/DROP INDEX IF EXISTS \1;/I' >> "$OUT" || true
-          grep -ohiE 'ALTER TABLE +[A-Za-z0-9_.]+ +ADD CONSTRAINT +[A-Za-z0-9_]+' "$F" \
-            | sed -Ei 's/.*ALTER TABLE +([A-Za-z0-9_.]+) +ADD CONSTRAINT +([A-Za-z0-9_]+).*/ALTER TABLE \1 DROP CONSTRAINT IF EXISTS \2;/I' >> "$OUT" || true
-          echo "--- generated $(wc -l < "$OUT") statements"
+          python3 - "$F" "$OUT" <<'PYEOF'
+          import re, sys
+          src, out = sys.argv[1], sys.argv[2]
+          sql = open(src, encoding="utf-8").read()
+          stmts = []
+          for name, table in re.findall(r"CREATE\s+POLICY\s+(\w+)\s+ON\s+([\w.]+)", sql, re.I):
+              stmts.append(f"DROP POLICY IF EXISTS {name} ON {table};")
+          for name, table in re.findall(r"CREATE\s+TRIGGER\s+(\w+)[^;]*?\sON\s+([\w.]+)", sql, re.I):
+              stmts.append(f"DROP TRIGGER IF EXISTS {name} ON {table};")
+          for name in re.findall(r"CREATE\s+(?:UNIQUE\s+)?INDEX\s+(\w+)", sql, re.I):
+              stmts.append(f"DROP INDEX IF EXISTS {name};")
+          for table, name in re.findall(r"ALTER\s+TABLE\s+([\w.]+)\s+ADD\s+CONSTRAINT\s+(\w+)", sql, re.I):
+              stmts.append(f"ALTER TABLE {table} DROP CONSTRAINT IF EXISTS {name};")
+          if not stmts:
+              sys.exit("no objects parsed from the security extract")
+          open(out, "w", encoding="utf-8").write("\n".join(stmts) + "\n")
+          print(f"--- generated {len(stmts)} statements")
+          PYEOF
           cat "$OUT"
-          if [ -s "$OUT" ]; then
-            psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$OUT"
-          fi
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$OUT"
           psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$F"
       - name: Yield the core wallet policies to the platform migrations
         run: |
