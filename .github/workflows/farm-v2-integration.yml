@@ -29,6 +29,8 @@ jobs:
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       DATABASE_URL: postgres://postgres:farm-v2-test@127.0.0.1:5432/farm_v2_test
+      FARM_V2_TEST_DATABASE_URL: postgres://postgres:farm-v2-test@127.0.0.1:5432/farm_v2_test
+      FARM_V2_PLATFORM_CHECKOUT: ${{ github.workspace }}/platform
       PGPASSWORD: farm-v2-test
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +41,11 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - name: Checkout platform fixtures
+        uses: actions/checkout@v4
+        with:
+          repository: williamLee-codex/imperial-compass-platform
+          path: platform
       - run: pnpm install --frozen-lockfile
       - name: Prepare Supabase-compatible database
         run: |
