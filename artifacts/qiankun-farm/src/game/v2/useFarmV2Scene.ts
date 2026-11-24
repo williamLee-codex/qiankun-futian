@@ -1,5 +1,6 @@
 import type { FarmSeedRecovery } from "./farmV2ApiClient";
 import type { WorkshopCommand, WorkshopWarehouse } from "./workshopRuntime";
+import { shortfallWalletForCode } from "./coinShortfall";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FarmV2ApiError, createFarmV2Api } from "./farmV2ApiClient";
 import { resolveFarmV2MutationSnapshot } from "./farmV2MutationSnapshot";
@@ -57,6 +58,10 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   );
   const [data, setData] = useState<SceneData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [coinShortfall, setCoinShortfall] = useState<{
+    paying: "central" | "farm" | "crystal";
+    pending: { itemId: string; quantity: number; label: string };
+  } | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -173,6 +178,16 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         const sessionInvalid = code === "FARM_SESSION_NOT_ACTIVE" ||
           code === "FARM_V2_LAUNCH_TOKEN_REQUIRED" ||
           code === "AUTH_REQUIRED";
+        const shortWallet = shortfallWalletForCode(code);
+        if (shortWallet)
+          setCoinShortfall({
+            paying: shortWallet,
+            pending: {
+              itemId: `${operation}:${landId}`,
+              quantity: quantity ?? 1,
+              label: operation,
+            },
+          });
         if (sessionInvalid) setData(null);
         setReauthenticateUrl(sessionInvalid ? api?.getReauthenticationUrl() ?? null : null);
         setError(
@@ -267,6 +282,8 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     return api.inspectDailyActivity(kind);
   }, [api]);
   return {
+    coinShortfall,
+    dismissCoinShortfall: () => setCoinShortfall(null),
     readDailyActivity,
     claimDailyActivity,
     inspectDailyActivity,
