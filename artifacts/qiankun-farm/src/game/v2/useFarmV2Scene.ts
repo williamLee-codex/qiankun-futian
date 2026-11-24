@@ -1,7 +1,7 @@
 import type { FarmSeedRecovery } from "./farmV2ApiClient";
 import type { WorkshopCommand, WorkshopWarehouse } from "./workshopRuntime";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createFarmV2Api } from "./farmV2ApiClient";
+import { FarmV2ApiError, createFarmV2Api } from "./farmV2ApiClient";
 import { resolveFarmV2MutationSnapshot } from "./farmV2MutationSnapshot";
 import { mapServerLands, mapServerWarehouse } from "./farmV2SceneAdapter";
 import type { Plot, CropInventory } from "../types";
@@ -57,6 +57,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   );
   const [data, setData] = useState<SceneData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pendingWorkshop, setPendingWorkshop] = useState<WorkshopCommand[]>([]);
@@ -97,6 +98,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         if (sequence !== readSequence.current) return false;
         setData(nextData);
         setError(null);
+        setErrorStatus(null);
         return true;
       } catch (cause) {
         if (sequence !== readSequence.current) return false;
@@ -106,6 +108,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         setError(
           cause instanceof Error ? cause.message : "FARM_V2_STATE_FAILED",
         );
+        setErrorStatus(cause instanceof FarmV2ApiError ? cause.status : null);
         return false;
       } finally {
         if (sequence === readSequence.current) {
@@ -308,6 +311,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     endSession,
     data,
     error,
+    errorStatus,
     loading,
     busy,
     refresh,

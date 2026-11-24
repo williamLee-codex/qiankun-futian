@@ -73,6 +73,25 @@ async function hasRecentPaidQualification(userId: string) {
   return result.rows.length === 1;
 }
 
+const SETTLE_BLOCKED_BY_PENDING_ASSETS = new Set([
+  "WORKSHOP_RECOVERY_REQUIRED",
+  "MUTATION_RECOVERY_REQUIRED",
+  "PERMANENT_MUTATION_RECOVERY_FAILURE",
+  "RECONCILIATION_EVIDENCE_REQUIRED",
+]);
+
+// A pending asset rescue must not hide committed data. The idempotency guard
+// still refuses every mutation, so returning the read state bypasses nothing.
+async function settleLoginState(userId: string) {
+  try {
+    await settleFarmV2Farmer({ userId, requestId: "login-settle:" + randomUUID() });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    if (!SETTLE_BLOCKED_BY_PENDING_ASSETS.has(code)) throw error;
+    console.warn("FARM_V2_SETTLE_SKIPPED", JSON.stringify({ code }));
+  }
+}
+
 async function mutationResponse<T extends object>(
   includeSnapshot: boolean,
   userId: string,
@@ -81,8 +100,7 @@ async function mutationResponse<T extends object>(
   if (!includeSnapshot) return result;
   return completeFarmV2Mutation({
     mutate: async () => result,
-    settle: () =>
-      settleFarmV2Farmer({ userId, requestId: "login-settle:" + randomUUID() }),
+    settle: () => settleLoginState(userId),
     read: () => ensureFarmV2PlayerInitialized({ userId }),
   });
 }
@@ -271,10 +289,7 @@ router.get(
           requestId: paidRefreshRequestId,
         });
       }
-      await settleFarmV2Farmer({
-        userId,
-        requestId: "login-settle:" + randomUUID(),
-      });
+      await settleLoginState(userId);
       // Return the committed, post-reconciliation state rather than the
       // pre-reconciliation snapshot.
       const state = await ensureFarmV2PlayerInitialized({ userId });

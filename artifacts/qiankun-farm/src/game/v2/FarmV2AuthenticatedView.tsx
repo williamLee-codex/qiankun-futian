@@ -70,6 +70,7 @@ export function FarmV2AuthenticatedView(props: {
     visitCave,
     friendAction,
     pendingFriends,
+    errorStatus,
   } = useFarmV2Scene(props.apiBaseUrl, props.launchToken);
   const [seedRecoveries,setSeedRecoveries]=useState<FarmSeedRecovery[]>([]);
   const [checkingSeeds,setCheckingSeeds]=useState(false);
@@ -320,7 +321,15 @@ export function FarmV2AuthenticatedView(props: {
         }}
       >
         <p>無法取得正式農田資料，已停止所有操作。</p>
-        {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
+        {error && (
+          <p role="alert">
+            {farmV2ErrorMessage(error)}
+            <span style={{ display: "block", marginTop: 4, fontSize: 14, opacity: 0.72 }}>
+              錯誤碼 {error}
+              {errorStatus ? `（HTTP ${errorStatus}）` : ""}
+            </span>
+          </p>
+        )}
         {pendingWorkshop.map((command, index) => (
           <button
             key={index}
