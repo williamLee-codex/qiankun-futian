@@ -66,6 +66,22 @@ export function precheckSynthesis(input: {
   return ok;
 }
 
+export function precheckCropExchange(input: {
+  cropStock: number;
+  quantity: number;
+  rate: number;
+}): PrecheckResult {
+  if (input.quantity <= 0) return { ok: false, code: "INVALID_EXCHANGE_QUANTITY" };
+  if (input.cropStock < input.quantity)
+    return {
+      ok: false,
+      code: "CROP_INSUFFICIENT",
+      details: { required: input.quantity, available: input.cropStock },
+    };
+  if (input.rate <= 0) return { ok: false, code: "EXCHANGE_RATE_UNAVAILABLE" };
+  return ok;
+}
+
 export function precheckSow(input: {
   seedStock: number;
   landUnlocked: boolean;

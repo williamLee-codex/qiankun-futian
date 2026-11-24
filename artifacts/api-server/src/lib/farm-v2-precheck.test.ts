@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  precheckCropExchange,
   precheckHarvest,
   precheckSeedPurchase,
   precheckSow,
@@ -118,6 +119,18 @@ describe("transaction pre-checks", () => {
     expect(precheckHarvest({ hasCrop: true, matureAt: 1_000, now: 1_500 })).toEqual({ ok: true });
     expect(precheckHarvest({ hasCrop: false, matureAt: 0, now: 1 })).toMatchObject({
       code: "FARM_LAND_EMPTY",
+    });
+  });
+
+  it("refuses an exchange larger than the stored crop", () => {
+    expect(precheckCropExchange({ cropStock: 4, quantity: 5, rate: 3 })).toEqual({
+      ok: false,
+      code: "CROP_INSUFFICIENT",
+      details: { required: 5, available: 4 },
+    });
+    expect(precheckCropExchange({ cropStock: 5, quantity: 5, rate: 3 })).toEqual({ ok: true });
+    expect(precheckCropExchange({ cropStock: 5, quantity: 1, rate: 0 })).toMatchObject({
+      code: "EXCHANGE_RATE_UNAVAILABLE",
     });
   });
 
