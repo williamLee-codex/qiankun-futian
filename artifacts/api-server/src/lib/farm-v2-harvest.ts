@@ -1,10 +1,11 @@
 import { sql, eq, and } from "drizzle-orm";
-import { farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
+import { db, farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
 import { executeOwnerHarvestTransaction } from "../../../qiankun-farm/src/game/v2/farmActionTransactions";
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
 import type { MissionState } from "../../../qiankun-farm/src/game/v2/missionRuntime";
 import { farmV2LandEntityToPersistence, farmV2LandRowToEntity } from "./farm-v2-mappers";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
+import { precheckHarvestLifecycle, precheckSow } from "./farm-v2-precheck";
 
 export async function harvestFarmV2Land(input: {
   requestId: string;
@@ -16,6 +17,15 @@ export async function harvestFarmV2Land(input: {
     throw new Error("INVALID_FARM_LAND_ID");
   }
   const now = input.now ?? new Date();
+
+  const [preLand] = await db
+    .select()
+    .from(farmV2LandTable)
+    .where(and(eq(farmV2LandTable.userId, input.userId), eq(farmV2LandTable.landId, input.landId)))
+    .limit(1);
+  if (!preLand) throw new Error("FARM_LAND_NOT_FOUND");
+  const precheck = precheckHarvestLifecycle({ lifecycle: farmV2LandRowToEntity(preLand).lifecycle });
+  if (!precheck.ok) throw new Error(precheck.code);
 
   return runFarmV2IdempotentMutation({
     requestId: input.requestId,

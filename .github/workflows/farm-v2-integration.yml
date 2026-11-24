@@ -1,6 +1,14 @@
 name: Farm V2 integration
 on:
   workflow_dispatch: {}
+  push:
+    branches:
+      - "integrate/farm-v2-firstpurchase-signin-20261122"
+      - "release/farm-v2-tsc-20261124"
+    paths:
+      - "artifacts/api-server/src/lib/**"
+      - "lib/db/migrations/**"
+      - ".github/workflows/farm-v2-integration.yml"
   pull_request:
     paths:
       - "artifacts/api-server/src/lib/**"

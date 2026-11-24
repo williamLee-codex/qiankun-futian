@@ -1,10 +1,12 @@
 import { sql, eq, and } from "drizzle-orm";
-import { farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
+import { db, farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
 import { executeSowTransaction } from "../../../qiankun-farm/src/game/v2/farmActionTransactions";
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
+import type { FarmLandId } from "../../../qiankun-farm/src/game/v2/canonicalLandData";
 import type { MissionState } from "../../../qiankun-farm/src/game/v2/missionRuntime";
 import { farmV2LandEntityToPersistence, farmV2LandRowToEntity } from "./farm-v2-mappers";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
+import { precheckHarvestLifecycle, precheckSow } from "./farm-v2-precheck";
 
 export async function sowFarmV2Land(input: {
   requestId: string;
@@ -16,6 +18,28 @@ export async function sowFarmV2Land(input: {
     throw new Error("INVALID_FARM_LAND_ID");
   }
   const now = input.now ?? new Date();
+
+  // Business refusals are reported before the mutation transaction starts.
+  const [prePlayer] = await db
+    .select({ warehouseState: farmV2PlayerStateTable.warehouseState })
+    .from(farmV2PlayerStateTable)
+    .where(eq(farmV2PlayerStateTable.userId, input.userId))
+    .limit(1);
+  if (!prePlayer) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
+  const [preLand] = await db
+    .select()
+    .from(farmV2LandTable)
+    .where(and(eq(farmV2LandTable.userId, input.userId), eq(farmV2LandTable.landId, input.landId)))
+    .limit(1);
+  if (!preLand) throw new Error("FARM_LAND_NOT_FOUND");
+  const preEntity = farmV2LandRowToEntity(preLand);
+  const preWarehouse = prePlayer.warehouseState as FarmWarehouse;
+  const precheck = precheckSow({
+    seedStock: preWarehouse.seeds[input.landId as FarmLandId] ?? 0,
+    landUnlocked: preEntity.accessActive,
+    landBusy: preEntity.lifecycle !== "EMPTY",
+  });
+  if (!precheck.ok) throw new Error(precheck.code);
 
   return runFarmV2IdempotentMutation({
     requestId: input.requestId,

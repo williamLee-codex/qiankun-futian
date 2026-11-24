@@ -93,6 +93,23 @@ export function precheckSow(input: {
   return ok;
 }
 
+export type FarmLandLifecycle = "LOCKED" | "EMPTY" | "GROWING" | "MATURE";
+
+export function precheckHarvestLifecycle(input: {
+  lifecycle: FarmLandLifecycle;
+}): PrecheckResult {
+  switch (input.lifecycle) {
+    case "LOCKED":
+      return { ok: false, code: "FARM_LAND_LOCKED" };
+    case "EMPTY":
+      return { ok: false, code: "FARM_LAND_EMPTY" };
+    case "GROWING":
+      return { ok: false, code: "CROP_NOT_MATURE" };
+    default:
+      return ok;
+  }
+}
+
 export function precheckHarvest(input: {
   hasCrop: boolean;
   matureAt: number;

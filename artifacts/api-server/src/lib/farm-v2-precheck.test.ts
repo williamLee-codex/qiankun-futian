@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   precheckCropExchange,
   precheckHarvest,
+  precheckHarvestLifecycle,
   precheckSeedPurchase,
   precheckSow,
   precheckSynthesis,
@@ -132,6 +133,13 @@ describe("transaction pre-checks", () => {
     expect(precheckCropExchange({ cropStock: 5, quantity: 1, rate: 0 })).toMatchObject({
       code: "EXCHANGE_RATE_UNAVAILABLE",
     });
+  });
+
+  it("maps the stored land lifecycle to a harvest outcome", () => {
+    expect(precheckHarvestLifecycle({ lifecycle: "LOCKED" })).toMatchObject({ code: "FARM_LAND_LOCKED" });
+    expect(precheckHarvestLifecycle({ lifecycle: "EMPTY" })).toMatchObject({ code: "FARM_LAND_EMPTY" });
+    expect(precheckHarvestLifecycle({ lifecycle: "GROWING" })).toMatchObject({ code: "CROP_NOT_MATURE" });
+    expect(precheckHarvestLifecycle({ lifecycle: "MATURE" })).toEqual({ ok: true });
   });
 
   it("keeps sow checks separate from harvest checks", () => {
