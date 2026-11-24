@@ -51,6 +51,32 @@ jobs:
           DO $$ BEGIN CREATE ROLE service_role NOLOGIN BYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
           DO $$ BEGIN CREATE ROLE farm_v2_runtime NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
           CREATE EXTENSION IF NOT EXISTS pgcrypto;
+          -- Core wallet tables live in the platform repo; farm migrations
+          -- reference them, so the isolated database needs the same shape.
+          CREATE TABLE IF NOT EXISTS public.core_wallets (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            owner_id uuid NOT NULL UNIQUE,
+            coin_balance integer NOT NULL DEFAULT 0,
+            crystal_balance integer NOT NULL DEFAULT 0,
+            destiny_ticket_balance integer NOT NULL DEFAULT 0,
+            status text NOT NULL DEFAULT 'active',
+            created_at timestamptz NOT NULL DEFAULT now(),
+            updated_at timestamptz NOT NULL DEFAULT now()
+          );
+          CREATE TABLE IF NOT EXISTS public.core_wallet_ledger (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            wallet_id uuid REFERENCES public.core_wallets(id),
+            owner_id uuid NOT NULL,
+            operation_id uuid,
+            amount integer NOT NULL DEFAULT 0,
+            currency text NOT NULL DEFAULT 'coin',
+            direction text NOT NULL DEFAULT 'credit',
+            reason text,
+            reference_id text,
+            reference_type text,
+            idempotency_key text,
+            created_at timestamptz NOT NULL DEFAULT now()
+          );
           SQL
       - name: Apply migrations
         run: |
