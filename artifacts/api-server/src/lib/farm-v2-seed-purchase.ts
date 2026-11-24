@@ -5,6 +5,7 @@ import type { FarmLandId } from "../../../qiankun-farm/src/game/v2/canonicalLand
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
 import { precheckSeedPurchase } from "./farm-v2-precheck";
+import { readFarmV2CoinBalance } from "./farm-v2-coin-balance";
 import {
   applyFarmV2WalletStep,
   readFarmV2WalletIntent,
@@ -48,7 +49,7 @@ export async function purchaseFarmV2SeedPacks(input: {
     landUnlocked: Boolean(preLand?.unlocked),
     unitPrice: pack.price,
     packs: input.packs,
-    availableCoins: null,
+    availableCoins: await readFarmV2CoinBalance(input.userId),
     wallet: "farm",
   });
   if (!precheck.ok) throw new Error(precheck.code);
