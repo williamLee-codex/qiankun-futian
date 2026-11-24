@@ -71,6 +71,19 @@ jobs:
             echo "== $f"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
           done
+      - name: Hand core wallet policies to the platform migrations
+        run: |
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q <<'SQL'
+          DO $$
+          DECLARE r record;
+          BEGIN
+            FOR r IN SELECT policyname FROM pg_policies
+                     WHERE schemaname = 'public' AND tablename = 'core_wallets'
+            LOOP
+              EXECUTE format('DROP POLICY %I ON public.core_wallets', r.policyname);
+            END LOOP;
+          END $$;
+          SQL
       - name: Apply migrations
         run: |
           for f in $(ls lib/db/migrations/*.sql | sort); do
