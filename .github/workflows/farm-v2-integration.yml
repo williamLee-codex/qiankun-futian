@@ -69,7 +69,12 @@ jobs:
             -f artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0019_create_core_wallet_runtime.sql
       - name: Apply extracted production schema
         run: |
-          for f in scripts/dev/core-schema-extract.sql scripts/dev/core-legacy-wallet-schema-extract.sql scripts/dev/farm-bank-schema-extract.sql; do
+          # 0019 already owns core_wallets and core_wallet_ledger. Only the
+          # pot receipt table is unique to the extract, so take just that line.
+          grep 'CREATE TABLE public.farm_v2_atomic_pot_receipts' scripts/dev/core-schema-extract.sql \
+            > /tmp/pot-receipts.sql
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f /tmp/pot-receipts.sql
+          for f in scripts/dev/core-legacy-wallet-schema-extract.sql scripts/dev/farm-bank-schema-extract.sql; do
             echo "== $f"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
           done
