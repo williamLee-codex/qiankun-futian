@@ -17,11 +17,11 @@ export function FarmCoinShortfallDialog({
   onClose,
 }: {
   paying: CoinWallet;
-  required: number;
+  required: number | null;
   payingBalance: number | null;
   otherBalance: number | null;
   pending: PendingOperation;
-  onConvert: (from: CoinWallet, to: CoinWallet, amount: number) => void;
+  onConvert: (from: CoinWallet, to: CoinWallet, amount: number | null) => void;
   onCancel: () => void;
   onClose: () => void;
 }) {

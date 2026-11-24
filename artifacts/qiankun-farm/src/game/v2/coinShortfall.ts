@@ -2,7 +2,7 @@ export type CoinWallet = "central" | "farm";
 
 export type ShortfallOutcome =
   | { kind: "sufficient" }
-  | { kind: "convert"; from: CoinWallet; to: CoinWallet; amount: number }
+  | { kind: "convert"; from: CoinWallet; to: CoinWallet; amount: number | null }
   | { kind: "blocked"; code: "BOTH_INSUFFICIENT" | "BALANCE_UNAVAILABLE" };
 
 /**
@@ -12,12 +12,16 @@ export type ShortfallOutcome =
  */
 export function planCoinShortfall(input: {
   paying: CoinWallet;
-  required: number;
+  required: number | null;
   payingBalance: number | null;
   otherBalance: number | null;
 }): ShortfallOutcome {
   const { paying, required, payingBalance, otherBalance } = input;
   if (payingBalance === null) return { kind: "blocked", code: "BALANCE_UNAVAILABLE" };
+  // A refusal reported by the server carries no price, so the conversion is
+  // offered without an amount and the wallet decides how much can move.
+  if (required === null)
+    return { kind: "convert", from: paying === "central" ? "farm" : "central", to: paying, amount: null };
   if (payingBalance >= required) return { kind: "sufficient" };
   if (otherBalance === null) return { kind: "blocked", code: "BALANCE_UNAVAILABLE" };
   const missing = required - payingBalance;
