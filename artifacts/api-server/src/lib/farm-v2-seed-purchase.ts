@@ -5,7 +5,8 @@ import type { FarmLandId } from "../../../qiankun-farm/src/game/v2/canonicalLand
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
 import { precheckSeedPurchase } from "./farm-v2-precheck";
-import { readFarmV2CoinBalance } from "./farm-v2-coin-balance";
+import { readPurchaseWalletBalance } from "./farm-v2-coin-balance";
+import { localCoinsEnabled } from "./farm-v2-local-coins";
 import {
   applyFarmV2WalletStep,
   readFarmV2WalletIntent,
@@ -44,13 +45,16 @@ export async function purchaseFarmV2SeedPacks(input: {
     .from(farmV2LandTable)
     .where(and(eq(farmV2LandTable.userId, input.userId), eq(farmV2LandTable.landId, landId)))
     .limit(1);
+  // Seed purchases debit the farm bank when local coins are enabled, and the
+  // central wallet otherwise; the pre-check must read that same wallet.
+  const wallet = localCoinsEnabled() ? ("farm" as const) : ("core" as const);
   const precheck = precheckSeedPurchase({
     playerExists: Boolean(prePlayer),
     landUnlocked: Boolean(preLand?.unlocked),
     unitPrice: pack.price,
     packs: input.packs,
-    availableCoins: await readFarmV2CoinBalance(input.userId),
-    wallet: "farm",
+    availableCoins: await readPurchaseWalletBalance(input.userId, wallet),
+    wallet,
   });
   if (!precheck.ok) throw new Error(precheck.code);
 

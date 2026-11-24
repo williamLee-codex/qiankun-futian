@@ -38,7 +38,7 @@ describe("transaction pre-checks", () => {
     ).toEqual({ ok: true });
   });
 
-  it("skips the balance check when no balance source is wired", () => {
+  it("refuses the purchase when the authoritative balance cannot be read", () => {
     expect(
       precheckSeedPurchase({
         playerExists: true,
@@ -48,7 +48,23 @@ describe("transaction pre-checks", () => {
         availableCoins: null,
         wallet: "farm",
       }),
-    ).toEqual({ ok: true });
+    ).toEqual({
+      ok: false,
+      code: "WALLET_BALANCE_UNAVAILABLE",
+      wallet: "farm",
+      details: { cost: 3 },
+    });
+  });
+
+  it("debits only the wallet it names", () => {
+    const base = { playerExists: true, landUnlocked: true, unitPrice: 2, packs: 1 };
+    expect(precheckSeedPurchase({ ...base, availableCoins: 1, wallet: "farm" })).toMatchObject({
+      code: "FARM_COIN_INSUFFICIENT",
+    });
+    expect(precheckSeedPurchase({ ...base, availableCoins: 1, wallet: "core" })).toMatchObject({
+      code: "CORE_COIN_INSUFFICIENT",
+    });
+    expect(precheckSeedPurchase({ ...base, availableCoins: 5, wallet: "core" })).toEqual({ ok: true });
   });
 
   it("refuses locked land and missing player state before any charge", () => {

@@ -22,7 +22,7 @@ export function precheckSeedPurchase(input: {
   landUnlocked: boolean;
   unitPrice: number;
   packs: number;
-  /** null when the balance source is unavailable: the check is skipped. */
+  /** null when the authoritative balance cannot be read: the purchase is refused. */
   availableCoins: number | null;
   wallet: "core" | "farm";
 }): PrecheckResult {
@@ -30,7 +30,9 @@ export function precheckSeedPurchase(input: {
     return { ok: false, code: "FARM_PLAYER_STATE_NOT_FOUND" };
   if (!input.landUnlocked) return { ok: false, code: "FARM_SEED_LAND_LOCKED" };
   const cost = input.unitPrice * input.packs;
-  if (input.availableCoins !== null && input.availableCoins < cost)
+  if (input.availableCoins === null)
+    return { ok: false, code: "WALLET_BALANCE_UNAVAILABLE", wallet: input.wallet, details: { cost } };
+  if (input.availableCoins < cost)
     return {
       ok: false,
       code: input.wallet === "farm" ? "FARM_COIN_INSUFFICIENT" : "CORE_COIN_INSUFFICIENT",
