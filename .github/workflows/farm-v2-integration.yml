@@ -99,23 +99,26 @@ jobs:
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
           done
       - name: Apply extracted security policies
+        shell: bash
         run: |
-          # The security extract is authoritative. Migrations may declare the
-          # same policies, so replace exactly those definitions first.
+          set -uo pipefail
           F=scripts/dev/core-schema-security-extract.sql
-          {
-            grep -ohiE 'CREATE POLICY +[A-Za-z0-9_]+ +ON +[A-Za-z0-9_.]+' "$F" \
-              | sed -Ei 's/CREATE POLICY +([A-Za-z0-9_]+) +ON +([A-Za-z0-9_.]+)/DROP POLICY IF EXISTS \1 ON \2;/I'
-            grep -ohiE 'CREATE TRIGGER +[A-Za-z0-9_]+' "$F" | head -0
-            grep -ohiE 'CREATE TRIGGER +([A-Za-z0-9_]+).*ON +([A-Za-z0-9_.]+)' "$F" \
-              | sed -Ei 's/.*CREATE TRIGGER +([A-Za-z0-9_]+).* ON +([A-Za-z0-9_.]+).*/DROP TRIGGER IF EXISTS \1 ON \2;/I'
-            grep -ohiE 'CREATE +(UNIQUE +)?INDEX +([A-Za-z0-9_]+)' "$F" \
-              | sed -Ei 's/.*INDEX +([A-Za-z0-9_]+).*/DROP INDEX IF EXISTS \1;/I'
-            grep -ohiE 'ALTER TABLE +([A-Za-z0-9_.]+) +ADD CONSTRAINT +([A-Za-z0-9_]+)' "$F" \
-              | sed -Ei 's/.*ALTER TABLE +([A-Za-z0-9_.]+) +ADD CONSTRAINT +([A-Za-z0-9_]+).*/ALTER TABLE \1 DROP CONSTRAINT IF EXISTS \2;/I'
-          } > /tmp/drop-objects.sql
-          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f /tmp/drop-objects.sql
-          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f scripts/dev/core-schema-security-extract.sql
+          OUT=/tmp/drop-objects.sql
+          : > "$OUT"
+          grep -ohiE 'CREATE POLICY +[A-Za-z0-9_]+ +ON +[A-Za-z0-9_.]+' "$F" \
+            | sed -Ei 's/CREATE POLICY +([A-Za-z0-9_]+) +ON +([A-Za-z0-9_.]+)/DROP POLICY IF EXISTS \1 ON \2;/I' >> "$OUT" || true
+          grep -ohiE 'CREATE TRIGGER +[A-Za-z0-9_]+[^;]*ON +[A-Za-z0-9_.]+' "$F" \
+            | sed -Ei 's/.*CREATE TRIGGER +([A-Za-z0-9_]+).* ON +([A-Za-z0-9_.]+).*/DROP TRIGGER IF EXISTS \1 ON \2;/I' >> "$OUT" || true
+          grep -ohiE 'CREATE +(UNIQUE +)?INDEX +[A-Za-z0-9_]+' "$F" \
+            | sed -Ei 's/.*INDEX +([A-Za-z0-9_]+).*/DROP INDEX IF EXISTS \1;/I' >> "$OUT" || true
+          grep -ohiE 'ALTER TABLE +[A-Za-z0-9_.]+ +ADD CONSTRAINT +[A-Za-z0-9_]+' "$F" \
+            | sed -Ei 's/.*ALTER TABLE +([A-Za-z0-9_.]+) +ADD CONSTRAINT +([A-Za-z0-9_]+).*/ALTER TABLE \1 DROP CONSTRAINT IF EXISTS \2;/I' >> "$OUT" || true
+          echo "--- generated $(wc -l < "$OUT") statements"
+          cat "$OUT"
+          if [ -s "$OUT" ]; then
+            psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$OUT"
+          fi
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$F"
       - name: Yield the core wallet policies to the platform migrations
         run: |
           # The suite applies the platform wallet migrations itself, and those

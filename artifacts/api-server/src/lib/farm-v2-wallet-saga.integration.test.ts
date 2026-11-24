@@ -16,8 +16,9 @@ const enabled = Boolean(
   process.env.FARM_V2_PLATFORM_CHECKOUT,
 );
 // The harness may already own an object a fixture file declares. Only
-// duplicate definitions are tolerated; any other error still fails the run.
-const DUPLICATE_OBJECT = new Set(["42P06", "42P07", "42710", "42P16"]);
+// "already exists" is tolerated, and the object is then compared by the
+// assertions that follow; any other error fails the run.
+const DUPLICATE_OBJECT = new Set(["42P06", "42P07", "42710"]);
 async function applyDdl(
   runner: { query: (sql: string) => Promise<unknown> },
   sql: string,
