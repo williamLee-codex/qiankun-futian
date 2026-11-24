@@ -1,9 +1,10 @@
 import { and, eq } from "drizzle-orm";
-import { farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
+import { db, farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
 import { getSeedPack } from "../../../qiankun-farm/src/game/v2/canonicalEconomyData";
 import type { FarmLandId } from "../../../qiankun-farm/src/game/v2/canonicalLandData";
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
+import { precheckSeedPurchase } from "./farm-v2-precheck";
 import {
   applyFarmV2WalletStep,
   readFarmV2WalletIntent,
@@ -29,6 +30,28 @@ export async function purchaseFarmV2SeedPacks(input: {
   const landId = input.landId as FarmLandId;
   const pack = getSeedPack(landId);
   if (!pack.purchasable) throw new Error("SEED_NOT_PURCHASABLE");
+
+  // Normal business refusals happen before a mutation row exists, so a short
+  // balance or locked land never leaves a PENDING residue behind.
+  const [prePlayer] = await db
+    .select({ userId: farmV2PlayerStateTable.userId })
+    .from(farmV2PlayerStateTable)
+    .where(eq(farmV2PlayerStateTable.userId, input.userId))
+    .limit(1);
+  const [preLand] = await db
+    .select({ unlocked: farmV2LandTable.accessActive })
+    .from(farmV2LandTable)
+    .where(and(eq(farmV2LandTable.userId, input.userId), eq(farmV2LandTable.landId, landId)))
+    .limit(1);
+  const precheck = precheckSeedPurchase({
+    playerExists: Boolean(prePlayer),
+    landUnlocked: Boolean(preLand?.unlocked),
+    unitPrice: pack.price,
+    packs: input.packs,
+    availableCoins: null,
+    wallet: "farm",
+  });
+  if (!precheck.ok) throw new Error(precheck.code);
 
   return runFarmV2RecoveryWithPostRollbackCompensation({
     userId: input.userId,
