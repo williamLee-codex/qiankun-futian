@@ -30,8 +30,19 @@ export function planCoinShortfall(input: {
   };
 }
 
+/** Dedicated artwork slots; conversion artwork must not stand in for these. */
 export function shortfallImage(paying: CoinWallet): string {
   return paying === "central"
-    ? "/images/farm/coin-conversion-final-approved.png"
-    : "/images/farm/coin-conversion-approved.legacy.png";
+    ? "/images/farm/coin-shortfall-central.png"
+    : "/images/farm/coin-shortfall-farm.png";
+}
+
+const SHORTFALL_CODES: Record<string, CoinWallet | "crystal"> = {
+  CORE_COIN_INSUFFICIENT: "central",
+  FARM_COIN_INSUFFICIENT: "farm",
+  CRYSTAL_INSUFFICIENT: "crystal",
+};
+
+export function shortfallWalletForCode(code: string): CoinWallet | "crystal" | null {
+  return SHORTFALL_CODES[code] ?? null;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planCoinShortfall, shortfallImage } from "./coinShortfall";
+import { planCoinShortfall, shortfallImage, shortfallWalletForCode } from "./coinShortfall";
 
 describe("coin shortfall planning", () => {
   it("converts from the other wallet into the paying wallet", () => {
@@ -42,8 +42,17 @@ describe("coin shortfall planning", () => {
     ).toEqual({ kind: "sufficient" });
   });
 
-  it("uses the approved artwork for each wallet", () => {
-    expect(shortfallImage("central")).toBe("/images/farm/coin-conversion-final-approved.png");
-    expect(shortfallImage("farm")).toBe("/images/farm/coin-conversion-approved.legacy.png");
+  it("uses dedicated shortfall artwork, never the conversion artwork", () => {
+    expect(shortfallImage("central")).toBe("/images/farm/coin-shortfall-central.png");
+    expect(shortfallImage("farm")).toBe("/images/farm/coin-shortfall-farm.png");
+    expect(shortfallImage("central")).not.toContain("coin-conversion");
+    expect(shortfallImage("farm")).not.toContain("coin-conversion");
+  });
+
+  it("maps refusal codes to the wallet that has to be topped up", () => {
+    expect(shortfallWalletForCode("CORE_COIN_INSUFFICIENT")).toBe("central");
+    expect(shortfallWalletForCode("FARM_COIN_INSUFFICIENT")).toBe("farm");
+    expect(shortfallWalletForCode("CRYSTAL_INSUFFICIENT")).toBe("crystal");
+    expect(shortfallWalletForCode("FARM_LAND_BUSY")).toBeNull();
   });
 });
