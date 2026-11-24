@@ -91,5 +91,15 @@ jobs:
             > /tmp/drop-policies.sql
           psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f /tmp/drop-policies.sql
           psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f scripts/dev/core-schema-security-extract.sql
+      - name: Yield the core wallet policies to the platform migrations
+        run: |
+          # The suite applies the platform wallet migrations itself, and those
+          # declare these two policies. They are the production source for these
+          # tables, so the extract's copies step aside here. Every other policy
+          # from the extract stays in force.
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q <<'SQL'
+          DROP POLICY IF EXISTS core_wallets_owner_select ON public.core_wallets;
+          DROP POLICY IF EXISTS core_wallet_ledger_owner_select ON public.core_wallet_ledger;
+          SQL
       - name: Integration tests
         run: pnpm --filter @workspace/api-server exec vitest run src/lib --reporter=verbose
