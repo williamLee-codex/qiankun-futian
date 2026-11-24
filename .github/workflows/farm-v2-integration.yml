@@ -54,7 +54,7 @@ jobs:
           SQL
       - name: Apply extracted production schema
         run: |
-          for f in scripts/dev/core-legacy-wallet-schema-extract.sql scripts/dev/core-schema-extract.sql scripts/dev/core-schema-security-extract.sql scripts/dev/farm-bank-schema-extract.sql; do
+          for f in scripts/dev/core-schema-extract.sql scripts/dev/core-legacy-wallet-schema-extract.sql scripts/dev/core-schema-security-extract.sql scripts/dev/farm-bank-schema-extract.sql; do
             echo "== $f"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
           done
