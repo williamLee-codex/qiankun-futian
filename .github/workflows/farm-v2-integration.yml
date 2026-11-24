@@ -67,23 +67,10 @@ jobs:
           SQL
       - name: Apply extracted production schema
         run: |
-          for f in scripts/dev/core-schema-extract.sql scripts/dev/core-legacy-wallet-schema-extract.sql scripts/dev/core-schema-security-extract.sql scripts/dev/farm-bank-schema-extract.sql; do
+          for f in scripts/dev/core-schema-extract.sql scripts/dev/core-legacy-wallet-schema-extract.sql scripts/dev/farm-bank-schema-extract.sql; do
             echo "== $f"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
           done
-      - name: Hand core wallet policies to the platform migrations
-        run: |
-          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q <<'SQL'
-          DO $$
-          DECLARE r record;
-          BEGIN
-            FOR r IN SELECT policyname FROM pg_policies
-                     WHERE schemaname = 'public' AND tablename = 'core_wallets'
-            LOOP
-              EXECUTE format('DROP POLICY %I ON public.core_wallets', r.policyname);
-            END LOOP;
-          END $$;
-          SQL
       - name: Apply migrations
         run: |
           for f in $(ls lib/db/migrations/*.sql | sort); do
@@ -95,5 +82,14 @@ jobs:
             echo "== $f"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
           done
+      - name: Apply extracted security policies
+        run: |
+          # The security extract is authoritative. Migrations may declare the
+          # same policies, so replace exactly those definitions first.
+          grep -ohE 'CREATE POLICY +[A-Za-z0-9_]+ +ON +[A-Za-z0-9_.]+' scripts/dev/core-schema-security-extract.sql \
+            | sed -E 's/CREATE POLICY +([A-Za-z0-9_]+) +ON +([A-Za-z0-9_.]+)/DROP POLICY IF EXISTS \1 ON \2;/' \
+            > /tmp/drop-policies.sql
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f /tmp/drop-policies.sql
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f scripts/dev/core-schema-security-extract.sql
       - name: Integration tests
         run: pnpm --filter @workspace/api-server exec vitest run src/lib --reporter=verbose
