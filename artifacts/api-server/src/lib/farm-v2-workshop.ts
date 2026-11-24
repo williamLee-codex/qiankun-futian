@@ -30,6 +30,7 @@ import {
   type WorkshopCommand,
 } from "../../../qiankun-farm/src/game/v2/workshopRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
+import { guardWorkshopSynthesisDebit } from "./farm-v2-workshop-precheck";
 import {
   applyFarmV2WalletStep,
   journalDb,
@@ -44,7 +45,7 @@ type Input = {
   command: WorkshopCommand;
 };
 /** Existing Saga execution retained for recovery of pre-cutover journals. */
-export function mutateLegacyFarmV2Workshop(input: Input) {
+export function runLegacyFarmV2WorkshopMutation(input: Input) {
   if (
     !input.command ||
     typeof input.command !== "object" ||
@@ -375,6 +376,11 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
         recover: (tx) => apply(tx, true),
       }),
   });
+}
+
+export async function mutateLegacyFarmV2Workshop(input: Input) {
+  await guardWorkshopSynthesisDebit(input as never);
+  return runLegacyFarmV2WorkshopMutation(input);
 }
 
 /** Public dispatcher: every NEW pot settlement requires verified co-location. */
