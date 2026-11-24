@@ -5,6 +5,7 @@ import {
   type WorkshopWarehouse,
 } from "../../../qiankun-farm/src/game/v2/workshopRuntime";
 import { readCrystalBalance, readPurchaseWalletBalance } from "./farm-v2-coin-balance";
+import { precheckWorkshopDebit, workshopDebitCurrency } from "./farm-v2-precheck";
 import { localCoinsEnabled } from "./farm-v2-local-coins";
 
 /**
@@ -13,14 +14,15 @@ import { localCoinsEnabled } from "./farm-v2-local-coins";
  * produce a second asset plan; the authoritative re-check stays inside the
  * mutation transaction.
  *
- * The debit currency is decided deeper in the saga, so a refusal only happens
- * when no wallet can cover the net cost.
+ * The currency comes from the same mapping the plan branches use, so a crystal
+ * command is only ever checked against crystals.
  */
 export async function guardWorkshopSynthesisDebit(input: {
   userId: string;
   command: { kind: string; [key: string]: unknown };
 }): Promise<void> {
-  if (input.command?.kind !== "synthesize") return;
+  const currency = workshopDebitCurrency(String(input.command?.kind ?? ""));
+  if (!currency) return;
 
   const [player] = await db
     .select({ warehouseState: farmV2PlayerStateTable.warehouseState })
@@ -38,12 +40,15 @@ export async function guardWorkshopSynthesisDebit(input: {
   const due = plan.cost - plan.reward;
   if (due <= 0) return;
 
+  // Only the wallet the plan debits is consulted; a fat balance in the other
+  // currency never authorises the debit.
+  const wallet = localCoinsEnabled() ? ("farm" as const) : ("core" as const);
   const [crystals, coins] = await Promise.all([
-    readCrystalBalance(input.userId),
-    readPurchaseWalletBalance(input.userId, localCoinsEnabled() ? "farm" : "core"),
+    currency === "crystal" ? readCrystalBalance(input.userId) : Promise.resolve(null),
+    currency === "coin"
+      ? readPurchaseWalletBalance(input.userId, wallet)
+      : Promise.resolve(null),
   ]);
-  if (crystals === null && coins === null)
-    throw new Error("WALLET_BALANCE_UNAVAILABLE");
-  if ((crystals ?? 0) >= due || (coins ?? 0) >= due) return;
-  throw new Error("CRYSTAL_INSUFFICIENT");
+  const result = precheckWorkshopDebit({ currency, due, wallet, crystals, coins });
+  if (!result.ok) throw new Error(result.code);
 }

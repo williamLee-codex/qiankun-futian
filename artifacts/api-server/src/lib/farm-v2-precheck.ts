@@ -93,6 +93,60 @@ export function precheckSow(input: {
   return ok;
 }
 
+/**
+ * Currency a workshop command actually debits, taken from the existing plan
+ * branches (`plan.currency`), not guessed from balances.
+ */
+export function workshopDebitCurrency(kind: string): "coin" | "crystal" | null {
+  switch (kind) {
+    case "synthesize":
+    case "buyDecor":
+    case "buyFood":
+      return "coin";
+    case "buyFormation":
+    case "purchaseFormation":
+      return "crystal";
+    case "claimMission":
+      return null;
+    default:
+      return null;
+  }
+}
+
+/** Only the wallet that will be debited may authorise the debit. */
+export function precheckWorkshopDebit(input: {
+  currency: "coin" | "crystal";
+  due: number;
+  wallet: "core" | "farm";
+  crystals: number | null;
+  coins: number | null;
+}): PrecheckResult {
+  if (input.due <= 0) return ok;
+  if (input.currency === "crystal") {
+    if (input.crystals === null)
+      return { ok: false, code: "WALLET_BALANCE_UNAVAILABLE", wallet: "core" };
+    if (input.crystals < input.due)
+      return {
+        ok: false,
+        code: "CRYSTAL_INSUFFICIENT",
+        wallet: "core",
+        details: { cost: input.due, available: input.crystals },
+      };
+    return ok;
+  }
+  const balance = input.coins;
+  if (balance === null)
+    return { ok: false, code: "WALLET_BALANCE_UNAVAILABLE", wallet: input.wallet };
+  if (balance < input.due)
+    return {
+      ok: false,
+      code: input.wallet === "farm" ? "FARM_COIN_INSUFFICIENT" : "CORE_COIN_INSUFFICIENT",
+      wallet: input.wallet,
+      details: { cost: input.due, available: balance },
+    };
+  return ok;
+}
+
 export type FarmLandLifecycle = "LOCKED" | "EMPTY" | "GROWING" | "MATURE";
 
 export function precheckHarvestLifecycle(input: {

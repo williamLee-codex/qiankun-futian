@@ -3,6 +3,8 @@ import {
   precheckCropExchange,
   precheckHarvest,
   precheckHarvestLifecycle,
+  precheckWorkshopDebit,
+  workshopDebitCurrency,
   precheckSeedPurchase,
   precheckSow,
   precheckSynthesis,
@@ -133,6 +135,36 @@ describe("transaction pre-checks", () => {
     expect(precheckCropExchange({ cropStock: 5, quantity: 1, rate: 0 })).toMatchObject({
       code: "EXCHANGE_RATE_UNAVAILABLE",
     });
+  });
+
+  it("never lets coin balance authorise a crystal debit", () => {
+    expect(
+      precheckWorkshopDebit({ currency: "crystal", due: 50, wallet: "farm", crystals: 0, coins: 9_999 }),
+    ).toEqual({
+      ok: false,
+      code: "CRYSTAL_INSUFFICIENT",
+      wallet: "core",
+      details: { cost: 50, available: 0 },
+    });
+    expect(
+      precheckWorkshopDebit({ currency: "crystal", due: 50, wallet: "farm", crystals: 50, coins: 0 }),
+    ).toEqual({ ok: true });
+  });
+
+  it("never lets crystal balance authorise a coin debit", () => {
+    expect(
+      precheckWorkshopDebit({ currency: "coin", due: 10, wallet: "farm", crystals: 9_999, coins: 9 }),
+    ).toMatchObject({ code: "FARM_COIN_INSUFFICIENT", wallet: "farm" });
+    expect(
+      precheckWorkshopDebit({ currency: "coin", due: 10, wallet: "core", crystals: 9_999, coins: 9 }),
+    ).toMatchObject({ code: "CORE_COIN_INSUFFICIENT", wallet: "core" });
+  });
+
+  it("maps workshop commands to the currency the plan debits", () => {
+    expect(workshopDebitCurrency("synthesize")).toBe("coin");
+    expect(workshopDebitCurrency("buyFormation")).toBe("crystal");
+    expect(workshopDebitCurrency("purchaseFormation")).toBe("crystal");
+    expect(workshopDebitCurrency("claimMission")).toBeNull();
   });
 
   it("maps the stored land lifecycle to a harvest outcome", () => {
