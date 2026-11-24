@@ -41,7 +41,7 @@ describe.skipIf(!enabled)(
         .purchaseFarmV2SeedPacks;
       exchange = (await import("./farm-v2-crop-exchange")).exchangeFarmV2Crops;
       await storage.pool.query(
-        `create schema if not exists auth; create table auth.users(id uuid primary key,banned_until timestamptz,deleted_at timestamptz); create function auth.uid() returns uuid language sql as 'select null::uuid'; insert into auth.users(id) values ('${userId}');`,
+        `create schema if not exists auth; create table if not exists auth.users(id uuid primary key,banned_until timestamptz,deleted_at timestamptz); create or replace function auth.uid() returns uuid language sql as 'select null::uuid'; insert into auth.users(id) values ('${userId}');`,
       );
       const root = process.env.FARM_V2_PLATFORM_CHECKOUT!;
       await storage.pool.query(
