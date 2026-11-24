@@ -28,10 +28,15 @@ function availableDay(paidAt:string){
  if(Date.now()<Date.parse(paidAt))return 0;
  return Math.min(3,1+Math.floor((rewardDate(new Date().toISOString())-rewardDate(paidAt))/86400000));
 }
-const BAR_LEFT = [5.0, 36.2, 67.4];
-const BAR_TOP = 72;
-const BAR_W = 28.2;
-const BAR_H = 12;
+const PLAN_BARS:Record<Plan,readonly[number,number,number]>={A:[5.0,36.2,67.4],B:[7.95,39.23,70.18],C:[5.0,36.2,67.4]};
+const PLAN_BAR_W:Record<Plan,number>={A:28.2,B:21.7,C:28.2};
+const PLAN_BAR_TOP:Record<Plan,number>={A:72,B:70.3,C:72};
+const PLAN_BAR_H:Record<Plan,number>={A:12,B:12.2,C:12};
+// B.png ships the "購買後開放" labels and the recharge icon inside the
+// artwork, so only transparent hotspots are drawn over the measured pills.
+const BAKED_ART:Record<Plan,boolean>={A:false,B:true,C:false};
+const ICON_BOX:Record<Plan,{left:number;top:number;width:number}>={A:{left:0.6,top:0.6,width:11},B:{left:1.2,top:4.2,width:10.5},C:{left:0.6,top:0.6,width:11}};
+const DAY_BAR={left:8,width:84,top:79.5,height:15.5};
 const RECHARGE_ICON = "/farm-v2/images/farm/recharge-cta.png";
 const planArt=(plan:Plan)=>`/farm-v2/first-purchase/${plan}.png`;
 const dayArt=(plan:Plan,day:number)=>`/farm-v2/first-purchase/daily/${plan}-${day}.png`;
@@ -87,17 +92,31 @@ export function FarmFirstPurchaseRewards({apiBaseUrl,launchToken}:{apiBaseUrl:st
      <img src={src} alt={`${plan.name}${s.shownDay?`第 ${s.shownDay} 天`:""}三日獎勵`}
        onError={()=>setArtFailures(current=>({...current,[src]:true}))}
        style={{display:"block",width:"100%",height:"auto",borderRadius:9}} />
-     {plan.days.map(([,],i)=>{
+     {s.shownDay>0 && (()=>{
+       const day=s.shownDay as 1|2|3;
+       const claimed=s.claimed[day-1];
+       const open=!!s.purchased&&s.pending>0;
+       const label=open?`點擊領取第${day}天獎勵`:claimed?`第${day}天已領取`:`第${day}天尚未開放`;
+       return <button type="button" disabled={busy||!open} onClick={()=>void claim(plan.id,day)}
+         aria-label={`${plan.name}${label}`}
+         style={{position:"absolute",left:`${DAY_BAR.left}%`,top:`${DAY_BAR.top}%`,width:`${DAY_BAR.width}%`,height:`${DAY_BAR.height}%`,
+           background:"transparent",border:0,padding:0,cursor:open?"pointer":"default",display:"grid",placeItems:"center",
+           fontSize:compact?"clamp(9px,2.6vw,15px)":"clamp(10px,1.5vw,22px)",fontWeight:800,letterSpacing:1,
+           color:claimed?"#ffe9a8":open?"#fff6c8":"#f2e9cd",textShadow:"0 2px 5px #10251a",whiteSpace:"nowrap"}}>
+         {label}
+       </button>;
+     })()}
+     {s.shownDay===0&&plan.days.map(([,],i)=>{
        const day=(i+1) as 1|2|3;
        const claimed=s.claimed[i];
        const open=!!s.purchased&&day<=s.available&&!claimed;
        const label=claimed?"已領取":open?"點擊領取":s.purchased?`第${day}天尚未開放`:"購買後開放";
        return <button type="button" key={day} disabled={busy||!open} onClick={()=>void claim(plan.id,day)}
          aria-label={`${plan.name}第${day}天：${label}`}
-         style={{position:"absolute",left:`${BAR_LEFT[i]}%`,top:`${BAR_TOP}%`,width:`${BAR_W}%`,height:`${BAR_H}%`,background:"transparent",border:0,padding:0,cursor:open?"pointer":"default",
+         style={{position:"absolute",left:`${PLAN_BARS[plan.id][i]}%`,top:`${PLAN_BAR_TOP[plan.id]}%`,width:`${PLAN_BAR_W[plan.id]}%`,height:`${PLAN_BAR_H[plan.id]}%`,background:"transparent",border:0,padding:0,cursor:open?"pointer":"default",
            display:"grid",placeItems:"center",fontSize:compact?"clamp(8px,1.1vw,16px)":"clamp(9px,1.35vw,20px)",fontWeight:800,letterSpacing:1,
            color:claimed?"#ffe9a8":open?"#fff6c8":"#e8dfc4",textShadow:"0 2px 4px #123018",whiteSpace:"nowrap"}}>
-         {label}
+         {BAKED_ART[plan.id]?"":label}
        </button>;
      })}
    </div>}
@@ -106,7 +125,7 @@ export function FarmFirstPurchaseRewards({apiBaseUrl,launchToken}:{apiBaseUrl:st
        <strong style={{color:"#ffd76a"}}>{label}</strong><p style={{fontSize:13}}>{reward}</p>
      </div>)}
    </div>}
-   <form action="/api/checkout/create" method="post" target="_top" style={iconFailures[plan.id]?{margin:0}:{position:"absolute",left:"0.6%",top:"0.6%",width:"11%",zIndex:2,margin:0}}>
+   <form action="/api/checkout/create" method="post" target="_top" style={iconFailures[plan.id]?{margin:0}:{position:"absolute",left:`${ICON_BOX[plan.id].left}%`,top:`${ICON_BOX[plan.id].top}%`,width:`${ICON_BOX[plan.id].width}%`,zIndex:2,margin:0}}>
      <input name="packageId" type="hidden" value={plan.packageId} />
      <button type="submit" aria-label={`我要儲值（${plan.id} 方案 ${plan.price}）`}
        style={iconFailures[plan.id]
@@ -114,7 +133,9 @@ export function FarmFirstPurchaseRewards({apiBaseUrl,launchToken}:{apiBaseUrl:st
          : {display:"block",width:"100%",aspectRatio:1,padding:0,border:0,background:"transparent",cursor:"pointer"}}>
        {iconFailures[plan.id]
          ? `我要儲值（${plan.id} 方案 ${plan.price}）`
-         : <img src={RECHARGE_ICON} alt="" onError={()=>setIconFailures(current=>({...current,[plan.id]:true}))} style={{display:"block",width:"100%",height:"100%"}} />}
+         : BAKED_ART[plan.id]
+           ? <span style={{display:"block",width:"100%",aspectRatio:1}} aria-hidden="true" />
+           : <img src={RECHARGE_ICON} alt="" onError={()=>setIconFailures(current=>({...current,[plan.id]:true}))} style={{display:"block",width:"100%",height:"100%"}} />}
      </button>
    </form>
   </article>;
