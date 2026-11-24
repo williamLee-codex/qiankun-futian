@@ -4,6 +4,19 @@ import { and, eq, sql } from "drizzle-orm";
 import { db, farmV2MutationTable, farmV2PlayerStateTable } from "@workspace/db";
 import { journalDb } from "./farm-v2-wallet-saga";
 
+/** Groups mutations by the asset pool they consume, for recovery fencing. */
+export function assetScope(action: string): string {
+  const family = action.includes(":") ? action.slice(0, action.indexOf(":")) : action;
+  if (family === "WORKSHOP") {
+    if (action.includes('"kind":"synthesize"')) return "workshop:synthesize";
+    if (action.includes('"kind":"decompose"')) return "workshop:decompose";
+    if (action.includes('"kind":"display"')) return "workshop:display";
+    return "workshop";
+  }
+  if (family === "seed-purchase") return "seeds";
+  return family;
+}
+
 export async function runFarmV2IdempotentMutation<T>(input: {
   requestId: string;
   userId: string;
@@ -58,9 +71,12 @@ export async function runFarmV2IdempotentMutation<T>(input: {
         .where(eq(farmV2PlayerStateTable.userId, ownerId))
         .for("update");
       const reservations = await tx.execute(
-        sql`SELECT 1 FROM farm_v2_mutation WHERE user_id=${ownerId} AND NOT(user_id=${input.userId} AND request_id=${input.requestId}) AND transaction_state IN ('PENDING','WALLET_PENDING','WALLET_APPLIED','COMPENSATING') AND wallet_transaction->'assetPlan' IS NOT NULL LIMIT 1`,
+        sql`SELECT action FROM farm_v2_mutation WHERE user_id=${ownerId} AND NOT(user_id=${input.userId} AND request_id=${input.requestId}) AND transaction_state IN ('PENDING','WALLET_PENDING','WALLET_APPLIED','COMPENSATING') AND wallet_transaction->'assetPlan' IS NOT NULL LIMIT 20`,
       );
-      if (reservations.rows.length)
+      // Only the asset scope an unfinished plan actually touched may block a new
+      // mutation. A stuck synthesis must not stop sowing, harvesting or seed
+      // purchases, and vice versa.
+      if ((reservations.rows as { action: string }[]).some((row) => assetScope(row.action) === assetScope(input.action)))
         throw new Error("WORKSHOP_RECOVERY_REQUIRED");
     }
 
