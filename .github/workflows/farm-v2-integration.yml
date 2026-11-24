@@ -60,10 +60,13 @@ jobs:
           DO $$ BEGIN CREATE ROLE service_role NOLOGIN BYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
           DO $$ BEGIN CREATE ROLE farm_v2_runtime NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
           CREATE EXTENSION IF NOT EXISTS pgcrypto;
-          -- The legacy extract creates core.wallets and core.wallet_ledgers
-          -- itself; only their parent schema and users table are needed first.
-          CREATE TABLE IF NOT EXISTS core.users (id uuid PRIMARY KEY, created_at timestamptz NOT NULL DEFAULT now());
           SQL
+      - name: Create the core wallet runtime first
+        run: |
+          # The platform migration that declares the core schema runs before the
+          # extracts, so the extracts never pre-empt its plain CREATE SCHEMA.
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q \
+            -f artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0019_create_core_wallet_runtime.sql
       - name: Apply extracted production schema
         run: |
           for f in scripts/dev/core-schema-extract.sql scripts/dev/core-legacy-wallet-schema-extract.sql scripts/dev/farm-bank-schema-extract.sql; do
