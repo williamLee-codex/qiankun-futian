@@ -9,11 +9,15 @@ on:
     paths:
       - "artifacts/api-server/src/lib/**"
       - "lib/db/migrations/**"
+      - "scripts/dev/**"
+      - "artifacts/api-server/scripts/dev/**"
       - ".github/workflows/farm-v2-integration.yml"
   pull_request:
     paths:
       - "artifacts/api-server/src/lib/**"
       - "lib/db/migrations/**"
+      - "scripts/dev/**"
+      - "artifacts/api-server/scripts/dev/**"
       - ".github/workflows/farm-v2-integration.yml"
 permissions:
   contents: read
