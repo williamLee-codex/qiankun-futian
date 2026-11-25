@@ -150,7 +150,9 @@ describe.skipIf(!enabled)(
         "0003_create_core_identity_tables.sql",
         "0006_create_core_wallet_tables.sql",
       ]) {
-        await storage.pool.query(
+        await applyOnce(
+          storage.pool,
+          file,
           readFileSync(
             `${root}/supabase/baseline/dev-canonical-0001-0010/${file}`,
             "utf8",
@@ -177,7 +179,9 @@ describe.skipIf(!enabled)(
       ]) {
         await applyOnce(storage.pool, file, readFileSync(`${root}/supabase/migrations/${file}`, "utf8"));
       }
-      await storage.pool.query(
+      await applyOnce(
+        storage.pool,
+        "0001_farm_v2_authority_reconciliation.sql",
         readFileSync(
           new URL(
             "../../../../lib/db/migrations/0001_farm_v2_authority_reconciliation.sql",
