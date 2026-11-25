@@ -72,7 +72,7 @@ describe.skipIf(!enabled)(
       );
       const bridge = `${root}/supabase/migrations/0123_farm_v2_wallet_bridge.sql`;
       try {
-        await storage.pool.query(readFileSync(bridge, "utf8"));
+        await applyDdl(storage.pool, readFileSync(bridge, "utf8"));
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       }
@@ -2869,7 +2869,7 @@ describe.skipIf(!enabled)(
           ),
         ]) {
           await expect(
-            client.query(readFileSync(file, "utf8")),
+            applyDdl(client, readFileSync(file, "utf8")),
           ).rejects.toThrow("already exists");
           await client.query("ROLLBACK");
         }

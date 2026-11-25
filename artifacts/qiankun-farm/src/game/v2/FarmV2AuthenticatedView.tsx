@@ -12,6 +12,7 @@ import { mapServerLands } from "./farmV2SceneAdapter";
 import type { FarmV2PublicCave } from "./publicCave";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { signInRewards } from "../../signInRewards";
+import { FarmCoinShortfallDialog } from "./FarmCoinShortfallDialog";
 import { useFarmV2Scene } from "./useFarmV2Scene";
 import { CROP_DATA, type Plot } from "../types";
 import { FARM_V2_LANDS } from "./canonicalLandData";
@@ -71,7 +72,28 @@ export function FarmV2AuthenticatedView(props: {
     friendAction,
     pendingFriends,
     errorStatus,
+    coinShortfall,
+    dismissCoinShortfall,
   } = useFarmV2Scene(props.apiBaseUrl, props.launchToken);
+  const [shortfallWallet, setShortfallWallet] = useState<{
+    farm: number | null;
+    central: number | null;
+  }>({ farm: null, central: null });
+  useEffect(() => {
+    if (!coinShortfall) return;
+    let cancelled = false;
+    readWallet()
+      .then((wallet) => {
+        if (!cancelled)
+          setShortfallWallet({ farm: wallet.coins, central: wallet.centralCoins });
+      })
+      .catch(() => {
+        if (!cancelled) setShortfallWallet({ farm: null, central: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [coinShortfall, readWallet]);
   const [seedRecoveries,setSeedRecoveries]=useState<FarmSeedRecovery[]>([]);
   const [checkingSeeds,setCheckingSeeds]=useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
@@ -396,6 +418,37 @@ export function FarmV2AuthenticatedView(props: {
           </p>
         )}
         {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
+        {coinShortfall && (
+          <FarmCoinShortfallDialog
+            paying={coinShortfall.paying === "crystal" ? "central" : coinShortfall.paying}
+            required={null}
+            payingBalance={
+              coinShortfall.paying === "farm"
+                ? shortfallWallet.farm
+                : shortfallWallet.central
+            }
+            otherBalance={
+              coinShortfall.paying === "farm"
+                ? shortfallWallet.central
+                : shortfallWallet.farm
+            }
+            pending={coinShortfall.pending}
+            onConvert={async (from, _to, amount) => {
+              const available = from === "farm" ? shortfallWallet.farm : shortfallWallet.central;
+              if (available === null || available <= 0) return;
+              const move = amount === null ? available : Math.min(amount, available);
+              const ok = await transferCoins(from === "central" ? "in" : "out", move);
+              // Only the balance is refreshed. The pending purchase stays
+              // pending until the player confirms it again.
+              const wallet = await readWallet().catch(() => null);
+              if (wallet)
+                setShortfallWallet({ farm: wallet.coins, central: wallet.centralCoins });
+              if (ok) dismissCoinShortfall();
+            }}
+            onCancel={dismissCoinShortfall}
+            onClose={dismissCoinShortfall}
+          />
+        )}
       </>
     );
   return (
