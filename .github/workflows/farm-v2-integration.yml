@@ -53,6 +53,9 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 <<'SQL'
           CREATE TABLE IF NOT EXISTS public._harness_applied (file text PRIMARY KEY);
           CREATE SCHEMA IF NOT EXISTS auth;
+          CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY);
+          ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS banned_until timestamptz;
+          ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
           CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY, email text);
           -- Supabase's auth helpers, same definition the hosted platform uses.
           CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
