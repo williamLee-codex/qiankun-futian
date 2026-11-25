@@ -66,22 +66,13 @@ jobs:
           DO $$ BEGIN CREATE ROLE farm_v2_runtime NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
           CREATE EXTENSION IF NOT EXISTS pgcrypto;
           SQL
-      - name: Create the core wallet runtime first
+      - name: Apply the canonical baseline
         run: |
-          # The platform migration that declares the core schema runs before the
-          # extracts, so the extracts never pre-empt its plain CREATE SCHEMA.
-          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q \
-            -f artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0019_create_core_wallet_runtime.sql
-      - name: Create the core identity table
-        run: |
-          # The legacy wallet extract hangs its foreign keys off core.users.
-          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q <<'SQL'
-          CREATE SCHEMA IF NOT EXISTS core;
-          CREATE TABLE IF NOT EXISTS core.users (
-            id uuid PRIMARY KEY,
-            created_at timestamptz NOT NULL DEFAULT now()
-          );
-          SQL
+          # The baseline is the only place the core schema is created.
+          for f in artifacts/api-server/scripts/dev/platform-fixtures/supabase/baseline/dev-canonical-0001-0010/0*.sql; do
+            echo "== $(basename "$f")"
+            psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
+          done
       - name: Apply extracted production schema
         run: |
           # The pot receipt table and its guard belong to the platform
