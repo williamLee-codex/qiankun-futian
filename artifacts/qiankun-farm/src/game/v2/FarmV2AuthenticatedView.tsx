@@ -97,6 +97,7 @@ export function FarmV2AuthenticatedView(props: {
   const [seedRecoveries,setSeedRecoveries]=useState<FarmSeedRecovery[]>([]);
   const [checkingSeeds,setCheckingSeeds]=useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [convertDirection, setConvertDirection] = useState<"in" | "out">("in");
   // Radix locks the scroll container it finds, but the game shell also scrolls
   // documentElement on some browsers. Pin both while the art modal is open and
   // restore the exact previous values on close.
@@ -433,17 +434,11 @@ export function FarmV2AuthenticatedView(props: {
                 : shortfallWallet.farm
             }
             pending={coinShortfall.pending}
-            onConvert={async (from, _to, amount) => {
-              const available = from === "farm" ? shortfallWallet.farm : shortfallWallet.central;
-              if (available === null || available <= 0) return;
-              const move = amount === null ? available : Math.min(amount, available);
-              const ok = await transferCoins(from === "central" ? "in" : "out", move);
-              // Only the balance is refreshed. The pending purchase stays
-              // pending until the player confirms it again.
-              const wallet = await readWallet().catch(() => null);
-              if (wallet)
-                setShortfallWallet({ farm: wallet.coins, central: wallet.centralCoins });
-              if (ok) dismissCoinShortfall();
+            onOpenConverter={(from) => {
+              // The converter is the wallet dialog. It decides the amount and
+              // performs the transfer; the prompt never moves coins itself.
+              setConvertDirection(from === "central" ? "in" : "out");
+              setWalletOpen(true);
             }}
             onCancel={dismissCoinShortfall}
             onClose={dismissCoinShortfall}
@@ -523,6 +518,13 @@ export function FarmV2AuthenticatedView(props: {
           <DialogTitle className="sr-only">福田金幣錢包</DialogTitle>
           <FarmCoinWallet
             read={readWallet}
+            initialDirection={convertDirection}
+            onConverted={(balances) => {
+              setShortfallWallet({
+                farm: balances.coins,
+                central: balances.centralCoins,
+              });
+            }}
             transfer={async (direction, amount) => {
               const result = await transferCoins(direction, amount);
               // The platform Header renders the central coin balance on the

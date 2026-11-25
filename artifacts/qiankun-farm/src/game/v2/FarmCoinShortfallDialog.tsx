@@ -12,7 +12,7 @@ export function FarmCoinShortfallDialog({
   payingBalance,
   otherBalance,
   pending,
-  onConvert,
+  onOpenConverter,
   onCancel,
   onClose,
 }: {
@@ -21,7 +21,7 @@ export function FarmCoinShortfallDialog({
   payingBalance: number | null;
   otherBalance: number | null;
   pending: PendingOperation;
-  onConvert: (from: CoinWallet, to: CoinWallet, amount: number | null) => void;
+  onOpenConverter: (from: CoinWallet, to: CoinWallet) => void;
   onCancel: () => void;
   onClose: () => void;
 }) {
@@ -47,7 +47,7 @@ export function FarmCoinShortfallDialog({
           返回
         </button>
       ) : (
-        <button type="button" onClick={() => onConvert(outcome.from, outcome.to, outcome.amount)}>
+        <button type="button" onClick={() => onOpenConverter(outcome.from, outcome.to)}>
           轉換金幣
         </button>
       )}

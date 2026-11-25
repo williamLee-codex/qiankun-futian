@@ -33,10 +33,14 @@ export function FarmCoinWallet(props: {
   pending: () => Transfer[];
   busy: boolean;
   onClose?: () => void;
+  initialDirection?: "in" | "out";
+  onConverted?: (balances: FarmCoinBalances) => void;
 }) {
   const [balances, setBalances] = useState<FarmCoinBalances | null>(null),
     [amount, setAmount] = useState(""),
-    [direction, setDirection] = useState<"in" | "out">("in");
+    [direction, setDirection] = useState<"in" | "out">(
+      props.initialDirection ?? "in",
+    );
   const [artLoaded, setArtLoaded] = useState(
     () => preloadedArt?.complete === true && preloadedArt.naturalWidth > 0,
   );

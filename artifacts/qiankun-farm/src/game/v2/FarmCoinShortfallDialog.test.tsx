@@ -7,7 +7,7 @@ const pending = { itemId: "seed:1", quantity: 3, label: "種子" };
 
 describe("FarmCoinShortfallDialog", () => {
   it("offers a conversion for the exact shortfall and keeps the pending operation", () => {
-    const onConvert = vi.fn();
+    const onOpenConverter = vi.fn();
     render(
       <FarmCoinShortfallDialog
         paying="central"
@@ -15,14 +15,14 @@ describe("FarmCoinShortfallDialog", () => {
         payingBalance={100}
         otherBalance={900}
         pending={pending}
-        onConvert={onConvert}
+        onOpenConverter={onOpenConverter}
         onCancel={vi.fn()}
         onClose={vi.fn()}
       />,
     );
     expect(screen.getByRole("dialog").dataset.pendingQuantity).toBe("3");
     screen.getByRole("button", { name: "轉換金幣" }).click();
-    expect(onConvert).toHaveBeenCalledWith("farm", "central", 200);
+    expect(onOpenConverter).toHaveBeenCalledWith("farm", "central");
   });
 
   it("offers only the way back when both wallets are short", () => {
@@ -33,7 +33,7 @@ describe("FarmCoinShortfallDialog", () => {
         payingBalance={10}
         otherBalance={10}
         pending={pending}
-        onConvert={vi.fn()}
+        onOpenConverter={vi.fn()}
         onCancel={vi.fn()}
         onClose={vi.fn()}
       />,
@@ -50,7 +50,7 @@ describe("FarmCoinShortfallDialog", () => {
         payingBalance={5}
         otherBalance={0}
         pending={pending}
-        onConvert={vi.fn()}
+        onOpenConverter={vi.fn()}
         onCancel={vi.fn()}
         onClose={vi.fn()}
       />,
