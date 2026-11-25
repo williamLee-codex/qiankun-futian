@@ -2411,7 +2411,7 @@ describe.skipIf(!enabled)(
       dropWalletResponse = false;
       dropFarmCommit = false;
       await storage.pool.query(
-        `truncate farm_v2_land, farm_v2_mutation, farm_v2_player_state, farm_test_failures, farm_v2_authorization_attempt, farm_v2_reconciliation_event, farm_v2_reconciliation_case; truncate farm_v2_friend_operations, farm_v2_paid_operations, farm_v2_wallet_closures, farm_v2_wallet_reconciliation_audit; truncate core.wallet_ledgers; insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','credit',600,'payment','fixture-payment'); truncate farm_v2_atomic_pot_receipts, core_wallet_ledger, core_wallets; select core_wallet_get_or_create('${userId}'); update core_wallets set coin_balance=100;`,
+        `truncate farm_v2_land, farm_v2_mutation, farm_v2_player_state, farm_test_failures, farm_v2_authorization_attempt, farm_v2_reconciliation_event, farm_v2_reconciliation_case cascade; truncate farm_v2_friend_operations, farm_v2_paid_operations, farm_v2_wallet_closures, farm_v2_wallet_reconciliation_audit cascade; truncate core.wallet_ledgers cascade; insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','credit',600,'payment','fixture-payment'); truncate farm_v2_atomic_pot_receipts, core_wallet_ledger, core_wallets cascade; select core_wallet_get_or_create('${userId}'); update core_wallets set coin_balance=100;`,
       );
       const warehouse = {
         seeds: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
