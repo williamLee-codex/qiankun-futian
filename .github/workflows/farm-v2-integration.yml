@@ -94,7 +94,6 @@ jobs:
           # launch tokens and the 0123-0136 farm chain. The readings, astrology
           # and other apps stay out of this database.
           for f in artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0019_*.sql \
-                   artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0019_*.sql \
                    artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/012[3-9]_*.sql \
                    artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/01[0-3][0-9]_farm_v2_*.sql \
                    artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/013[0-6]_farm_v2_*.sql; do
