@@ -24,8 +24,8 @@ export function planCompensation(input: {
   if (input.amount === null || !Number.isInteger(input.amount) || input.amount <= 0) {
     return { action: "escalate", why: "ambiguous_amount" };
   }
-  if (input.coreApplied === input.farmApplied) return { action: "none", why: "balanced" };
   if (!input.coreApplied && !input.farmApplied) return { action: "escalate", why: "unknown_direction" };
+  if (input.coreApplied === input.farmApplied) return { action: "none", why: "balanced" };
   const source: "central" | "farm" = input.coreApplied ? "central" : "farm";
   return {
     action: "compensate",
