@@ -39,6 +39,12 @@ async function applyOnce(
   file: string,
   sql: string,
 ) {
+  // When the harness has already built the schema, the suite never applies a
+  // file: it only asserts. The ledger is the single source of truth.
+  const seeded = (await runner.query(
+    "select 1 from public._harness_applied limit 1",
+  )) as { rows?: unknown[] };
+  if ((seeded.rows?.length ?? 0) > 0) return false;
   // Claim and apply in one transaction: a failed DDL leaves no ledger row.
   await runner.query("begin");
   try {
