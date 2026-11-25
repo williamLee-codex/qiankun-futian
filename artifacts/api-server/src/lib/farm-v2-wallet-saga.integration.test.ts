@@ -151,7 +151,7 @@ describe.skipIf(!enabled)(
         `insert into core.users(id,auth_user_id,status) values('10000000-0000-0000-0000-000000000001','${userId}','active');insert into core.wallets(id,user_id) values('${userId}','10000000-0000-0000-0000-000000000001');insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','credit',600,'payment','fixture-payment');`,
       );
       await storage.pool.query(
-        "create table launch_tokens(id uuid primary key default gen_random_uuid(),user_id uuid,app_id text,token_hash text unique,expires_at timestamptz,used_at timestamptz,revoked_at timestamptz)",
+        "CREATE TABLE IF NOT EXISTS launch_tokens(id uuid primary key default gen_random_uuid(),user_id uuid,app_id text,token_hash text unique,expires_at timestamptz,used_at timestamptz,revoked_at timestamptz)",
       );
       for (const file of [
         "0124_farm_v2_sessions.sql",
@@ -177,10 +177,10 @@ describe.skipIf(!enabled)(
         ),
       );
       await storage.pool.query(`
-      create table farm_v2_player_state(user_id text primary key, first_farm_entered_at timestamptz, effective_paid_crystals integer not null default 0, access_state jsonb not null, warehouse_state jsonb not null, mission_state jsonb not null, pet_state jsonb not null, farmer_state jsonb not null, chaos_seed_state jsonb, updated_at timestamptz default now());
-      create table farm_v2_land(user_id text,land_id integer,lifecycle text,access_active boolean,planted_quantity integer default 0,planted_at timestamptz,matures_at timestamptz,version bigint default 0,primary key(user_id,land_id));
-      create table farm_v2_mutation(user_id text,request_id text,action text not null,response jsonb,transaction_state text not null default 'PENDING',wallet_direction text,wallet_currency text,wallet_amount integer,wallet_transaction jsonb,failure_code text,updated_at timestamptz default now(),created_at timestamptz default now(),primary key(user_id,request_id));
-      create table farm_test_failures(flag boolean); create function fail_farm_commit() returns trigger language plpgsql as $$ begin if new.transaction_state='COMPLETED' and exists(select 1 from farm_test_failures) then raise exception 'TEST_FARM_COMMIT_FAILURE'; end if; return new; end $$; create trigger farm_test_failure before update on farm_v2_mutation for each row execute function fail_farm_commit();
+      CREATE TABLE IF NOT EXISTS farm_v2_player_state(user_id text primary key, first_farm_entered_at timestamptz, effective_paid_crystals integer not null default 0, access_state jsonb not null, warehouse_state jsonb not null, mission_state jsonb not null, pet_state jsonb not null, farmer_state jsonb not null, chaos_seed_state jsonb, updated_at timestamptz default now());
+      CREATE TABLE IF NOT EXISTS farm_v2_land(user_id text,land_id integer,lifecycle text,access_active boolean,planted_quantity integer default 0,planted_at timestamptz,matures_at timestamptz,version bigint default 0,primary key(user_id,land_id));
+      CREATE TABLE IF NOT EXISTS farm_v2_mutation(user_id text,request_id text,action text not null,response jsonb,transaction_state text not null default 'PENDING',wallet_direction text,wallet_currency text,wallet_amount integer,wallet_transaction jsonb,failure_code text,updated_at timestamptz default now(),created_at timestamptz default now(),primary key(user_id,request_id));
+      CREATE TABLE IF NOT EXISTS farm_test_failures(flag boolean); create function fail_farm_commit() returns trigger language plpgsql as $$ begin if new.transaction_state='COMPLETED' and exists(select 1 from farm_test_failures) then raise exception 'TEST_FARM_COMMIT_FAILURE'; end if; return new; end $$; create trigger farm_test_failure before update on farm_v2_mutation for each row execute function fail_farm_commit();
     `);
     });
     async function gameplayFixture() {
