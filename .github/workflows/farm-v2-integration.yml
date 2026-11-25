@@ -82,12 +82,6 @@ jobs:
             echo "== $(basename "$f")"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
           done
-      - name: Create the core wallet runtime
-        run: |
-          # 0019 depends on the baseline identity tables and owns the ledger
-          # that 0132 and the security extract build on.
-          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q \
-            -f artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0019_create_core_wallet_runtime.sql
       - name: Apply extracted production schema
         run: |
           # The pot receipt table and its guard belong to the platform
