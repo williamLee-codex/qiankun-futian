@@ -56,3 +56,11 @@ describe("coin shortfall planning", () => {
     expect(shortfallWalletForCode("FARM_LAND_BUSY")).toBeNull();
   });
 });
+
+describe("resumesPendingPurchase", () => {
+  it("resumes only when the paying wallet can cover the price", async () => {
+    const { resumesPendingPurchase } = await import("./coinShortfall");
+    expect(resumesPendingPurchase({ paying: "central", required: 100, payingBalance: 100, otherBalance: 0 })).toBe(true);
+    expect(resumesPendingPurchase({ paying: "central", required: 100, payingBalance: 40, otherBalance: 0 })).toBe(false);
+  });
+});

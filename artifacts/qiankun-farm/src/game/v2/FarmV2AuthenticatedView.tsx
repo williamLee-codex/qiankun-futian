@@ -1,5 +1,6 @@
 import type { FarmSeedRecovery } from "./farmV2ApiClient";
 import { FarmCoinWallet } from "./FarmCoinWallet";
+import { FarmResourceShortfallDialog } from "./FarmResourceShortfallDialog";
 import { FarmFirstPurchaseRewards } from "./FarmFirstPurchaseRewards";
 import { FarmNewbieBoost } from "./FarmNewbieBoost";
 import { farmV2ErrorMessage } from "./farmV2ErrorMessage";
@@ -74,6 +75,9 @@ export function FarmV2AuthenticatedView(props: {
     errorStatus,
     coinShortfall,
     dismissCoinShortfall,
+    resourceShortfall,
+    dismissResourceShortfall,
+    repeatPendingOperation,
   } = useFarmV2Scene(props.apiBaseUrl, props.launchToken);
   const [shortfallWallet, setShortfallWallet] = useState<{
     farm: number | null;
@@ -97,6 +101,12 @@ export function FarmV2AuthenticatedView(props: {
   const [seedRecoveries,setSeedRecoveries]=useState<FarmSeedRecovery[]>([]);
   const [checkingSeeds,setCheckingSeeds]=useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [resumePurchase, setResumePurchase] = useState<{
+    itemId: string;
+    quantity: number;
+    label: string;
+    landId: number;
+  } | null>(null);
   const [convertDirection, setConvertDirection] = useState<"in" | "out">("in");
   // Radix locks the scroll container it finds, but the game shell also scrolls
   // documentElement on some browsers. Pin both while the art modal is open and
@@ -444,6 +454,35 @@ export function FarmV2AuthenticatedView(props: {
             onClose={dismissCoinShortfall}
           />
         )}
+        {resourceShortfall && (
+          <FarmResourceShortfallDialog
+            kind={resourceShortfall.kind}
+            required={null}
+            available={null}
+            onShop={undefined}
+            onBack={dismissResourceShortfall}
+          />
+        )}
+        {resumePurchase && (
+          <div role="dialog" aria-label="恢復購買" className="farm-resume-purchase">
+            <p>
+              金幣已就緒：{resumePurchase.label} × {resumePurchase.quantity}
+            </p>
+            <button
+              type="button"
+              aria-label="確認購買"
+              onClick={async () => {
+                const done = await repeatPendingOperation(resumePurchase, resumePurchase.landId);
+                if (done) setResumePurchase(null);
+              }}
+            >
+              確認購買
+            </button>
+            <button type="button" aria-label="返回" onClick={() => setResumePurchase(null)}>
+              返回
+            </button>
+          </div>
+        )}
       </>
     );
   return (
@@ -524,6 +563,19 @@ export function FarmV2AuthenticatedView(props: {
                 farm: balances.coins,
                 central: balances.centralCoins,
               });
+              // Back to the purchase with the same item and quantity; the
+              // player still confirms, and a second refusal reopens the prompt.
+              if (coinShortfall) {
+                const [operation, land] = coinShortfall.pending.itemId.split(":");
+                setResumePurchase({
+                  itemId: coinShortfall.pending.itemId,
+                  quantity: coinShortfall.pending.quantity,
+                  label: operation,
+                  landId: Number(land) || 1,
+                });
+                dismissCoinShortfall();
+                setWalletOpen(false);
+              }
             }}
             transfer={async (direction, amount) => {
               const result = await transferCoins(direction, amount);

@@ -50,3 +50,16 @@ const SHORTFALL_CODES: Record<string, CoinWallet | "crystal"> = {
 export function shortfallWalletForCode(code: string): CoinWallet | "crystal" | null {
   return SHORTFALL_CODES[code] ?? null;
 }
+
+/**
+ * After a conversion the purchase is only resumed when the paying wallet can
+ * now cover the price. The player still has to confirm; nothing is bought here.
+ */
+export function resumesPendingPurchase(input: {
+  paying: CoinWallet;
+  required: number | null;
+  payingBalance: number | null;
+  otherBalance: number | null;
+}): boolean {
+  return planCoinShortfall(input).kind === "sufficient";
+}

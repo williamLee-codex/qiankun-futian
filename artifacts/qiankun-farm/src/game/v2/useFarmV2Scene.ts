@@ -58,6 +58,9 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   );
   const [data, setData] = useState<SceneData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resourceShortfall, setResourceShortfall] = useState<{
+    kind: "crystal" | "seed" | "material";
+  } | null>(null);
   const [coinShortfall, setCoinShortfall] = useState<{
     paying: "central" | "farm" | "crystal";
     pending: { itemId: string; quantity: number; label: string };
@@ -179,7 +182,8 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
           code === "FARM_V2_LAUNCH_TOKEN_REQUIRED" ||
           code === "AUTH_REQUIRED";
         const shortWallet = shortfallWalletForCode(code);
-        if (shortWallet)
+        if (shortWallet === "crystal") setResourceShortfall({ kind: "crystal" });
+        else if (shortWallet)
           setCoinShortfall({
             paying: shortWallet,
             pending: {
@@ -284,6 +288,24 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   return {
     coinShortfall,
     dismissCoinShortfall: () => setCoinShortfall(null),
+    resourceShortfall,
+    dismissResourceShortfall: () => setResourceShortfall(null),
+    // Restored purchase: the player confirms, so nothing is bought automatically.
+    repeatPendingOperation: (
+      pending: { itemId: string; quantity: number },
+      landId: number,
+    ) => {
+      const [operation] = pending.itemId.split(":");
+      return mutate(
+        operation as
+          | "purchaseSeeds"
+          | "exchangeCrops"
+          | "sow"
+          | "harvest",
+        landId,
+        pending.quantity,
+      );
+    },
     readDailyActivity,
     claimDailyActivity,
     inspectDailyActivity,

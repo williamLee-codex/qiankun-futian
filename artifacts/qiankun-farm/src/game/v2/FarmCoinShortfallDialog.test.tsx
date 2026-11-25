@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { afterEach } from "vitest";
+
+afterEach(cleanup);
 import { FarmCoinShortfallDialog } from "./FarmCoinShortfallDialog";
 
 const pending = { itemId: "seed:1", quantity: 3, label: "種子" };
