@@ -103,6 +103,27 @@ jobs:
             echo "== $f"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
           done
+      - name: Apply extracted production schema
+        run: |
+          # The pot receipt table and its guard belong to the platform
+          # migration that declares them, not to the catalog extract.
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q \
+            -f artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0132_farm_v2_atomic_pot_settlement.sql
+          for f in scripts/dev/farm-bank-schema-extract.sql; do
+            echo "== $f"
+            psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+      - name: Apply migrations
+        run: |
+          for f in $(ls lib/db/migrations/*.sql | sort); do
+            case "$f" in
+              *0004_farm_v2_local_coin_bank.sql)
+                # The extracted production schema already creates this bank.
+                echo "skip $f"; continue ;;
+            esac
+            echo "== $f"
+            psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
+          done
       - name: Apply the farm-relevant platform migrations
         run: |
           # Only what Farm V2 actually touches: identity, wallet, friends,
