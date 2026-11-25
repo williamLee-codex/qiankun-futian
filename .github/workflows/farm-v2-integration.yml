@@ -85,7 +85,7 @@ jobs:
           # migration that declares them, not to the catalog extract.
           psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q \
             -f artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0132_farm_v2_atomic_pot_settlement.sql
-          for f in scripts/dev/core-legacy-wallet-schema-extract.sql scripts/dev/farm-bank-schema-extract.sql; do
+          for f in scripts/dev/farm-bank-schema-extract.sql; do
             echo "== $f"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
           done
