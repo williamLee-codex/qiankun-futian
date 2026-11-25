@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { farmV2PlayerStateTable } from "@workspace/db";
+import { farmV2MutationTable, farmV2PlayerStateTable } from "@workspace/db";
 import { getExchangeRate } from "../../../qiankun-farm/src/game/v2/canonicalEconomyData";
 import {
   applyCoinReward,
@@ -38,21 +38,37 @@ export async function exchangeFarmV2Crops(input: {
   const landId = input.landId as FarmLandId;
   const rate = getExchangeRate(landId);
 
+  // A request that already owns a journal is a retry: the journal decides what
+  // happens, so the fresh-request prechecks must not short-circuit it.
+  const [journal] = await db
+    .select({ requestId: farmV2MutationTable.requestId })
+    .from(farmV2MutationTable)
+    .where(
+      and(
+        eq(farmV2MutationTable.userId, input.userId),
+        eq(farmV2MutationTable.requestId, input.requestId),
+      ),
+    )
+    .limit(1);
   // Exchanging more than the player holds is a normal refusal; it must not
   // reach the wallet saga, which is where a PENDING residue could be created.
-  const [prePlayer] = await db
+  const [prePlayer] = journal
+    ? [{ warehouseState: null }]
+    : await db
     .select({ warehouseState: farmV2PlayerStateTable.warehouseState })
     .from(farmV2PlayerStateTable)
     .where(eq(farmV2PlayerStateTable.userId, input.userId))
     .limit(1);
-  if (!prePlayer) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
-  const preWarehouse = prePlayer.warehouseState as FarmWarehouse;
-  const precheck = precheckCropExchange({
-    cropStock: preWarehouse.crops[landId] ?? 0,
-    quantity: input.cropQuantity,
-    rate: rate.cropQuantity,
-  });
-  if (!precheck.ok) throw new Error(precheck.code);
+  if (!journal) {
+    if (!prePlayer) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
+    const preWarehouse = prePlayer.warehouseState as FarmWarehouse;
+    const precheck = precheckCropExchange({
+      cropStock: preWarehouse.crops[landId] ?? 0,
+      quantity: input.cropQuantity,
+      rate: rate.cropQuantity,
+    });
+    if (!precheck.ok) throw new Error(precheck.code);
+  }
 
   return runFarmV2RecoveryWithPostRollbackCompensation({
     userId: input.userId,
