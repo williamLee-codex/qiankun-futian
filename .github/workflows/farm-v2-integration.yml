@@ -88,26 +88,33 @@ jobs:
             -f artifacts/api-server/scripts/dev/platform-friendships-extract.sql
           psql -h 127.0.0.1 -U postgres -d farm_v2_test -q -c \
             "INSERT INTO public._harness_applied(file) VALUES ('platform-friendships-extract.sql') ON CONFLICT DO NOTHING;"
-      - name: Apply the farm-relevant platform migrations
+      - name: Apply the farm migration chain
         run: |
-          # Only what Farm V2 actually touches: identity, wallet, friends,
-          # launch tokens and the 0123-0136 farm chain. The readings, astrology
-          # and other apps stay out of this database.
-          for f in artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0019_*.sql \
-                   artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/012[3-9]_farm_v2_*.sql \
-                   artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/013[0-6]_farm_v2_*.sql; do
-            [ -f "$f" ] || continue
-            echo "== $(basename "$f")"
+          # Explicit order, verified against the files. No globs, no repeats.
+          for name in \
+            0019_create_core_wallet_runtime.sql \
+            0123_farm_v2_wallet_bridge.sql \
+            0124_farm_v2_sessions.sql \
+            0125_farm_v2_paid_auth_identity.sql \
+            0126_farm_v2_account_revocation.sql \
+            0127_farm_v2_paid_operation_authority.sql \
+            0128_farm_v2_operator_reconciliation.sql \
+            0129_farm_v2_wallet_creation_and_historical_revocation.sql \
+            0130_farm_v2_workshop_wallet_contract.sql \
+            0131_farm_v2_friend_operation_barrier.sql \
+            0132_farm_v2_atomic_pot_settlement.sql \
+            0136_farm_v2_formation_tier_contract.sql \
+          ; do
+            f="artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/$name"
+            echo "== $name"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -q -c \
-              "INSERT INTO public._harness_applied(file) VALUES ('$(basename "$f")') ON CONFLICT DO NOTHING;"
+              "INSERT INTO public._harness_applied(file) VALUES ('$name') ON CONFLICT DO NOTHING;"
           done
       - name: Apply extracted production schema
         run: |
           # The pot receipt table and its guard belong to the platform
           # migration that declares them, not to the catalog extract.
-          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q \
-            -f artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0132_farm_v2_atomic_pot_settlement.sql
           for f in scripts/dev/farm-bank-schema-extract.sql; do
             echo "== $f"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
