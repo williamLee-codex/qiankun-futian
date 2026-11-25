@@ -51,6 +51,7 @@ jobs:
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -c "CREATE DATABASE farm_v2_test"
           psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE IF NOT EXISTS public._harness_applied (file text PRIMARY KEY);
           CREATE SCHEMA IF NOT EXISTS auth;
           CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY, email text);
           -- Supabase's auth helpers, same definition the hosted platform uses.
@@ -136,6 +137,21 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q <<'SQL'
           DROP POLICY IF EXISTS core_wallets_owner_select ON public.core_wallets;
           DROP POLICY IF EXISTS core_wallet_ledger_owner_select ON public.core_wallet_ledger;
+          SQL
+      - name: Record what the harness applied
+        run: |
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q <<'SQL'
+          INSERT INTO public._harness_applied(file) VALUES
+            ('0001_create_core_schema.sql'),('0002_enable_required_extensions.sql'),
+            ('0003_create_core_identity_tables.sql'),('0004_create_core_subject_tables.sql'),
+            ('0005_create_core_consent_tables.sql'),('0006_create_core_wallet_tables.sql'),
+            ('0007_create_core_journey_tables.sql'),('0008_create_updated_at_triggers.sql'),
+            ('0009_enforce_wallet_ledger_immutability.sql'),('0010_create_core_rls_policies.sql'),
+            ('0019_create_core_wallet_runtime.sql'),('0132_farm_v2_atomic_pot_settlement.sql'),
+            ('farm-bank-schema-extract.sql'),('core-schema-security-extract.sql'),
+            ('0001_farm_v2_authority_reconciliation.sql'),
+            ('0002_farm_v2_local_coin_bank.sql'),('0003_farm_v2_bank_bridge.sql')
+          ON CONFLICT DO NOTHING;
           SQL
       - name: Integration tests
         run: pnpm --filter @workspace/api-server exec vitest run src/lib --reporter=verbose

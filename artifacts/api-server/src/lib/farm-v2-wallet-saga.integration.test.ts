@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import {
   afterAll,
   beforeAll,
@@ -29,6 +30,22 @@ async function applyDdl(
     if (DUPLICATE_OBJECT.has((error as { code?: string }).code ?? "")) return;
     throw error;
   }
+}
+
+// One shared contract with CI: a file recorded as applied is verified, never
+// applied twice. The harness writes that record; this helper honours it.
+async function applyOnce(
+  runner: { query: (sql: string, values?: unknown[]) => Promise<unknown> },
+  file: string,
+  sql: string,
+) {
+  const claimed = (await runner.query(
+    "insert into public._harness_applied(file) values ($1) on conflict do nothing returning file",
+    [file],
+  )) as { rows?: unknown[] };
+  if ((claimed.rows?.length ?? 0) === 0) return false;
+  await runner.query(sql);
+  return true;
 }
 
 // The CI job builds the schema from the catalog extracts. When it has already
@@ -75,7 +92,15 @@ describe.skipIf(!enabled)(
       await storage.pool.query(
         "CREATE TABLE platform_friendships(user_a_id uuid,user_b_id uuid,status text,PRIMARY KEY(user_a_id,user_b_id))",
       );
-      if (await schemaExists(storage.pool, "core")) {
+      if (!(await applyOnce(storage.pool, "0019_create_core_wallet_runtime.sql", readFileSync(`${root}/supabase/migrations/0019_create_core_wallet_runtime.sql`, "utf8")))) {
+        const { rows } = (await storage.pool.query(
+          "select tablename from pg_tables where schemaname = 'public' and tablename in ('core_wallets','core_wallet_ledger')",
+        )) as { rows: { tablename: string }[] };
+        expect(rows.map((row) => row.tablename).sort()).toEqual([
+          "core_wallet_ledger",
+          "core_wallets",
+        ]);
+      } else if (false) {
         const { rows } = (await storage.pool.query(
           "select tablename from pg_tables where schemaname = 'public' and tablename in ('core_wallets','core_wallet_ledger')",
         )) as { rows: { tablename: string }[] };
@@ -93,7 +118,7 @@ describe.skipIf(!enabled)(
       }
       const bridge = `${root}/supabase/migrations/0123_farm_v2_wallet_bridge.sql`;
       try {
-        await applyDdl(storage.pool, readFileSync(bridge, "utf8"));
+        await applyOnce(storage.pool, basename(bridge), readFileSync(bridge, "utf8"));
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       }
@@ -127,7 +152,7 @@ describe.skipIf(!enabled)(
         "0132_farm_v2_atomic_pot_settlement.sql",
         "0136_farm_v2_formation_tier_contract.sql",
       ]) {
-        await applyDdl(storage.pool, readFileSync(`${root}/supabase/migrations/${file}`, "utf8"));
+        await applyOnce(storage.pool, file, readFileSync(`${root}/supabase/migrations/${file}`, "utf8"));
       }
       await storage.pool.query(
         readFileSync(
@@ -2890,7 +2915,7 @@ describe.skipIf(!enabled)(
           ),
         ]) {
           await expect(
-            applyDdl(client, readFileSync(file, "utf8")),
+            applyOnce(client, basename(String(file)), readFileSync(file, "utf8")),
           ).rejects.toThrow("already exists");
           await client.query("ROLLBACK");
         }
