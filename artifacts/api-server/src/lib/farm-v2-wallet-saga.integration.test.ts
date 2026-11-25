@@ -15,6 +15,22 @@ const enabled = Boolean(
   process.env.FARM_V2_TEST_DATABASE_URL &&
   process.env.FARM_V2_PLATFORM_CHECKOUT,
 );
+// The harness may already own an object a fixture file declares. Only
+// "already exists" is tolerated, and the object is then compared by the
+// assertions that follow; any other error fails the run.
+const DUPLICATE_OBJECT = new Set(["42P06", "42P07", "42710"]);
+async function applyDdl(
+  runner: { query: (sql: string) => Promise<unknown> },
+  sql: string,
+) {
+  try {
+    await runner.query(sql);
+  } catch (error) {
+    if (DUPLICATE_OBJECT.has((error as { code?: string }).code ?? "")) return;
+    throw error;
+  }
+}
+
 describe.skipIf(!enabled)(
   "durable Farm/Core transaction integration on isolated PostgreSQL",
   () => {
@@ -41,13 +57,14 @@ describe.skipIf(!enabled)(
         .purchaseFarmV2SeedPacks;
       exchange = (await import("./farm-v2-crop-exchange")).exchangeFarmV2Crops;
       await storage.pool.query(
-        `create schema auth; create table auth.users(id uuid primary key,banned_until timestamptz,deleted_at timestamptz); create function auth.uid() returns uuid language sql as 'select null::uuid'; insert into auth.users(id) values ('${userId}');`,
+        `create schema if not exists auth; create table if not exists auth.users(id uuid primary key,banned_until timestamptz,deleted_at timestamptz); create or replace function auth.uid() returns uuid language sql as 'select null::uuid'; insert into auth.users(id) values ('${userId}');`,
       );
       const root = process.env.FARM_V2_PLATFORM_CHECKOUT!;
       await storage.pool.query(
         "CREATE TABLE platform_friendships(user_a_id uuid,user_b_id uuid,status text,PRIMARY KEY(user_a_id,user_b_id))",
       );
-      await storage.pool.query(
+      await applyDdl(
+        storage.pool,
         readFileSync(
           `${root}/supabase/migrations/0019_create_core_wallet_runtime.sql`,
           "utf8",
@@ -55,7 +72,7 @@ describe.skipIf(!enabled)(
       );
       const bridge = `${root}/supabase/migrations/0123_farm_v2_wallet_bridge.sql`;
       try {
-        await storage.pool.query(readFileSync(bridge, "utf8"));
+        await applyDdl(storage.pool, readFileSync(bridge, "utf8"));
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       }
@@ -89,9 +106,7 @@ describe.skipIf(!enabled)(
         "0132_farm_v2_atomic_pot_settlement.sql",
         "0136_farm_v2_formation_tier_contract.sql",
       ]) {
-        await storage.pool.query(
-          readFileSync(`${root}/supabase/migrations/${file}`, "utf8"),
-        );
+        await applyDdl(storage.pool, readFileSync(`${root}/supabase/migrations/${file}`, "utf8"));
       }
       await storage.pool.query(
         readFileSync(
@@ -2854,7 +2869,7 @@ describe.skipIf(!enabled)(
           ),
         ]) {
           await expect(
-            client.query(readFileSync(file, "utf8")),
+            applyDdl(client, readFileSync(file, "utf8")),
           ).rejects.toThrow("already exists");
           await client.query("ROLLBACK");
         }
