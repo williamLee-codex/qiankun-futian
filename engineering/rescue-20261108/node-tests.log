@@ -1,0 +1,72 @@
+✔ primary failure survives a simultaneous cleanup failure (212.806631ms)
+✔ cleanup-only failure propagates (66.465053ms)
+✔ success waits for Core settlement and destroys the lock session (25.931136ms)
+✔ null primary rejection is not masked by cleanup error (29.907674ms)
+✔ simultaneous cleanup failure emits only sanitized diagnostic metadata (32.132129ms)
+✔ Core begin HTTP 503 preserves authority error while recording cleanup failure (25.655202ms)
+✔ Core begin HTTP 401 maps to session inactive and still closes authority barrier (24.474559ms)
+✔ advisory lock failure does not register or call Core and releases client (26.359773ms)
+✔ registration failure does not call Core and releases client (85.552909ms)
+✔ Core transport failure retains original exception and emits sanitized phase-only metadata (27.415075ms)
+✔ SQLSTATE 53300 at authority lock never starts Core or registers a transaction (15.986838ms)
+✔ SQLSTATE 53300 at pool connection never acquires lock or calls Core (17.162993ms)
+✔ does not publish JSON until authority cleanup completes (3.610294ms)
+✔ cleanup failure never publishes a buffered success (0.588602ms)
+✔ route errors reach error middleware only after cleanup (0.695707ms)
+✔ an operation rejection restores the response writer (0.563361ms)
+✔ preserves the operation result and records bounded numeric timing (5.968008ms)
+✔ preserves failures and does not log exception details or credentials (1.451099ms)
+✔ invalid stage labels cannot leak arbitrary input into logs (0.460331ms)
+✔ a failing logging sink cannot turn a committed operation into an error (0.495255ms)
+✔ decorated domain calls preserve arguments, return identity and call count (0.613173ms)
+✔ authority_register stage reports success and preserves a successful write (9.356003ms)
+✔ authority_register stage reports failure without masking or logging the database error (0.632384ms)
+✔ correlates concurrent authorization stages without logging request identity (0.841776ms)
+✔ records only validated SQLSTATE and preserves exact error identity (1.53974ms)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+file:///workspace/scratch/144c97612380/farm/artifacts/qiankun-farm/src/game/v2/farmV2ApiClient.ts:38
+  constructor(
+    readonly status: number,
+             ^^^^^^^^^^^^^^
+    readonly code: string,
+
+SyntaxError [ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX]: TypeScript parameter property is not supported in strip-only mode
+    at parseTypeScript (node:internal/modules/typescript:68:40)
+    at processTypeScriptCode (node:internal/modules/typescript:146:42)
+    at stripTypeScriptModuleTypes (node:internal/modules/typescript:215:22)
+    at ModuleLoader.<anonymous> (node:internal/modules/esm/translators:680:29)
+    at #translate (node:internal/modules/esm/loader:438:20)
+    at afterLoad (node:internal/modules/esm/loader:506:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:511:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:564:36)
+    at afterResolve (node:internal/modules/esm/loader:611:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:617:12) {
+  code: 'ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX'
+}
+
+Node.js v24.22.1
+✖ artifacts/qiankun-farm/src/game/v2/farmV2ApiClient.node-test.mjs (1629.93144ms)
+FARM_ISOLATED_CONNECTION_CHECK_FAILED UNKNOWN
+✔ reject production before acquiring credentials (1.094952ms)
+✔ reject open entry before acquiring credentials (0.252382ms)
+✔ reject wrong database before acquiring credentials (0.178233ms)
+✔ reject transaction mode before acquiring credentials (0.228803ms)
+✔ reject write methods (0.24881ms)
+✔ driver failures never expose secrets (2.372177ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 31
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1680.396002
+
+✖ failing tests:
+
+test at artifacts/qiankun-farm/src/game/v2/farmV2ApiClient.node-test.mjs:1:1
+✖ artifacts/qiankun-farm/src/game/v2/farmV2ApiClient.node-test.mjs (1629.93144ms)
+  'test failed'

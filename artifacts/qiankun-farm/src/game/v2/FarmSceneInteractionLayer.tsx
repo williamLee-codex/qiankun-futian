@@ -1,0 +1,354 @@
+import { useEffect, useState, useRef, type Ref } from "react";
+import { SCENE_LAYOUTS, type SceneRegion } from "./sceneInteractionRuntime";
+import { DECOR_CATALOG } from "./decorCatalog";
+import { FARM_V2_LANDS } from "./canonicalLandData";
+import { FORMATION_NAMES } from "./formationSourcesRuntime";
+import type { Plot } from "../types";
+import "./farmSceneInteraction.css";
+import type { ScenePublicState } from "./publicCave";
+export function FarmSceneInteractionLayer(props: {
+  plots: Plot[];
+  state: ScenePublicState;
+  ownerLabel: string;
+  readOnly?: boolean;
+  busy: boolean;
+  onLandSelect?: (id: number) => void;
+  pendingLandAction?: { landId: number; kind: "sow" | "harvest" | "purchaseSeeds" };
+  onPlotClick?: (plot: Plot, target?: { x: number; y: number }) => void;
+  onFriendAction?: (kind: "BORROW" | "ASSIST", id: number) => Promise<void>;
+  onSection?: (section: string) => void;
+  onPetSelect?: (petId: string) => void;
+  warehouseTargetRef?: Ref<HTMLButtonElement>;
+  flyingSowLand?: number;
+  onReturnHome?: () => void;
+  onRefresh?: () => unknown;
+}) {
+  const [desktop, setDesktop] = useState(
+      () =>
+        typeof window !== "undefined" &&
+        window.matchMedia("(min-width:768px)").matches,
+    ),
+    [interior, setInterior] = useState(false),
+    [clock, setClock] = useState(Date.now());
+  const maturityRead = useRef("");
+  const caveEntry = useRef<HTMLButtonElement>(null);
+  const caveExit = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!interior) return;
+    caveExit.current?.focus();
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !document.querySelector('[role="dialog"]')) {
+        setInterior(false);
+      }
+    };
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("keydown", escape);
+      caveEntry.current?.focus({ preventScroll: true });
+    };
+  }, [interior]);
+  useEffect(() => {
+    const q = window.matchMedia("(min-width:768px)");
+    const update = () => setDesktop(q.matches);
+    q.addEventListener("change", update);
+    return () => q.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    const timer = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const plots = props.plots.map((p) =>
+    p.state === "growing" &&
+    p.growthEndTime !== null &&
+    p.growthEndTime <= clock
+      ? { ...p, state: "ready" as const }
+      : p,
+  );
+  useEffect(() => {
+    const ready = props.plots
+      .filter(
+        (p) =>
+          p.state === "growing" &&
+          p.growthEndTime !== null &&
+          p.growthEndTime <= clock,
+      )
+      .map((p) => p.id + ":" + p.growthEndTime)
+      .join(",");
+    if (ready && ready !== maturityRead.current && !props.busy) {
+      maturityRead.current = ready;
+      props.onRefresh?.();
+    }
+  }, [clock, props.plots, props.busy, props.onRefresh]);
+  const formationExpired =
+    props.state.activeFormationExpiresAt != null &&
+    props.state.activeFormationExpiresAt <= clock;
+  useEffect(() => {
+    if (formationExpired && !props.busy) props.onRefresh?.();
+  }, [formationExpired, props.busy, props.onRefresh]);
+  const layout = desktop ? SCENE_LAYOUTS.desktop : SCENE_LAYOUTS.mobile;
+  const position = (r: SceneRegion) => ({
+    left: r.x + "%",
+    top: r.y + "%",
+    width: r.w + "%",
+    height: r.h + "%",
+  });
+  const section = (name: string) => props.onSection?.(name);
+  const artBase = `${import.meta.env.BASE_URL ?? "/"}images/farm/characters/`;
+  return (
+    <section
+      className={"farm-v2-interaction " + (desktop ? "desktop" : "mobile") + (interior ? " cave-open" : "") + (typeof window !== "undefined" && window.self !== window.top ? " embedded" : "")}
+      aria-label={props.ownerLabel + "場景互動層"}
+      data-layout={desktop ? "desktop" : "mobile"}
+    >
+      <header>
+        <a href="/" className="farm-v2-platform-home">御策羅盤</a>
+        <nav className="farm-v2-shared-nav" aria-label="御策羅盤共用導覽">
+          <a href="/apps">天機閣</a>
+          <a href="/friends">好友</a>
+          <a href="/profiles">命盤</a>
+          <a href="/quizzes">心理測驗</a>
+          <a href="/unlocks">解鎖</a>
+          <a href="/top-up">靈寶閣</a>
+          <a href="/wallet">錢包</a>
+          <a href="/account">帳戶</a>
+          <a href="/setup">設定</a>
+          <a href="https://line.me/R/oaMessage/@yuceluopan/">客服</a>
+        </nav>
+        <details className="farm-v2-mobile-nav"><summary>選單</summary>
+          <nav aria-label="御策羅盤手機導覽">
+            <a href="/apps">天機閣</a>
+            <a href="/friends">好友</a>
+            <a href="/profiles">命盤</a>
+            <a href="/quizzes">心理測驗</a>
+            <a href="/unlocks">解鎖</a>
+            <a href="/top-up">靈寶閣</a>
+            <a href="/wallet">錢包</a>
+            <a href="/account">帳戶</a>
+            <a href="/setup">設定</a>
+            <a href="https://line.me/R/oaMessage/@yuceluopan/">客服</a>
+          </nav>
+        </details>
+        {interior && (
+          <button ref={caveExit} className="farm-v2-cave-return" onClick={() => setInterior(false)}>
+            返回農場
+          </button>
+        )}
+        {props.onReturnHome && (
+          <button onClick={props.onReturnHome}>返回我的福田</button>
+        )}
+      </header>
+      <div className={interior ? "farm-v2-cave-viewport" : "farm-v2-exterior-viewport"}>
+      <div
+        className={"farm-v2-canvas " + (interior ? "interior" : "exterior")}
+        style={interior ? {
+          aspectRatio: desktop ? "1672 / 941" : "941 / 1672",
+          width: `min(100cqw, calc(100cqh * ${desktop ? 1672 / 941 : 941 / 1672}))`,
+        } : { aspectRatio: layout.aspectRatio }}
+      >
+        {!interior && (
+          <img
+            className="farm-v2-scene-original"
+            src={`${import.meta.env.BASE_URL ?? "/"}images/farm/farm-scene-${desktop ? "desktop" : "mobile"}.png`}
+            alt="乾坤福田定版農場場景"
+            width={desktop ? 1215 : 941}
+            height={desktop ? 1295 : 1672}
+            draggable={false}
+          />
+        )}
+        {interior ? (
+          <>
+            <img
+              className="farm-v2-scene-original"
+              src={`${import.meta.env.BASE_URL ?? "/"}images/farm/cave-scene-${desktop ? "desktop" : "mobile"}.webp`}
+              alt="洞府內景：中央打坐台、左右各三座展示台，後方石門與尋寶區預留位置"
+              width={desktop ? 1672 : 941}
+              height={desktop ? 941 : 1672}
+              draggable={false}
+            />
+            {Array.from({ length: 6 }, (_, i) => {
+              const decor = props.state.decor.find((item) => item.slot === i + 1);
+              const name = decor ? DECOR_CATALOG.find((item) => item.id === decor.catalogId)?.name ?? "已擺放陳設" : "空位";
+              const column = i < 3 ? 0 : 1;
+              const row = i % 3;
+              return <button key={i} type="button" className="farm-v2-decor"
+                aria-label={`洞府陳設位 ${i + 1}：${name}`}
+                style={{ left: (desktop ? column === 0 ? [11, 3, 2][row] : [78, 84, 80][row] : column === 0 ? [5, 1, 2][row] : [75, 76, 75][row]) + "%", top: (desktop ? [42, 52, 63][row] : [39, 53, 71][row]) + "%", width: desktop ? "19%" : "23%", height: desktop ? "13%" : "9%" }}
+                disabled={props.readOnly || props.busy} onClick={() => section("洞府")}>
+                {decor ? name : "陳設位 " + (i + 1)}
+              </button>;
+            })}
+          </>
+        ) : (
+          <>
+            {!props.readOnly && (
+              <>
+                <button ref={props.warehouseTargetRef} className="farm-v2-warehouse-building"
+                  type="button" aria-label="福田倉庫：點擊農舍開啟倉庫" title="福田倉庫"
+                  style={position(layout.warehouse)} onClick={() => section("福田倉庫")}>
+                  <span className="farm-v2-warehouse-name">福田倉庫</span>
+                </button>
+                <button className="farm-v2-warehouse-annex" type="button"
+                  aria-label="開啟福田倉庫" title="福田倉庫"
+                  style={position(layout.warehouseAnnex)} onClick={() => section("福田倉庫")} />
+              </>
+            )}
+            <button
+              ref={caveEntry}
+              className="farm-v2-cave"
+              style={position(layout.cave)}
+              onClick={() => setInterior(true)}
+            >
+              進入洞府
+            </button>
+            <button
+              className="farm-v2-formation"
+              style={position(layout.formation)}
+              disabled={props.readOnly || props.busy}
+              aria-label={`${props.state.activeFormation && !formationExpired ? (FORMATION_NAMES[props.state.activeFormation] ?? "洞府護陣") + "運作中" : "護陣平台"}，開啟護陣管理`}
+              title={props.state.activeFormation && !formationExpired ? (FORMATION_NAMES[props.state.activeFormation] ?? "洞府護陣") : "護陣平台"}
+              onClick={() => section("護陣")}
+            >
+              {/* The approved scene artwork already contains the platform.
+                  Keep its interactive hotspot, but do not paint a fixed,
+                  oversized formation illustration over the farm scene.
+                  Formation selection and bonuses remain server-authoritative. */}
+            </button>
+            {/* One entitled farmer is a single character, not one clone per field. */}
+            {props.state.farmer?.entitled && plots.some(p => p.unlocked) && (
+              <span className="farm-v2-farmer-single" role="img" aria-label="專屬農夫" title="專屬農夫">
+                <img src={`${artBase}農夫-男.png`} alt="" draggable={false} />
+              </span>
+            )}
+            {FARM_V2_LANDS.map((land, i) => {
+              const p = plots.find((p) => p.id === i);
+              if (!p) return null;
+
+              const remaining = Math.max(0, (p.growthEndTime ?? clock) - clock);
+              const duration = p.growthEndTime != null && p.plantedAt != null
+                ? p.growthEndTime - p.plantedAt
+                : p.growthHours * 3_600_000;
+              const progress = duration > 0 ? 1 - remaining / duration : 0;
+              const stage = p.state === "ready" ? 100 : progress >= 0.75 ? 75 : progress >= 0.5 ? 50 : progress >= 0.25 ? 25 : 0;
+
+              return (
+                <div
+                  className={"farm-v2-land " + p.state}
+                  style={position(layout.lands[i])}
+                  key={land.id}
+                >
+                  <button
+                    aria-label={`${land.landName}，${!p.unlocked ? "未解鎖" : p.state === "ready" ? "已成熟" : p.state === "growing" ? "生長中" : "待播種"}`}
+                    disabled={props.busy}
+                    data-farm-plot={land.id}
+                    onClick={(event) => props.onPlotClick ? props.onPlotClick(p, event.detail > 0 ? { x: event.clientX, y: event.clientY } : undefined) : props.onLandSelect?.(land.id)}
+                  >
+                    
+                    {p.unlocked && p.state !== "empty" && props.flyingSowLand !== land.id && (
+                      <span className="farm-v2-crop-stage" data-stage={stage} aria-label={`生長階段 ${stage}%`}>
+                        <span aria-hidden="true">{stage === 0 ? "🫘" : stage === 25 ? "🌱" : stage === 50 ? "🌿" : stage === 75 ? "🪴" : p.cropEmoji}</span>
+                      </span>
+                    )}
+                    <span className="farm-v2-land-caption"><strong>{land.landName}{!p.unlocked && <span aria-hidden="true"> 🔒</span>}</strong>
+                    {p.unlocked && <span>
+                      {props.pendingLandAction?.landId === land.id
+                          ? props.pendingLandAction.kind === "sow" ? "播種確認中…" : "收成確認中…"
+                          : p.state === "ready"
+                          ? "成熟・" + p.plantCount + "株"
+                          : p.state === "growing"
+                            ? "生長中・" +
+                              Math.max(
+                                0,
+                                Math.ceil(
+                                  ((p.growthEndTime ?? clock) - clock) / 60000,
+                                ),
+                              ) +
+                              "分"
+                            : "待播種"}
+                    </span>}</span>
+                  </button>
+                  {!props.readOnly && props.onPlotClick && (
+                    <button
+                      type="button"
+                      className="farm-v2-land-manage"
+                      aria-label={`管理${land.landName}`}
+                      disabled={props.busy}
+                      onClick={() => props.onLandSelect?.(land.id)}
+                    >管理</button>
+                  )}
+                  {props.readOnly &&
+                    props.onFriendAction &&
+                    land.borrowable &&
+                    p.unlocked &&
+                    p.state === "ready" && (
+                      <>
+                        <button
+                          disabled={props.busy}
+                          onClick={() =>
+                            void props.onFriendAction?.("BORROW", land.id)
+                          }
+                        >
+                          借運
+                        </button>
+                        <button
+                          disabled={props.busy}
+                          onClick={() =>
+                            void props.onFriendAction?.("ASSIST", land.id)
+                          }
+                        >
+                          助力收成
+                        </button>
+                      </>
+                    )}
+                </div>
+              );
+            })}
+            {/* Six visible display positions flank the cave platform. Each opens synthesis. */}
+            {FARM_V2_LANDS.map((land, i) => {
+              const pot = props.state.pots.find(p => p.species === land.id);
+              const level = pot ? ["黃", "玄", "地", "天", "仙", "神"].indexOf(pot.grade) + 1 : 0;
+              return <button key={land.id} className={"farm-v2-platform-pot" + (i === 5 ? " farm-v2-platform-pot-front" : "")}
+                style={position(layout.pots[i])}
+                aria-label={`${land.cropName}展示位，${pot ? pot.grade + "階盆栽" : "空位"}，開啟盆栽合成`}
+                title={`${land.cropName} · ${pot ? pot.grade + "階" : "空位"}`}
+                disabled={props.busy || props.readOnly}
+                onClick={() => section("盆栽")}>
+                <span className="farm-v2-approved-pedestal" style={{ backgroundImage: `url("${import.meta.env.BASE_URL ?? "/"}images/farm/flower-pedestal.png")` }} aria-hidden="true" />
+                {pot && level > 0 && <img src={`${import.meta.env.BASE_URL ?? "/"}images/plants/${land.id}-${level}.webp`} alt="" />}
+                {pot && <small>{land.cropName}</small>}
+              </button>;
+            })}
+            <button className="farm-v2-pot-entry" aria-label="盆栽合成" style={position(layout.potEntry)}
+              disabled={props.busy || props.readOnly} onClick={() => section("盆栽")}>
+              <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/pot-synthesis-sign.webp`} alt="" draggable={false}/>
+            </button>
+            {["尋星犬", "辟邪狻猊", "噬時諦聽", "乾坤麒麟"].map((pet, i) => {
+              const active =
+                props.state.pets?.activePetId === pet &&
+                (props.state.pets.activeUntil ?? 0) > clock;
+              return (
+                <button
+                  className={"farm-v2-pet " + (active ? "active" : "")}
+                  aria-label={`${pet}・${active ? "活動中" : props.state.pets?.owned.includes(pet) ? "休息中" : "未取得"}`}
+                  key={pet}
+                  style={position(layout.pets[i])}
+                  disabled={props.readOnly || props.busy}
+                  onClick={() => props.onPetSelect ? props.onPetSelect(pet) : section("靈寵")}
+                >
+                  {props.state.pets?.owned.includes(pet) && <span className="farm-v2-pet-character" role="img" aria-label={pet}><img src={`${artBase}${pet}.png`} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}} /></span>}
+                  <span className="farm-v2-hotspot-label">
+                    {pet}
+                    {!props.state.pets?.owned.includes(pet) && !active
+                      ? <span aria-hidden="true"> 🔒</span>
+                      : <><br />{active ? "活動中" : "休息中"}</>}
+                  </span>
+                </button>
+              );
+            })}
+          </>
+        )}
+      </div>
+      </div>
+    </section>
+  );
+}
+

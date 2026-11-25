@@ -1,0 +1,139 @@
+name: Farm V2 integration
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - "integrate/farm-v2-firstpurchase-signin-20261122"
+      - "release/farm-v2-tsc-20261124"
+    paths:
+      - "artifacts/api-server/src/lib/**"
+      - "lib/db/migrations/**"
+      - ".github/workflows/farm-v2-integration.yml"
+  pull_request:
+    paths:
+      - "artifacts/api-server/src/lib/**"
+      - "lib/db/migrations/**"
+      - ".github/workflows/farm-v2-integration.yml"
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: farm-v2-test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d farm_v2_test" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres:farm-v2-test@127.0.0.1:5432/farm_v2_test
+      FARM_V2_TEST_DATABASE_URL: postgres://postgres:farm-v2-test@127.0.0.1:5432/farm_v2_test
+      FARM_V2_PLATFORM_CHECKOUT: ${{ github.workspace }}/artifacts/api-server/scripts/dev/platform-fixtures
+      PGPASSWORD: farm-v2-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Prepare Supabase-compatible database
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -c "CREATE DATABASE farm_v2_test"
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE SCHEMA IF NOT EXISTS auth;
+          CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY, email text);
+          -- Supabase's auth helpers, same definition the hosted platform uses.
+          CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
+            SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
+          $$;
+          CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$
+            SELECT nullif(current_setting('request.jwt.claim.role', true), '')
+          $$;
+          DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          DO $$ BEGIN CREATE ROLE service_role NOLOGIN BYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          DO $$ BEGIN CREATE ROLE farm_v2_runtime NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          CREATE EXTENSION IF NOT EXISTS pgcrypto;
+          SQL
+      - name: Create the core wallet runtime first
+        run: |
+          # The platform migration that declares the core schema runs before the
+          # extracts, so the extracts never pre-empt its plain CREATE SCHEMA.
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q \
+            -f artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0019_create_core_wallet_runtime.sql
+      - name: Create the core identity table
+        run: |
+          # The legacy wallet extract hangs its foreign keys off core.users.
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q <<'SQL'
+          CREATE SCHEMA IF NOT EXISTS core;
+          CREATE TABLE IF NOT EXISTS core.users (
+            id uuid PRIMARY KEY,
+            created_at timestamptz NOT NULL DEFAULT now()
+          );
+          SQL
+      - name: Apply extracted production schema
+        run: |
+          # The pot receipt table and its guard belong to the platform
+          # migration that declares them, not to the catalog extract.
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q \
+            -f artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0132_farm_v2_atomic_pot_settlement.sql
+          for f in scripts/dev/core-legacy-wallet-schema-extract.sql scripts/dev/farm-bank-schema-extract.sql; do
+            echo "== $f"
+            psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+      - name: Apply migrations
+        run: |
+          for f in $(ls lib/db/migrations/*.sql | sort); do
+            case "$f" in
+              *0004_farm_v2_local_coin_bank.sql)
+                # The extracted production schema already creates this bank.
+                echo "skip $f"; continue ;;
+            esac
+            echo "== $f"
+            psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+      - name: Apply extracted security policies
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=scripts/dev/core-schema-security-extract.sql
+          OUT=/tmp/drop-objects.sql
+          python3 - "$F" "$OUT" <<'PYEOF'
+          import re, sys
+          src, out = sys.argv[1], sys.argv[2]
+          sql = open(src, encoding="utf-8").read()
+          stmts = []
+          for name, table in re.findall(r"CREATE\s+POLICY\s+(\w+)\s+ON\s+([\w.]+)", sql, re.I):
+              stmts.append(f"DROP POLICY IF EXISTS {name} ON {table};")
+          for name, table in re.findall(r"CREATE\s+TRIGGER\s+(\w+)[^;]*?\sON\s+([\w.]+)", sql, re.I):
+              stmts.append(f"DROP TRIGGER IF EXISTS {name} ON {table};")
+          for name in re.findall(r"CREATE\s+(?:UNIQUE\s+)?INDEX\s+(\w+)", sql, re.I):
+              stmts.append(f"DROP INDEX IF EXISTS {name};")
+          for table, name in re.findall(r"ALTER\s+TABLE\s+([\w.]+)\s+ADD\s+CONSTRAINT\s+(\w+)", sql, re.I):
+              stmts.append(f"ALTER TABLE {table} DROP CONSTRAINT IF EXISTS {name};")
+          if not stmts:
+              sys.exit("no objects parsed from the security extract")
+          open(out, "w", encoding="utf-8").write("\n".join(stmts) + "\n")
+          print(f"--- generated {len(stmts)} statements")
+          PYEOF
+          cat "$OUT"
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$OUT"
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$F"
+      - name: Yield the core wallet policies to the platform migrations
+        run: |
+          # The suite applies the platform wallet migrations itself, and those
+          # declare these two policies. They are the production source for these
+          # tables, so the extract's copies step aside here. Every other policy
+          # from the extract stays in force.
+          psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q <<'SQL'
+          DROP POLICY IF EXISTS core_wallets_owner_select ON public.core_wallets;
+          DROP POLICY IF EXISTS core_wallet_ledger_owner_select ON public.core_wallet_ledger;
+          SQL
+      - name: Integration tests
+        run: pnpm --filter @workspace/api-server exec vitest run src/lib --reporter=verbose

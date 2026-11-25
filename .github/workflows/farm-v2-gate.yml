@@ -1,0 +1,57 @@
+name: Farm V2 Gate
+# Gate trigger: branch-only verification; no deploy or DB mutation.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/farm-v2-canonical-runtime
+      - codex/farm-two-bags-isolated-20261105
+      - perf/farm-db-reuse-20261112
+      - integrate/farm-v2-rewards-api-20261113
+      - fix/restore-approved-signin-panel-20261121
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+
+concurrency:
+  group: farm-v2-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build referenced libraries
+        run: pnpm run typecheck:libs
+      - name: Typecheck API server
+        run: pnpm --filter @workspace/api-server run typecheck
+      - name: Build API server
+        run: pnpm --filter @workspace/api-server run build
+      - name: Typecheck Farm V2 UI
+        run: pnpm --filter @workspace/qiankun-farm run typecheck
+      - name: Build Farm V2 UI
+        run: pnpm --filter @workspace/qiankun-farm run build
+      - name: Archive verified Farm V2 preview frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: farm-v2-preview-dist
+          path: artifacts/qiankun-farm/dist/public/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Verify Farm regression suites with locked dependencies
+        run: pnpm test

@@ -1,0 +1,47 @@
+$ pnpm run typecheck && pnpm -r --if-present run build
+$ pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --filter "./scripts" --if-present run typecheck
+$ tsc --build
+Scope: 4 of 9 workspace projects
+artifacts/api-server typecheck$ tsc -p tsconfig.json --noEmit
+artifacts/mockup-sandbox typecheck$ tsc -p tsconfig.json --noEmit
+artifacts/qiankun-farm typecheck$ tsc -p tsconfig.json --noEmit
+scripts typecheck$ tsc -p tsconfig.json --noEmit
+scripts typecheck: Done
+artifacts/mockup-sandbox typecheck: Done
+artifacts/api-server typecheck: Done
+artifacts/qiankun-farm typecheck: Done
+Scope: 8 of 9 workspace projects
+artifacts/mockup-sandbox build$ vite build
+artifacts/qiankun-farm build$ vite build --config vite.config.ts
+artifacts/api-server build$ node ./build.mjs
+artifacts/api-server build:   dist/index.mjs                       2.4mb ⚠️
+artifacts/api-server build:   dist/serverless.mjs                  2.4mb ⚠️
+artifacts/api-server build:   dist/pino-worker.mjs               153.4kb
+artifacts/api-server build:   dist/pino-file.mjs                 142.1kb
+artifacts/api-server build:   dist/pino-pretty.mjs               114.6kb
+artifacts/api-server build:   dist/thread-stream-worker.mjs        7.3kb
+artifacts/api-server build:   dist/index.mjs.map                   4.0mb
+artifacts/api-server build:   dist/serverless.mjs.map              4.0mb
+artifacts/api-server build:   dist/pino-worker.mjs.map           256.9kb
+artifacts/api-server build:   dist/pino-file.mjs.map             229.1kb
+artifacts/api-server build:   dist/pino-pretty.mjs.map           204.0kb
+artifacts/api-server build:   dist/thread-stream-worker.mjs.map   12.0kb
+artifacts/api-server build: ⚡ Done in 790ms
+artifacts/api-server build: Done
+artifacts/mockup-sandbox build: failed to load config from /workspace/scratch/144c97612380/farm/artifacts/mockup-sandbox/vite.config.ts
+artifacts/mockup-sandbox build: error during build:
+artifacts/mockup-sandbox build: Error: PORT environment variable is required but was not provided.
+artifacts/mockup-sandbox build:     at file:///workspace/scratch/144c97612380/farm/artifacts/mockup-sandbox/node_modules/.vite-temp/vite.config.ts.timestamp-1794146680519-b18c9cab74dd6.mjs:145:9
+artifacts/mockup-sandbox build:     at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+artifacts/mockup-sandbox build:     at async node:internal/modules/esm/loader:647:26
+artifacts/mockup-sandbox build:     at async loadConfigFromBundledFile (file:///workspace/scratch/144c97612380/farm/node_modules/.pnpm/vite@7.3.5_@types+node@25.9.4_jiti@2.7.0_lightningcss@1.32.0_tsx@4.22.4_yaml@2.9.0/node_modules/vite/dist/node/chunks/config.js:35996:12)
+artifacts/mockup-sandbox build:     at async bundleAndLoadConfigFile (file:///workspace/scratch/144c97612380/farm/node_modules/.pnpm/vite@7.3.5_@types+node@25.9.4_jiti@2.7.0_lightningcss@1.32.0_tsx@4.22.4_yaml@2.9.0/node_modules/vite/dist/node/chunks/config.js:35884:17)
+artifacts/mockup-sandbox build:     at async loadConfigFromFile (file:///workspace/scratch/144c97612380/farm/node_modules/.pnpm/vite@7.3.5_@types+node@25.9.4_jiti@2.7.0_lightningcss@1.32.0_tsx@4.22.4_yaml@2.9.0/node_modules/vite/dist/node/chunks/config.js:35851:42)
+artifacts/mockup-sandbox build:     at async resolveConfig (file:///workspace/scratch/144c97612380/farm/node_modules/.pnpm/vite@7.3.5_@types+node@25.9.4_jiti@2.7.0_lightningcss@1.32.0_tsx@4.22.4_yaml@2.9.0/node_modules/vite/dist/node/chunks/config.js:35500:22)
+artifacts/mockup-sandbox build:     at async createBuilder (file:///workspace/scratch/144c97612380/farm/node_modules/.pnpm/vite@7.3.5_@types+node@25.9.4_jiti@2.7.0_lightningcss@1.32.0_tsx@4.22.4_yaml@2.9.0/node_modules/vite/dist/node/chunks/config.js:33955:19)
+artifacts/mockup-sandbox build:     at async CAC.<anonymous> (file:///workspace/scratch/144c97612380/farm/node_modules/.pnpm/vite@7.3.5_@types+node@25.9.4_jiti@2.7.0_lightningcss@1.32.0_tsx@4.22.4_yaml@2.9.0/node_modules/vite/dist/node/cli.js:629:10)
+artifacts/mockup-sandbox build: Failed
+/workspace/scratch/144c97612380/farm/artifacts/mockup-sandbox:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @workspace/mockup-sandbox@2.0.0 build: `vite build`
+Exit status 1
+[ELIFECYCLE] Command failed with exit code 1.

@@ -1,0 +1,75 @@
+✔ primary failure survives a simultaneous cleanup failure (117.635748ms)
+✔ cleanup-only failure propagates (27.453622ms)
+✔ success waits for Core settlement and destroys the lock session (20.764293ms)
+✔ null primary rejection is not masked by cleanup error (23.903282ms)
+✔ simultaneous cleanup failure emits only sanitized diagnostic metadata (22.319134ms)
+✔ Core begin HTTP 503 preserves authority error while recording cleanup failure (16.65794ms)
+✔ Core begin HTTP 401 maps to session inactive and still closes authority barrier (22.317668ms)
+✔ advisory lock failure does not register or call Core and releases client (11.062869ms)
+✔ registration failure does not call Core and releases client (11.199148ms)
+✔ Core transport failure retains original exception and emits sanitized phase-only metadata (13.100613ms)
+✔ SQLSTATE 53300 at authority lock never starts Core or registers a transaction (16.26664ms)
+✔ SQLSTATE 53300 at pool connection never acquires lock or calls Core (21.082234ms)
+(node:13) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ does not publish JSON until authority cleanup completes (9.080057ms)
+✔ cleanup failure never publishes a buffered success (1.317527ms)
+✔ route errors reach error middleware only after cleanup (0.406594ms)
+✔ an operation rejection restores the response writer (0.318145ms)
+(node:14) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ preserves the operation result and records bounded numeric timing (3.703039ms)
+✔ preserves failures and does not log exception details or credentials (0.984175ms)
+✔ invalid stage labels cannot leak arbitrary input into logs (0.276522ms)
+✔ a failing logging sink cannot turn a committed operation into an error (0.269121ms)
+✔ decorated domain calls preserve arguments, return identity and call count (0.261908ms)
+✔ authority_register stage reports success and preserves a successful write (0.259447ms)
+✔ authority_register stage reports failure without masking or logging the database error (0.260352ms)
+✔ correlates concurrent authorization stages without logging request identity (2.284107ms)
+✔ records only validated SQLSTATE and preserves exact error identity (1.204089ms)
+(node:15) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ reopen restores session without resending launch credential (3.919548ms)
+✖ cookie authentication retains original mutation ID after uncertain result (0.559102ms)
+✔ browser resume refuses cross-origin API (1.1668ms)
+FARM_ISOLATED_CONNECTION_CHECK_FAILED UNKNOWN
+✔ reject production before acquiring credentials (1.11289ms)
+✔ reject open entry before acquiring credentials (5.291346ms)
+✔ reject wrong database before acquiring credentials (0.893748ms)
+✔ reject transaction mode before acquiring credentials (0.551166ms)
+✔ reject write methods (0.248767ms)
+✔ driver failures never expose secrets (6.048242ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 32
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1070.734543
+
+✖ failing tests:
+
+test at artifacts/qiankun-farm/src/game/v2/farmV2ApiClient.node-test.mjs:6:1
+✖ reopen restores session without resending launch credential (3.919548ms)
+  Error: FARM_V2_SAME_ORIGIN_SESSION_REQUIRED
+      at createFarmV2Api (/workspace/scratch/144c97612380/farm/artifacts/qiankun-farm/src/game/v2/farmV2ApiClient.ts:74:11)
+      at TestContext.<anonymous> (file:///workspace/scratch/144c97612380/farm/artifacts/qiankun-farm/src/game/v2/farmV2ApiClient.node-test.mjs:11:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+test at artifacts/qiankun-farm/src/game/v2/farmV2ApiClient.node-test.mjs:16:1
+✖ cookie authentication retains original mutation ID after uncertain result (0.559102ms)
+  Error: FARM_V2_SAME_ORIGIN_SESSION_REQUIRED
+      at createFarmV2Api (/workspace/scratch/144c97612380/farm/artifacts/qiankun-farm/src/game/v2/farmV2ApiClient.ts:74:11)
+      at TestContext.<anonymous> (file:///workspace/scratch/144c97612380/farm/artifacts/qiankun-farm/src/game/v2/farmV2ApiClient.node-test.mjs:21:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)

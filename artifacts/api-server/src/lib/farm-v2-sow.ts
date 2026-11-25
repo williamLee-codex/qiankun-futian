@@ -1,0 +1,81 @@
+import { sql, eq, and } from "drizzle-orm";
+import { db, farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
+import { executeSowTransaction } from "../../../qiankun-farm/src/game/v2/farmActionTransactions";
+import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
+import type { FarmLandId } from "../../../qiankun-farm/src/game/v2/canonicalLandData";
+import type { MissionState } from "../../../qiankun-farm/src/game/v2/missionRuntime";
+import { farmV2LandEntityToPersistence, farmV2LandRowToEntity } from "./farm-v2-mappers";
+import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
+import { precheckHarvestLifecycle, precheckSow } from "./farm-v2-precheck";
+
+export async function sowFarmV2Land(input: {
+  requestId: string;
+  userId: string;
+  landId: number;
+  now?: Date;
+}) {
+  if (!Number.isInteger(input.landId) || input.landId < 1 || input.landId > 6) {
+    throw new Error("INVALID_FARM_LAND_ID");
+  }
+  const now = input.now ?? new Date();
+
+  // Business refusals are reported before the mutation transaction starts.
+  const [prePlayer] = await db
+    .select({ warehouseState: farmV2PlayerStateTable.warehouseState })
+    .from(farmV2PlayerStateTable)
+    .where(eq(farmV2PlayerStateTable.userId, input.userId))
+    .limit(1);
+  if (!prePlayer) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
+  const [preLand] = await db
+    .select()
+    .from(farmV2LandTable)
+    .where(and(eq(farmV2LandTable.userId, input.userId), eq(farmV2LandTable.landId, input.landId)))
+    .limit(1);
+  if (!preLand) throw new Error("FARM_LAND_NOT_FOUND");
+  const preEntity = farmV2LandRowToEntity(preLand);
+  const preWarehouse = prePlayer.warehouseState as FarmWarehouse;
+  const precheck = precheckSow({
+    seedStock: preWarehouse.seeds[input.landId as FarmLandId] ?? 0,
+    landUnlocked: preEntity.accessActive,
+    landBusy: preEntity.lifecycle !== "EMPTY",
+  });
+  if (!precheck.ok) throw new Error(precheck.code);
+
+  return runFarmV2IdempotentMutation({
+    requestId: input.requestId,
+    userId: input.userId,
+    action: `SOW:${input.landId}`,
+    execute: async (tx) => {
+      const [player] = await tx.select().from(farmV2PlayerStateTable).where(eq(farmV2PlayerStateTable.userId, input.userId)).for("update").limit(1);
+      if (!player) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
+
+      const [landRow] = await tx.select().from(farmV2LandTable).where(and(eq(farmV2LandTable.userId, input.userId), eq(farmV2LandTable.landId, input.landId))).for("update").limit(1);
+      if (!landRow) throw new Error("FARM_LAND_NOT_FOUND");
+
+      const result = executeSowTransaction({
+        state: {
+          land: farmV2LandRowToEntity(landRow),
+          warehouse: player.warehouseState as FarmWarehouse,
+          missions: player.missionState as MissionState,
+        },
+        now: now.getTime(),
+      });
+
+      const persistedLand = farmV2LandEntityToPersistence(result.land);
+      const updated = await tx.update(farmV2LandTable).set({
+        ...persistedLand,
+        version: landRow.version + 1,
+      }).where(sql`user_id = ${input.userId} and land_id = ${input.landId} and version = ${landRow.version}`)
+        .returning({ version: farmV2LandTable.version });
+      if (updated.length !== 1) throw new Error("FARM_LAND_CONCURRENT_MODIFICATION");
+
+      await tx.update(farmV2PlayerStateTable).set({
+        warehouseState: result.warehouse,
+        missionState: result.missions,
+        updatedAt: now,
+      }).where(sql`user_id = ${input.userId}`);
+
+      return { land: result.land, warehouse: result.warehouse, missions: result.missions };
+    },
+  });
+}
