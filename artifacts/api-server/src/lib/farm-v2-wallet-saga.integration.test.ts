@@ -24,6 +24,10 @@ async function applyDdl(
   runner: { query: (sql: string) => Promise<unknown> },
   sql: string,
 ) {
+  const seeded = (await runner.query(
+    "select 1 from public._harness_applied limit 1",
+  )) as { rows?: unknown[] };
+  if ((seeded.rows?.length ?? 0) > 0) return;
   try {
     await runner.query(sql);
   } catch (error) {
