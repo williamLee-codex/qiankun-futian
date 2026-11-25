@@ -100,8 +100,10 @@ describe.skipIf(!enabled)(
         `create schema if not exists auth; create table if not exists auth.users(id uuid primary key); alter table auth.users add column if not exists banned_until timestamptz; alter table auth.users add column if not exists deleted_at timestamptz; create or replace function auth.uid() returns uuid language sql as 'select null::uuid'; insert into auth.users(id) values ('${userId}') on conflict (id) do nothing;`,
       );
       const root = process.env.FARM_V2_PLATFORM_CHECKOUT!;
-      await storage.pool.query(
-        "CREATE TABLE platform_friendships(user_a_id uuid,user_b_id uuid,status text,PRIMARY KEY(user_a_id,user_b_id))",
+      await applyOnce(
+        storage.pool,
+        "platform-friendships-extract.sql",
+        "CREATE TABLE IF NOT EXISTS platform_friendships(user_a_id uuid,user_b_id uuid,status text,PRIMARY KEY(user_a_id,user_b_id))",
       );
       if (!(await applyOnce(storage.pool, "0019_create_core_wallet_runtime.sql", readFileSync(`${root}/supabase/migrations/0019_create_core_wallet_runtime.sql`, "utf8")))) {
         const { rows } = (await storage.pool.query(
