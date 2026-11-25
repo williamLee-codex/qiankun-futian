@@ -109,11 +109,16 @@ jobs:
             echo "== $f"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
           done
-      - name: Apply the platform migration chain
+      - name: Apply the farm-relevant platform migrations
         run: |
-          # Every platform migration that exists in the vendored chain, in
-          # numeric order. One run, one contract: nothing is cherry-picked.
-          for f in $(ls artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/*.sql | sort); do
+          # Only what Farm V2 actually touches: identity, wallet, friends,
+          # launch tokens and the 0123-0136 farm chain. The readings, astrology
+          # and other apps stay out of this database.
+          for f in artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/0019_*.sql \
+                   artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/002[2-4]_*.sql \
+                   artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/01[0-3][0-9]_farm_v2_*.sql \
+                   artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/013[0-6]_farm_v2_*.sql; do
+            [ -f "$f" ] || continue
             echo "== $(basename "$f")"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 -q -f "$f"
             psql -h 127.0.0.1 -U postgres -d farm_v2_test -q -c \

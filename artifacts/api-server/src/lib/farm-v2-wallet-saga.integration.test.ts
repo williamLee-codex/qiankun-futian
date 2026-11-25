@@ -39,13 +39,24 @@ async function applyOnce(
   file: string,
   sql: string,
 ) {
-  const claimed = (await runner.query(
-    "insert into public._harness_applied(file) values ($1) on conflict do nothing returning file",
-    [file],
-  )) as { rows?: unknown[] };
-  if ((claimed.rows?.length ?? 0) === 0) return false;
-  await runner.query(sql);
-  return true;
+  // Claim and apply in one transaction: a failed DDL leaves no ledger row.
+  await runner.query("begin");
+  try {
+    const claimed = (await runner.query(
+      "insert into public._harness_applied(file) values ($1) on conflict do nothing returning file",
+      [file],
+    )) as { rows?: unknown[] };
+    if ((claimed.rows?.length ?? 0) === 0) {
+      await runner.query("rollback");
+      return false;
+    }
+    await runner.query(sql);
+    await runner.query("commit");
+    return true;
+  } catch (error) {
+    await runner.query("rollback");
+    throw error;
+  }
 }
 
 // The CI job builds the schema from the catalog extracts. When it has already
