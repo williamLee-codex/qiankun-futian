@@ -112,7 +112,8 @@ export function FarmCoinWallet(props: {
   async function submit() {
     if (working || props.busy || (!pending && (!direction || !valid)) || !transferEnabled)
       return;
-    const command = pending ?? { direction, amount: number };
+    const command = pending ?? (direction ? { direction, amount: number } : null);
+    if (!command) return;
     setWorking(true);
     setMessage("轉帳確認中…");
     try {
