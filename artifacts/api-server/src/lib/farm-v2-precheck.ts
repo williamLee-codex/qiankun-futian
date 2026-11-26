@@ -107,3 +107,53 @@ export function precheckHarvest(input: {
     };
   return ok;
 }
+
+export type MaterialShortage = {
+  material: string;
+  name: string;
+  required: number;
+  held: number;
+  missing: number;
+};
+
+/**
+ * Synthesis consumes stored materials before any wallet step, so a shortfall
+ * must be refused here: no journal row, no charge, no reservation.
+ */
+export function materialShortages(input: {
+  required: Record<string, number>;
+  available: Record<string, number>;
+  names?: Record<string, string>;
+}): MaterialShortage[] {
+  const shortages: MaterialShortage[] = [];
+  for (const [material, required] of Object.entries(input.required)) {
+    const held = input.available[material] ?? 0;
+    if (held < required)
+      shortages.push({
+        material,
+        name: input.names?.[material] ?? material,
+        required,
+        held,
+        missing: required - held,
+      });
+  }
+  return shortages;
+}
+
+export function precheckWorkshopMaterials(input: {
+  required: Record<string, number>;
+  available: Record<string, number>;
+  names?: Record<string, string>;
+}): PrecheckResult {
+  const shortages = materialShortages(input);
+  if (!shortages.length) return ok;
+  return {
+    ok: false,
+    code: "FARM_MATERIALS_INSUFFICIENT",
+    details: {
+      materials: shortages
+        .map((s) => `${s.name}：需求 ${s.required}、持有 ${s.held}、不足 ${s.missing}`)
+        .join("；"),
+    },
+  };
+}
