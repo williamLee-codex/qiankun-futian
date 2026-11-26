@@ -236,22 +236,15 @@ async function verifyCompensationLedger(input: {
   scope: CoinWalletScope;
   amount: number;
 }): Promise<string | null> {
-  const { rows } = await db.execute(
-    input.scope === "farm"
-      ? sql`
-          SELECT id FROM farm_v2_bank.ledger
-           WHERE user_id=${input.userId}::uuid
-             AND request_key='compensation:'||${input.requestId}
-             AND amount=${input.amount} AND direction='credit'
-           LIMIT 1`
-      : sql`
-          SELECT id FROM public.core_wallet_ledger
-           WHERE owner_id=${input.userId}::uuid
-             AND idempotency_key='farm-v2:'||${input.requestId}||':compensation'
-             AND amount=${input.amount} AND direction='credit' AND currency='coin'
-           LIMIT 1`,
-  );
-  return (rows[0] as { id?: string } | undefined)?.id ?? null;
+  // The API role has no direct Core/Farm coin ledger SELECT privileges.
+  // A SECURITY DEFINER helper returns only the exact compensation receipt.
+  const { rows } = await db.execute(sql`
+    SELECT public.farm_v2_find_compensation_ledger_id(
+      ${input.userId}::uuid, ${input.requestId},
+      ${input.scope}, ${input.amount}
+    ) AS ledger_id
+  `);
+  return (rows[0] as { ledger_id?: string | null } | undefined)?.ledger_id ?? null;
 }
 
 async function markPosted(
