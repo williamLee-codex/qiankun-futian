@@ -25,15 +25,18 @@ export function coinShortfallArt(scope: CoinScope): string {
 }
 
 /**
- * Both wallets fund one purchase, so only their sum decides whether a
- * conversion can close the gap. A single error code never decides this.
+ * `deficit` is the amount still missing from the short wallet, so only the
+ * other wallet can close it. Adding the paying wallet's own balance back in
+ * would count the same coins twice and offer a conversion that cannot work.
  */
 export function canCoverShortfall(
   balances: { centralCoins: number; coins: number } | null,
   deficit: number,
+  scope: CoinScope,
 ): boolean {
   if (!balances || !Number.isFinite(deficit) || deficit <= 0) return false;
-  return balances.centralCoins + balances.coins >= deficit;
+  const otherWallet = scope === "core" ? balances.coins : balances.centralCoins;
+  return otherWallet >= deficit;
 }
 
 export function CoinShortfallNotice(props: {
@@ -48,7 +51,7 @@ export function CoinShortfallNotice(props: {
   const coverable =
     props.deficit === undefined
       ? true
-      : canCoverShortfall(props.balances ?? null, props.deficit);
+      : canCoverShortfall(props.balances ?? null, props.deficit, props.scope);
   const base = import.meta.env.BASE_URL ?? "/";
   const hotspot = (label: string, onClick: () => void, style: React.CSSProperties) => (
     <button

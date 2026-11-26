@@ -32,11 +32,23 @@ describe("coin shortfall notice", () => {
     expect(coinShortfallDirection("farm")).toBe("in");
   });
 
-  it("counts both wallets before offering a conversion", () => {
-    expect(canCoverShortfall({ centralCoins: 40, coins: 70 }, 100)).toBe(true);
-    expect(canCoverShortfall({ centralCoins: 40, coins: 30 }, 100)).toBe(false);
-    expect(canCoverShortfall({ centralCoins: 100, coins: 100 }, 0)).toBe(false);
-    expect(canCoverShortfall(null, 100)).toBe(false);
+  it("needs the other wallet to cover the exact shortfall", () => {
+    expect(canCoverShortfall({ centralCoins: 0, coins: 100 }, 100, "core")).toBe(true);
+    expect(canCoverShortfall({ centralCoins: 0, coins: 99 }, 100, "core")).toBe(false);
+    expect(canCoverShortfall({ centralCoins: 100, coins: 0 }, 100, "farm")).toBe(true);
+    expect(canCoverShortfall({ centralCoins: 99, coins: 0 }, 100, "farm")).toBe(false);
+  });
+
+  it("never counts the short wallet's own balance twice", () => {
+    expect(canCoverShortfall({ centralCoins: 60, coins: 40 }, 100, "core")).toBe(false);
+    expect(canCoverShortfall({ centralCoins: 100, coins: 0 }, 100, "core")).toBe(false);
+  });
+
+  it("refuses when both wallets are empty or nothing is missing", () => {
+    expect(canCoverShortfall({ centralCoins: 0, coins: 0 }, 100, "core")).toBe(false);
+    expect(canCoverShortfall({ centralCoins: 0, coins: 0 }, 100, "farm")).toBe(false);
+    expect(canCoverShortfall({ centralCoins: 100, coins: 100 }, 0, "core")).toBe(false);
+    expect(canCoverShortfall(null, 100, "core")).toBe(false);
   });
 
   it("hides the conversion hotspot when the two wallets cannot close the gap", () => {
@@ -52,6 +64,7 @@ describe("coin shortfall notice", () => {
     );
     expect(html).toContain("您的中央金幣不足");
     expect(html).not.toContain('aria-label="轉換"');
+    expect(html).not.toContain("轉換</button>");
     expect(onConvert).not.toHaveBeenCalled();
   });
 });
