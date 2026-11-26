@@ -36,7 +36,7 @@ it("does not reuse a prior reader's verified balances while the replacement read
   fireEvent.change(screen.getByRole("textbox",{name:"轉帳金額"}),{target:{value:"10"}});
   expect((screen.getByRole("button",{name:"轉入福田"}) as HTMLButtonElement).disabled).toBe(false);
   view.rerender(<FarmCoinWallet read={()=>new Promise(()=>{})} transfer={transfer} pending={()=>[]} busy={false}/>);
-  expect((screen.getByRole("button",{name:"請先選擇方向"}) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole("button",{name:"轉入福田"}) as HTMLButtonElement).disabled).toBe(true);
   expect(transfer).not.toHaveBeenCalled();
 });
 
