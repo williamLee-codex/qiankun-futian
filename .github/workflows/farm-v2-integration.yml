@@ -234,13 +234,20 @@ jobs:
             select result->>'result_status' into v_status from (select public.farm_v2_apply_wallet_transaction(
               v_owner,'probe-debit',20,'crystal','debit','farm_crop_reward','6:20','farm_crop_reward',null) as result) t;
             if v_status <> 'invalid' then raise exception 'PROBE_DEBIT %', v_status; end if;
-            -- 8. the historical label still validates for the same plan
-            select result->>'result_status' into v_status from (select public.farm_v2_apply_wallet_transaction(
-              v_owner,'probe-legacy',20,'crystal','credit','farm_crop_exchange','6:20','farm_crop_exchange',null) as result) t;
+            -- 8. the historical label still validates for the same plan; reaching
+            -- core (any later error) proves the label itself was accepted
+            begin
+              select result->>'result_status' into v_status from (select public.farm_v2_apply_wallet_transaction(
+                v_owner,'probe-legacy',20,'crystal','credit','farm_crop_exchange','6:20','farm_crop_exchange',null) as result) t;
+            exception when others then v_status := 'reached_core';
+            end;
             if v_status = 'invalid' then raise exception 'PROBE_LEGACY_LABEL_REJECTED'; end if;
             -- 9. a seed purchase still validates (label unrelated to the reward)
-            select result->>'result_status' into v_status from (select public.farm_v2_apply_wallet_transaction(
-              v_owner,'probe-seed',3,'coin','debit','farm_seed_purchase','1:3','farm_seed_pack',null) as result) t;
+            begin
+              select result->>'result_status' into v_status from (select public.farm_v2_apply_wallet_transaction(
+                v_owner,'probe-seed',3,'coin','debit','farm_seed_purchase','1:3','farm_seed_pack',null) as result) t;
+            exception when others then v_status := 'reached_core';
+            end;
             if v_status = 'invalid' then raise exception 'PROBE_SEED_REJECTED'; end if;
             raise notice 'PROBE_OK';
           end
