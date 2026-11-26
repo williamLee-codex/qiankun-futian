@@ -19,7 +19,7 @@ describe("Farm V2 wallet transfer controls", () => {
   it("keeps the working wallet when approved artwork is missing or pending transfer needs recovery", () => {
     expect(wallet).toContain("art.onerror = () => setArtLoaded(false);");
     expect(wallet).toContain("if (artLoaded && !pending && !readError && props.onClose)");
-    expect(wallet).toContain("const command = pending ?? { direction, amount: number };");
+    expect(wallet).toContain("const command = pending ?? (direction ? { direction, amount: number } : null);");
     expect(wallet).toContain("props.transfer(command.direction, command.amount)");
   });
   it("never submits an invalid amount from the approved artwork", () => {
