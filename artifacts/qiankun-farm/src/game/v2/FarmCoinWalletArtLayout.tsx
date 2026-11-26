@@ -56,7 +56,7 @@ function position(name: Region): CSSProperties {
 export function FarmCoinWalletArtLayout(props: {
   centralBalance: ReactNode;
   farmBalance: ReactNode;
-  direction: "in" | "out";
+  direction: "in" | "out" | null;
   onDirectionChange: (direction: "in" | "out") => void;
   amount: string;
   onAmountChange: (value: string) => void;
@@ -132,7 +132,7 @@ export function FarmCoinWalletArtLayout(props: {
           inputMode="numeric"
           value={props.amount}
           onChange={(e) => props.onAmountChange(e.target.value)}
-          disabled={props.disabled}
+          disabled={props.disabled || !props.direction}
           style={{
             ...position("amountInput"),
             border: 0,
@@ -148,7 +148,7 @@ export function FarmCoinWalletArtLayout(props: {
         <button
           type="button"
           aria-label="最大可轉換金額"
-          disabled={props.disabled}
+          disabled={props.disabled || !props.direction}
           onClick={props.onMax}
           style={{ ...position("maxButton"), ...buttonBase }}
         >
@@ -159,7 +159,7 @@ export function FarmCoinWalletArtLayout(props: {
             key={value}
             type="button"
             aria-label={`增加 ${value} 金幣`}
-            disabled={props.disabled}
+            disabled={props.disabled || !props.direction}
             onClick={() => props.onAdd(value)}
             style={{ ...position(region), ...buttonBase }}
           />
