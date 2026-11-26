@@ -79,3 +79,27 @@ export function decideFarmV2CoinCompensation(
   }
 }
 
+
+/** Claim lease policy: a claim older than the timeout may be taken over. */
+export type CoinClaimDecision = "in_progress" | "take_over" | "exhausted";
+
+export function decideCoinClaim(input: {
+  status: "claimed" | "posted" | "failed";
+  claimedAt: Date | string | null;
+  attempts: number;
+  now: Date;
+  timeoutSeconds: number;
+  maxAttempts: number;
+}): CoinClaimDecision {
+  if (input.status !== "claimed") return "in_progress";
+  if (input.attempts >= input.maxAttempts) return "exhausted";
+  if (!input.claimedAt) return "take_over";
+  const claimedAt =
+    input.claimedAt instanceof Date ? input.claimedAt : new Date(input.claimedAt);
+  if (Number.isNaN(claimedAt.getTime())) return "take_over";
+  const ageSeconds = (input.now.getTime() - claimedAt.getTime()) / 1000;
+  // A clock skew that puts the claim in the future must not stall it forever.
+  return ageSeconds < 0 || ageSeconds >= input.timeoutSeconds
+    ? "take_over"
+    : "in_progress";
+}

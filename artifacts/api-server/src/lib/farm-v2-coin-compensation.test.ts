@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { decideFarmV2CoinCompensation } from "./farm-v2-coin-compensation.policy";
+import {
+  decideCoinClaim,
+  decideFarmV2CoinCompensation,
+} from "./farm-v2-coin-compensation.policy";
 
 const journal = (over: Partial<Parameters<typeof decideFarmV2CoinCompensation>[0]> = {}) => ({
   transactionState: "WALLET_APPLIED",
@@ -81,5 +84,55 @@ describe("coin compensation policy", () => {
       due: false,
       reason: "UNKNOWN_STATE",
     });
+  });
+});
+
+describe("coin compensation claim lease", () => {
+  const now = new Date("2026-11-26T10:00:00.000Z");
+  const base = {
+    status: "claimed" as const,
+    attempts: 1,
+    now,
+    timeoutSeconds: 120,
+    maxAttempts: 8,
+  };
+
+  it("hands a stale claim to the next taker", () => {
+    expect(
+      decideCoinClaim({ ...base, claimedAt: "2026-11-26T09:57:00.000Z" }),
+    ).toBe("take_over");
+  });
+
+  it("keeps a live claim with its owner", () => {
+    expect(
+      decideCoinClaim({ ...base, claimedAt: "2026-11-26T09:59:30.000Z" }),
+    ).toBe("in_progress");
+  });
+
+  it("takes over a claim with no timestamp or a future one", () => {
+    expect(decideCoinClaim({ ...base, claimedAt: null })).toBe("take_over");
+    expect(
+      decideCoinClaim({ ...base, claimedAt: "2026-11-26T10:05:00.000Z" }),
+    ).toBe("take_over");
+  });
+
+  it("stops taking over once the attempt budget is spent", () => {
+    expect(
+      decideCoinClaim({
+        ...base,
+        attempts: 8,
+        claimedAt: "2026-11-26T09:00:00.000Z",
+      }),
+    ).toBe("exhausted");
+  });
+
+  it("never reports a takeover for a posted or failed row", () => {
+    expect(
+      decideCoinClaim({
+        ...base,
+        status: "posted",
+        claimedAt: "2026-11-26T09:00:00.000Z",
+      }),
+    ).toBe("in_progress");
   });
 });

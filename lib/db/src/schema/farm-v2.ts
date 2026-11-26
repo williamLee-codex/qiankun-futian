@@ -162,6 +162,9 @@ export const farmV2CoinCompensationTable = pgTable(
       .notNull()
       .defaultNow(),
     postedAt: timestamp("posted_at", { withTimezone: true }),
+    claimedAt: timestamp("claimed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     primaryKey({ columns: [table.userId, table.requestId, table.walletScope] }),

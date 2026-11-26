@@ -1158,6 +1158,214 @@ describe.skipIf(!enabled)(
       expect(after.transaction_state).toBe("COMPLETED");
     });
 
+    it("FIX/COMPENSATION-TAKEOVER: a claim whose process died is taken over and credited once", async () => {
+      const { compensateFarmV2CoinTransaction } = await import(
+        "./farm-v2-coin-compensation"
+      );
+      const request = "fix-takeover";
+      const amount = 21;
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,$2,'seed-purchase:1:2','WALLET_PENDING','debit','coin',$3)",
+        [userId, request, amount],
+      );
+      // A process claimed the row and died before posting.
+      await storage.pool.query(
+        "INSERT INTO farm_v2_coin_compensation(user_id,request_id,wallet_scope,amount,status,evidence,attempts,claimed_at) VALUES($1,$2,'central',$3,'claimed','crash-before-post',1, now() - interval '10 minutes')",
+        [userId, request, amount],
+      );
+      const coins = async () =>
+        (
+          await storage.pool.query(
+            "SELECT coin_balance::int AS n FROM public.core_wallets WHERE owner_id=$1",
+            [userId],
+          )
+        ).rows[0].n as number;
+      const before = await coins();
+      const outcome = await compensateFarmV2CoinTransaction({
+        userId,
+        requestId: request,
+      });
+      expect(outcome.status).toBe("posted");
+      expect(await coins()).toBe(before + amount);
+      const [row] = (
+        await storage.pool.query(
+          "SELECT status, ledger_id, attempts FROM farm_v2_coin_compensation WHERE user_id=$1 AND request_id=$2",
+          [userId, request],
+        )
+      ).rows;
+      // Never left in claimed, and the ledger is the record's evidence.
+      expect(row.status).toBe("posted");
+      expect(row.ledger_id).toBeTruthy();
+      expect(row.attempts).toBe(2);
+      const credits = (
+        await storage.pool.query(
+          "SELECT count(*)::int AS n FROM core_wallet_ledger WHERE owner_id=$1 AND idempotency_key=$2",
+          [userId, `farm-v2:${request}:compensation`],
+        )
+      ).rows[0].n;
+      expect(credits).toBe(1);
+    });
+
+    it("FIX/COMPENSATION-TAKEOVER: a claim inside its lease is left alone", async () => {
+      const { compensateFarmV2CoinTransaction } = await import(
+        "./farm-v2-coin-compensation"
+      );
+      const request = "fix-fresh-claim";
+      const amount = 12;
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,$2,'seed-purchase:1:2','WALLET_PENDING','debit','coin',$3)",
+        [userId, request, amount],
+      );
+      await storage.pool.query(
+        "INSERT INTO farm_v2_coin_compensation(user_id,request_id,wallet_scope,amount,status,evidence,attempts) VALUES($1,$2,'central',$3,'claimed','in-flight',1)",
+        [userId, request, amount],
+      );
+      const outcome = await compensateFarmV2CoinTransaction({
+        userId,
+        requestId: request,
+      });
+      expect(outcome.status).toBe("in_progress");
+      const credits = (
+        await storage.pool.query(
+          "SELECT count(*)::int AS n FROM core_wallet_ledger WHERE owner_id=$1 AND idempotency_key LIKE $2",
+          [userId, `farm-v2:${request}:%`],
+        )
+      ).rows[0].n;
+      expect(credits).toBe(0);
+    });
+
+    it("FIX/COMPENSATION-LOST-RESPONSE: a credit that landed is recorded without a second credit", async () => {
+      const { compensateFarmV2CoinTransaction } = await import(
+        "./farm-v2-coin-compensation"
+      );
+      const request = "fix-credit-then-crash";
+      const amount = 44;
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,$2,'seed-purchase:1:2','WALLET_PENDING','debit','coin',$3)",
+        [userId, request, amount],
+      );
+      // The credit reached the ledger, then the process died before recording it.
+      await storage.pool.query(
+        "SELECT public.farm_v2_post_coin_compensation($1,$2,'central',$3,'crash-after-post')",
+        [userId, request, amount],
+      );
+      await storage.pool.query(
+        "INSERT INTO farm_v2_coin_compensation(user_id,request_id,wallet_scope,amount,status,evidence,attempts,claimed_at) VALUES($1,$2,'central',$3,'claimed','crash-after-post',1, now() - interval '10 minutes')",
+        [userId, request, amount],
+      );
+      const coins = async () =>
+        (
+          await storage.pool.query(
+            "SELECT coin_balance::int AS n FROM public.core_wallets WHERE owner_id=$1",
+            [userId],
+          )
+        ).rows[0].n as number;
+      const before = await coins();
+      const outcome = await compensateFarmV2CoinTransaction({
+        userId,
+        requestId: request,
+      });
+      // The duplicate is only accepted because the ledger proves the credit.
+      expect(outcome.status).toBe("duplicate");
+      expect(outcome).toHaveProperty("ledgerId");
+      expect(await coins()).toBe(before);
+      const [row] = (
+        await storage.pool.query(
+          "SELECT status, ledger_id FROM farm_v2_coin_compensation WHERE user_id=$1 AND request_id=$2",
+          [userId, request],
+        )
+      ).rows;
+      expect(row.status).toBe("posted");
+      expect(row.ledger_id).toBeTruthy();
+    });
+
+    it("FIX/COMPENSATION-CONCURRENT-TAKEOVER: many takers still credit exactly once", async () => {
+      const { compensateFarmV2CoinTransaction } = await import(
+        "./farm-v2-coin-compensation"
+      );
+      const request = "fix-concurrent-takeover";
+      const amount = 19;
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,$2,'seed-purchase:1:2','WALLET_PENDING','debit','coin',$3)",
+        [userId, request, amount],
+      );
+      await storage.pool.query(
+        "INSERT INTO farm_v2_coin_compensation(user_id,request_id,wallet_scope,amount,status,evidence,attempts,claimed_at) VALUES($1,$2,'central',$3,'claimed','stale',1, now() - interval '10 minutes')",
+        [userId, request, amount],
+      );
+      const outcomes = await Promise.all(
+        Array.from({ length: 6 }, () =>
+          compensateFarmV2CoinTransaction({ userId, requestId: request }),
+        ),
+      );
+      expect(outcomes.some((o) => o.status === "posted" || o.status === "duplicate")).toBe(true);
+      const credits = (
+        await storage.pool.query(
+          "SELECT count(*)::int AS n FROM core_wallet_ledger WHERE owner_id=$1 AND idempotency_key=$2",
+          [userId, `farm-v2:${request}:compensation`],
+        )
+      ).rows[0].n;
+      expect(credits).toBe(1);
+      const [row] = (
+        await storage.pool.query(
+          "SELECT status FROM farm_v2_coin_compensation WHERE user_id=$1 AND request_id=$2",
+          [userId, request],
+        )
+      ).rows;
+      expect(row.status).toBe("posted");
+    });
+
+    it("FIX/COMPENSATION-CLOSURE: a late charge is refused on both wallets", async () => {
+      const { compensateFarmV2CoinTransaction } = await import(
+        "./farm-v2-coin-compensation"
+      );
+      const request = "fix-late-charge";
+      const amount = 8;
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,$2,'seed-purchase:1:2','WALLET_PENDING','debit','coin',$3)",
+        [userId, request, amount],
+      );
+      await compensateFarmV2CoinTransaction({ userId, requestId: request });
+      // The delayed central charge and the delayed farm charge both fail.
+      await expect(
+        storage.pool.query(
+          "SELECT public.core_wallet_apply_transaction($1,$2,'coin','debit',$3,'farm_seed_purchase','1:1','farm_seed_pack',null)",
+          [userId, amount, `farm-v2:${request}:primary`],
+        ),
+      ).rejects.toThrow(/FARM_MUTATION_COMPENSATED/);
+      await expect(
+        storage.pool.query(
+          "INSERT INTO farm_v2_bank.ledger(user_id,request_key,amount,direction,reason,reference) VALUES($1,$2,$3,'debit','farm_seed_purchase','ref')",
+          [userId, `op:${request}`, amount],
+        ),
+      ).rejects.toThrow(/FARM_BANK_MUTATION_COMPENSATED/);
+    });
+
+    it("FIX/FARM-EVIDENCE: a farm compensation that does not match the bank debit is refused", async () => {
+      const { compensateFarmV2CoinTransaction } = await import(
+        "./farm-v2-coin-compensation"
+      );
+      const request = "fix-farm-evidence";
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,$2,'land-unlock:2','WALLET_PENDING','debit','coin',10)",
+        [userId, request],
+      );
+      await storage.pool.query(
+        "SELECT farm_v2_bank.post_coin($1,'fund-farm',50,'credit','farm_crop_exchange','ref')",
+        [userId],
+      );
+      await storage.pool.query(
+        "SELECT farm_v2_bank.post_coin($1,$2,10,'debit','farm_v2_land_unlock','ref')",
+        [userId, request],
+      );
+      // The journal claims 10; a caller trying 25 must not be able to refund it.
+      const wrong = await storage.pool.query(
+        "SELECT public.farm_v2_post_coin_compensation($1,$2,'farm',25,'forged') AS r",
+        [userId, request],
+      );
+      expect(wrong.rows[0].r.result_status).toBe("evidence_conflict");
+    });
+
     it("60%/RECOVERY-QUEUE: a lost charge is repaired by a later sweep, once", async () => {
       const { enqueueFarmV2RecoveryTask, runFarmV2RecoverySweep } = await import(
         "./farm-v2-recovery-queue"

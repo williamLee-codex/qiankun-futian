@@ -14,11 +14,13 @@ import {
   farmV2MutationTable,
 } from "@workspace/db";
 import {
+  decideCoinClaim,
   decideFarmV2CoinCompensation,
   type CoinWalletScope,
 } from "./farm-v2-coin-compensation.policy";
 
 export {
+  decideCoinClaim,
   decideFarmV2CoinCompensation,
   type CoinCompensationDecision,
   type CoinWalletScope,
@@ -61,17 +63,22 @@ export async function compensateFarmV2CoinTransaction(input: {
   if (!decision.due) return { status: "not_due", reason: decision.reason };
 
   const evidence = input.evidence ?? decision.evidence;
+  const timeoutSeconds = claimTimeoutSeconds();
+  const maxAttempts = claimMaxAttempts();
+
   const claimed = (
     await db.execute(sql`
       INSERT INTO public.farm_v2_coin_compensation
-        (user_id, request_id, wallet_scope, amount, status, evidence, attempts)
+        (user_id, request_id, wallet_scope, amount, status, evidence, attempts, claimed_at)
       VALUES (${input.userId}::uuid, ${input.requestId}, ${decision.scope},
-              ${decision.amount}, 'claimed', ${evidence}, 1)
+              ${decision.amount}, 'claimed', ${evidence}, 1, now())
       ON CONFLICT (user_id, request_id, wallet_scope) DO NOTHING
       RETURNING status
     `)
   ).rows;
-  if (claimed.length === 0) {
+  let acquired = claimed.length > 0;
+
+  if (!acquired) {
     const [existing] = await db
       .select()
       .from(farmV2CoinCompensationTable)
@@ -84,24 +91,69 @@ export async function compensateFarmV2CoinTransaction(input: {
       )
       .limit(1);
     if (!existing) return { status: "in_progress" };
-    if (existing.status === "posted")
-      return {
-        status: "duplicate",
-        ledgerId: existing.ledgerId,
-        amount: existing.amount,
-      };
-    if (existing.status === "claimed") return { status: "in_progress" };
-    // A failed attempt is retried, still once per request and wallet.
-    const retried = (
-      await db.execute(sql`
-        UPDATE public.farm_v2_coin_compensation
-           SET status='claimed', attempts=attempts+1, failure_code=NULL, updated_at=now()
-         WHERE user_id=${input.userId}::uuid AND request_id=${input.requestId}
-           AND wallet_scope=${decision.scope} AND status='failed'
-        RETURNING status
-      `)
-    ).rows;
-    if (retried.length === 0) return { status: "in_progress" };
+    if (existing.status === "posted") {
+      const ledgerId =
+        existing.ledgerId ??
+        (await verifyCompensationLedger({
+          userId: input.userId,
+          requestId: input.requestId,
+          scope: decision.scope,
+          amount: existing.amount,
+        }));
+      return { status: "duplicate", ledgerId, amount: existing.amount };
+    }
+    if (existing.status === "claimed") {
+      const claim = decideCoinClaim({
+        status: "claimed",
+        claimedAt: existing.claimedAt,
+        attempts: existing.attempts,
+        now: new Date(),
+        timeoutSeconds,
+        maxAttempts,
+      });
+      if (claim === "in_progress") return { status: "in_progress" };
+      if (claim === "exhausted") {
+        await db.execute(sql`
+          UPDATE public.farm_v2_coin_compensation
+             SET status='failed', failure_code='FARM_COMPENSATION_CLAIM_EXHAUSTED',
+                 updated_at=now()
+           WHERE user_id=${input.userId}::uuid AND request_id=${input.requestId}
+             AND wallet_scope=${decision.scope} AND status='claimed'
+             AND attempts >= ${maxAttempts}
+        `);
+        return { status: "failed", code: "FARM_COMPENSATION_CLAIM_EXHAUSTED" };
+      }
+      // Only one taker wins: the row must still be claimed and still be stale.
+      const taken = (
+        await db.execute(sql`
+          UPDATE public.farm_v2_coin_compensation
+             SET attempts=attempts+1, claimed_at=now(), updated_at=now()
+           WHERE user_id=${input.userId}::uuid AND request_id=${input.requestId}
+             AND wallet_scope=${decision.scope} AND status='claimed'
+             AND claimed_at < now() - make_interval(secs => ${timeoutSeconds})
+             AND attempts < ${maxAttempts}
+          RETURNING status
+        `)
+      ).rows;
+      acquired = taken.length > 0;
+      if (!acquired) return { status: "in_progress" };
+    } else {
+      // A failed attempt is retried, still at most once per request and wallet.
+      if (existing.attempts >= maxAttempts)
+        return { status: "failed", code: "FARM_COMPENSATION_CLAIM_EXHAUSTED" };
+      const retried = (
+        await db.execute(sql`
+          UPDATE public.farm_v2_coin_compensation
+             SET status='claimed', attempts=attempts+1, claimed_at=now(),
+                 failure_code=NULL, updated_at=now()
+           WHERE user_id=${input.userId}::uuid AND request_id=${input.requestId}
+             AND wallet_scope=${decision.scope} AND status='failed'
+          RETURNING status
+        `)
+      ).rows;
+      acquired = retried.length > 0;
+      if (!acquired) return { status: "in_progress" };
+    }
   }
 
   let result: { result_status?: string; ledger_id?: string; grace?: boolean };
@@ -116,40 +168,119 @@ export async function compensateFarmV2CoinTransaction(input: {
     const code =
       (error as { message?: string }).message?.split("\n")[0] ??
       "COIN_COMPENSATION_FAILED";
-    await db.execute(sql`
-      UPDATE public.farm_v2_coin_compensation
-         SET status='failed', failure_code=${code}, updated_at=now()
-       WHERE user_id=${input.userId}::uuid AND request_id=${input.requestId}
-         AND wallet_scope=${decision.scope}
-    `);
+    await markFailed(input.userId, input.requestId, decision.scope, code);
     return { status: "failed", code };
   }
 
-  if (result.result_status === "duplicate")
-    return { status: "duplicate", ledgerId: result.ledger_id ?? null, amount: decision.amount };
+  // "duplicate" means the credit may already exist. It only becomes a posted
+  // record after the real ledger entry for this request and wallet is found.
+  if (result.result_status === "duplicate") {
+    const ledgerId =
+      result.ledger_id ??
+      (await verifyCompensationLedger({
+        userId: input.userId,
+        requestId: input.requestId,
+        scope: decision.scope,
+        amount: decision.amount,
+      }));
+    if (!ledgerId) {
+      const code = "COIN_COMPENSATION_LEDGER_UNCONFIRMED";
+      await markFailed(input.userId, input.requestId, decision.scope, code);
+      return { status: "failed", code };
+    }
+    await markPosted(
+      input.userId,
+      input.requestId,
+      decision.scope,
+      ledgerId,
+    );
+    return {
+      status: "duplicate",
+      ledgerId,
+      amount: decision.amount,
+    };
+  }
   if (result.result_status !== "created" || !result.ledger_id) {
     const code = result.result_status ?? "COIN_COMPENSATION_FAILED";
-    await db.execute(sql`
-      UPDATE public.farm_v2_coin_compensation
-         SET status='failed', failure_code=${code}, updated_at=now()
-       WHERE user_id=${input.userId}::uuid AND request_id=${input.requestId}
-         AND wallet_scope=${decision.scope}
-    `);
+    await markFailed(input.userId, input.requestId, decision.scope, code);
     return { status: "failed", code };
   }
-  await db.execute(sql`
-    UPDATE public.farm_v2_coin_compensation
-       SET status='posted', ledger_id=${result.ledger_id}::uuid,
-           posted_at=now(), updated_at=now(), failure_code=NULL
-     WHERE user_id=${input.userId}::uuid AND request_id=${input.requestId}
-       AND wallet_scope=${decision.scope}
-  `);
+  await markPosted(
+    input.userId,
+    input.requestId,
+    decision.scope,
+    result.ledger_id,
+  );
   return {
     status: "posted",
     ledgerId: result.ledger_id,
     grace: result.grace === true,
     amount: decision.amount,
   };
+}
+
+function claimTimeoutSeconds(): number {
+  const raw = Number(process.env.FARM_V2_COMPENSATION_CLAIM_TIMEOUT_SECONDS ?? 120);
+  return Number.isFinite(raw) ? Math.min(Math.max(Math.trunc(raw), 30), 3600) : 120;
+}
+
+function claimMaxAttempts(): number {
+  const raw = Number(process.env.FARM_V2_COMPENSATION_MAX_ATTEMPTS ?? 8);
+  return Number.isFinite(raw) ? Math.min(Math.max(Math.trunc(raw), 1), 20) : 8;
+}
+
+/** The credit that actually exists for this request and wallet, if any. */
+async function verifyCompensationLedger(input: {
+  userId: string;
+  requestId: string;
+  scope: CoinWalletScope;
+  amount: number;
+}): Promise<string | null> {
+  const { rows } = await db.execute(
+    input.scope === "farm"
+      ? sql`
+          SELECT id FROM farm_v2_bank.ledger
+           WHERE user_id=${input.userId}::uuid
+             AND request_key='compensation:'||${input.requestId}
+             AND amount=${input.amount} AND direction='credit'
+           LIMIT 1`
+      : sql`
+          SELECT id FROM public.core_wallet_ledger
+           WHERE owner_id=${input.userId}::uuid
+             AND idempotency_key='farm-v2:'||${input.requestId}||':compensation'
+             AND amount=${input.amount} AND direction='credit' AND currency='coin'
+           LIMIT 1`,
+  );
+  return (rows[0] as { id?: string } | undefined)?.id ?? null;
+}
+
+async function markPosted(
+  userId: string,
+  requestId: string,
+  scope: CoinWalletScope,
+  ledgerId: string,
+) {
+  await db.execute(sql`
+    UPDATE public.farm_v2_coin_compensation
+       SET status='posted', ledger_id=${ledgerId}::uuid,
+           posted_at=now(), updated_at=now(), failure_code=NULL
+     WHERE user_id=${userId}::uuid AND request_id=${requestId}
+       AND wallet_scope=${scope}
+  `);
+}
+
+async function markFailed(
+  userId: string,
+  requestId: string,
+  scope: CoinWalletScope,
+  code: string,
+) {
+  await db.execute(sql`
+    UPDATE public.farm_v2_coin_compensation
+       SET status='failed', failure_code=${code}, updated_at=now()
+     WHERE user_id=${userId}::uuid AND request_id=${requestId}
+       AND wallet_scope=${scope}
+  `);
 }
 
 /**
