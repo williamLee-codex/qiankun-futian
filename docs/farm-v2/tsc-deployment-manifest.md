@@ -13,13 +13,17 @@ performance branch and is not part of this release.
 | 3 | `0008_farm_v2_transaction_health.sql` | `farm_v2_transaction_health(timestamptz,int)` | 0006, 0007 |
 | 4 | `0010_farm_v2_compensation_takeover.sql` | `claimed_at` column, stale-claim index, `farm_v2_bank_request_closure_guard`, fixed `farm_v2_post_coin_compensation` | 0006 |
 | 5 | `0011_farm_v2_lease_and_health_fix.sql` | lease-checked `farm_v2_finish_recovery_task`, corrected `farm_v2_transaction_health` | 0007, 0008 |
+| 6 | `0012_farm_v2_tsc_runtime_permissions.sql` | restricted runtime grants/RLS, receipt-only ledger lookup | 0006–0011, existing `farm_v2_runtime` LOGIN role |
 
 Excluded: `0009_farm_v2_tsc_indexes.sql` (performance branch only; nothing in this
 release needs it). Applying it later is harmless and independent.
 
-Rollback: `0011` → `0010` → `0008` → `0007` → `0006` in reverse; each drops only
-the objects it created. No player balance, item or journal row is touched by any
-of them, and none of them rewrites an existing table.
+Rollback requires a reviewed, state-aware script; do not blindly drop TSC objects
+once compensation or recovery rows exist. The pre-install function/schema backup
+must remain intact. Migration 0012 grants rights only on TSC objects and does
+not grant raw Core or Farm wallet ledger access to `farm_v2_runtime`.
+Migration 0010 now validates the accepted Farm journal's user, request, debit
+currency, amount, state and wallet scope before permitting compensation.
 
 ## 2. API changes requiring the migrations
 
@@ -27,6 +31,7 @@ of them, and none of them rewrites an existing table.
 - Recovery finish now requires a live lease (`0011`), so an old worker cannot
   overwrite a new one's result.
 - Operator health reports only money that actually moved (`0011`).
+- Receipt-only compensation verification, without direct Core/Farm ledger SELECT (`0012`).
 
 ## 3. Main site
 
@@ -67,3 +72,18 @@ served by the same handler and both are covered by the endpoint test.
    claimed_at < now() - interval '10 minutes'` → 0 after a sweep.
 4. Shortfall panel shown on a deficit purchase; convert is refused when the other
    wallet cannot cover the exact deficit.
+
+## 6. Restricted runtime grant validation
+
+The production API's `DATABASE_URL` is secret and must not be printed. Confirm
+its actual SQL `current_user` equals `farm_v2_runtime` through a non-secret
+readiness probe; do not substitute `service_role` or grant Core ledger SELECT.
+`farm_v2_runtime` needs the 0012 TSC table policies, table DML and RPC EXECUTE.
+The browser's `anon` and `authenticated` roles receive no new grants.
+Do not turn on the recovery scheduler before the 0012 grants, the API release,
+and both sweep authentication paths are verified.
+
+Environment keys `FARM_V2_RECOVERY_CRON_SECRET` and `FARM_V2_ADMIN_KEY` must be
+configured as private production secrets, not logged or committed. Until the
+operator and scheduler entry gates pass, keep them closed; never invent a
+successful production probe.
