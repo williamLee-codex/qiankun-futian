@@ -208,7 +208,14 @@ export async function runFarmV2RecoveryWithPostRollbackCompensation<T>(input: {
       .from(farmV2MutationTable)
       .where(mutationWhere(input.userId, input.requestId))
       .limit(1);
-    if (journalRow?.state !== "COMPENSATING") throw error;
+    const posted = ["COMPENSATING", "WALLET_APPLIED", "WALLET_PENDING"];
+    if (!journalRow || !posted.includes(journalRow.state as string)) throw error;
+    if (journalRow.state !== "COMPENSATING")
+      // Mark the intent first so a concurrent retry cannot finalize assets.
+      await db
+        .update(farmV2MutationTable)
+        .set({ transactionState: "COMPENSATING", updatedAt: new Date() })
+        .where(mutationWhere(input.userId, input.requestId));
     // Recovery transaction has already rolled back before compensation starts.
     await compensateFarmV2WalletStep({
       userId: input.userId,
