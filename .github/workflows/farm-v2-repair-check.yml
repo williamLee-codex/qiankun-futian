@@ -21,4 +21,4 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @workspace/qiankun-farm run typecheck
-      - run: pnpm exec vitest run artifacts/qiankun-farm/src/game/v2/FarmNewbieBoost.test.tsx artifacts/qiankun-farm/src/game/v2/FarmNoticeModal.regression.test.ts artifacts/qiankun-farm/src/game/v2/FarmSceneInteractionLayer.formationOverlay.test.ts artifacts/qiankun-farm/src/game/v2/FarmCoinWallet.controls.test.ts
+      - run: pnpm exec vitest run artifacts/qiankun-farm/src/game/v2/FarmNewbieBoost.test.tsx artifacts/qiankun-farm/src/game/v2/FarmNoticeModal.regression.test.ts artifacts/qiankun-farm/src/game/v2/FarmSceneInteractionLayer.formationOverlay.test.ts artifacts/qiankun-farm/src/game/v2/FarmCoinWallet.controls.test.ts artifacts/qiankun-farm/src/game/v2/FarmCoinWallet.test.tsx artifacts/qiankun-farm/src/game/v2/coinShortfallNotice.test.tsx artifacts/qiankun-farm/src/game/v2/MaterialShortageNotice.test.tsx
