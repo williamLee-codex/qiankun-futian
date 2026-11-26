@@ -62,9 +62,12 @@ export async function exchangeFarmV2Crops(input: {
   if (!journal) {
     if (!prePlayer) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
     const preWarehouse = prePlayer.warehouseState as FarmWarehouse;
+    // The exchange settles the largest whole units the stock allows, so only an
+    // empty stock is refused here; the executed plan reports the real quantity.
+    const stock = preWarehouse.crops[landId] ?? 0;
     const precheck = precheckCropExchange({
-      cropStock: preWarehouse.crops[landId] ?? 0,
-      quantity: input.cropQuantity,
+      cropStock: stock,
+      quantity: Math.min(input.cropQuantity, stock),
       rate: rate.cropQuantity,
     });
     if (!precheck.ok) throw new Error(precheck.code);
