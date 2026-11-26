@@ -104,6 +104,7 @@ jobs:
             0131_farm_v2_friend_operation_barrier.sql \
             0132_farm_v2_atomic_pot_settlement.sql \
             0136_farm_v2_formation_tier_contract.sql \
+            0137_farm_v2_crop_reward_label.sql \
           ; do
             f="artifacts/api-server/scripts/dev/platform-fixtures/supabase/migrations/$name"
             echo "== $name"
