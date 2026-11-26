@@ -76,6 +76,8 @@ export function FarmV2AuthenticatedView(props: {
   const [checkingSeeds,setCheckingSeeds]=useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
   const [walletDirection, setWalletDirection] = useState<"in" | "out">("in");
+  const [walletBalances, setWalletBalances] = useState<{ centralCoins: number; coins: number } | null>(null);
+  const [coinDeficit, setCoinDeficit] = useState<number | undefined>(undefined);
   const [signInOpen, setSignInOpen] = useState(false);
   const [newcomerNoticeOpen, setNewcomerNoticeOpen] = useState(false);
   const [firstRechargeNoticeOpen, setFirstRechargeNoticeOpen] = useState(false);
@@ -675,10 +677,10 @@ export function FarmV2AuthenticatedView(props: {
       </button>
       {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
       {error === "FARM_COIN_INSUFFICIENT" && (
-        <CoinShortfallNotice scope="farm" onConvert={(d) => { setWalletDirection(d); setWalletOpen(true); }} />
+        <CoinShortfallNotice scope="farm" balances={walletBalances} deficit={coinDeficit} onConvert={(d) => { setWalletDirection(d); setWalletOpen(true); }} onCancel={() => setSelectedLand(null)} />
       )}
       {error === "CORE_COIN_INSUFFICIENT" && (
-        <CoinShortfallNotice scope="core" onConvert={(d) => { setWalletDirection(d); setWalletOpen(true); }} />
+        <CoinShortfallNotice scope="core" balances={walletBalances} deficit={coinDeficit} onConvert={(d) => { setWalletDirection(d); setWalletOpen(true); }} onCancel={() => setSelectedLand(null)} />
       )}
       {notice && <p role="status">{notice}</p>}
       <button
