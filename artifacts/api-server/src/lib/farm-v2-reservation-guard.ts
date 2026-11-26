@@ -27,10 +27,10 @@ export async function assertOwnerAssetsFree(
     `array['${UNRESOLVED_STATES.join("','")}']`,
   );
   const result = (await tx.execute(sql`
-    select 1 from public.farm_v2_mutation
+    select 1 from farm_v2_mutation
      where user_id = ${ownerId}::uuid
        and request_id <> ${requestId}
-       and transaction_state::text = any(${states}::text[])
+       and transaction_state = any(${states}::text[])
        and action like 'WORKSHOP:%'
      limit 1
   `)) as { rows?: unknown[] };
