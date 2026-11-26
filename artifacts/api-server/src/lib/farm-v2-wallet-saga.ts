@@ -1,4 +1,5 @@
 import { localCoinTransaction, postLocalCoin } from "./farm-v2-local-coins";
+import { compensateFarmV2CoinTransaction } from "./farm-v2-coin-compensation";
 import { and, eq, sql } from "drizzle-orm";
 import {
   db,
@@ -204,12 +205,38 @@ export async function runFarmV2RecoveryWithPostRollbackCompensation<T>(input: {
       isPermanentFarmV2RecoveryError(error);
     if (!permanent) throw error;
     const [journalRow] = await db
-      .select({ state: farmV2MutationTable.transactionState })
+      .select({
+        state: farmV2MutationTable.transactionState,
+        walletTransaction: farmV2MutationTable.walletTransaction,
+      })
       .from(farmV2MutationTable)
       .where(mutationWhere(input.userId, input.requestId))
       .limit(1);
     const posted = ["COMPENSATING", "WALLET_APPLIED", "WALLET_PENDING"];
     if (!journalRow || !posted.includes(journalRow.state as string)) throw error;
+    // A charge whose answer never arrived has no transaction id to reverse.
+    // The coin policy compensates it in full instead of leaving the player to
+    // wait, and closing the request blocks any late charge.
+    if (
+      journalRow.state === "WALLET_PENDING" &&
+      !(journalRow.walletTransaction as { result?: unknown } | null)?.result
+    ) {
+      const outcome = await compensateFarmV2CoinTransaction({
+        userId: input.userId,
+        requestId: input.requestId,
+      });
+      if (outcome.status === "not_due" || outcome.status === "failed")
+        throw error;
+      await db
+        .update(farmV2MutationTable)
+        .set({
+          transactionState: "COMPENSATED",
+          failureCode: "FARM_CHARGE_OUTCOME_UNKNOWN",
+          updatedAt: new Date(),
+        })
+        .where(mutationWhere(input.userId, input.requestId));
+      throw new Error("FARM_MUTATION_COMPENSATED");
+    }
     if (journalRow.state !== "COMPENSATING")
       // Mark the intent first so a concurrent retry cannot finalize assets.
       await db

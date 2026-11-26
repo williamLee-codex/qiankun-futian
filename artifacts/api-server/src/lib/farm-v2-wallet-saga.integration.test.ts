@@ -188,17 +188,19 @@ describe.skipIf(!enabled)(
       ]) {
         await applyOnce(storage.pool, file, readFileSync(`${root}/supabase/migrations/${file}`, "utf8"));
       }
-      await applyOnce(
-        storage.pool,
+      for (const file of [
         "0001_farm_v2_authority_reconciliation.sql",
-        readFileSync(
-          new URL(
-            "../../../../lib/db/migrations/0001_farm_v2_authority_reconciliation.sql",
-            import.meta.url,
+        "0004_farm_v2_local_coin_bank.sql",
+        "0006_farm_v2_coin_compensation.sql",
+      ])
+        await applyOnce(
+          storage.pool,
+          file,
+          readFileSync(
+            new URL(`../../../../lib/db/migrations/${file}`, import.meta.url),
+            "utf8",
           ),
-          "utf8",
-        ),
-      );
+        );
       await storage.pool.query(`
       CREATE TABLE IF NOT EXISTS farm_v2_player_state(user_id text primary key, first_farm_entered_at timestamptz, effective_paid_crystals integer not null default 0, access_state jsonb not null, warehouse_state jsonb not null, mission_state jsonb not null, pet_state jsonb not null, farmer_state jsonb not null, chaos_seed_state jsonb, updated_at timestamptz default now());
       CREATE TABLE IF NOT EXISTS farm_v2_land(user_id text,land_id integer,lifecycle text,access_active boolean,planted_quantity integer default 0,planted_at timestamptz,matures_at timestamptz,version bigint default 0,primary key(user_id,land_id));
@@ -1033,6 +1035,136 @@ describe.skipIf(!enabled)(
         ).rows[0].n,
       ).toBe(ledgerRows);
     });
+    it("50%/COIN-COMPENSATION: a charge whose answer was lost is refunded in full, once", async () => {
+      const { compensateFarmV2CoinTransaction } = await import(
+        "./farm-v2-coin-compensation"
+      );
+      const request = "lost-charge-answer";
+      const amount = 37;
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount,wallet_transaction) VALUES($1,$2,'seed-purchase:1:2','WALLET_PENDING','debit','coin',$3,$4)",
+        [
+          userId,
+          request,
+          amount,
+          JSON.stringify({ command: { amount, currency: "coin" } }),
+        ],
+      );
+      const coins = async () =>
+        (
+          await storage.pool.query(
+            "SELECT coalesce(sum(coin_balance),0)::int AS n FROM public.core_wallets WHERE owner_id=$1",
+            [userId],
+          )
+        ).rows[0].n as number;
+      const credits = async () =>
+        (
+          await storage.pool.query(
+            "SELECT count(*)::int AS n FROM public.core_wallet_ledger WHERE owner_id=$1 AND idempotency_key=$2",
+            [userId, `farm-v2:${request}:compensation`],
+          )
+        ).rows[0].n as number;
+      const before = await coins();
+      const first = await compensateFarmV2CoinTransaction({
+        userId,
+        requestId: request,
+      });
+      expect(first).toMatchObject({ status: "posted", grace: true, amount });
+      expect(await coins()).toBe(before + amount);
+      const second = await compensateFarmV2CoinTransaction({
+        userId,
+        requestId: request,
+      });
+      expect(second.status).toBe("duplicate");
+      expect(await credits()).toBe(1);
+      expect(await coins()).toBe(before + amount);
+      // The request is closed, so a delayed charge can never be applied.
+      const [closure] = (
+        await storage.pool.query(
+          "SELECT outcome FROM public.farm_v2_wallet_closures WHERE user_id=$1 AND request_id=$2",
+          [userId, request],
+        )
+      ).rows;
+      expect(closure?.outcome).toBe("COMPENSATED");
+      const late = await storage.pool.query(
+        "SELECT public.farm_v2_apply_wallet_transaction($1::uuid,$2,37,'coin','debit','farm_seed_purchase','1:2','farm_seed_pack',null) AS result",
+        [userId, request],
+      );
+      expect(late.rows[0].result.result_status).toBe("compensated");
+    });
+
+    it("50%/COIN-COMPENSATION: concurrent compensation credits the player once", async () => {
+      const { compensateFarmV2CoinTransaction } = await import(
+        "./farm-v2-coin-compensation"
+      );
+      const request = "concurrent-compensation";
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,$2,'seed-purchase:1:2','WALLET_APPLIED','debit','coin',11)",
+        [userId, request],
+      );
+      const outcomes = await Promise.all(
+        Array.from({ length: 6 }, () =>
+          compensateFarmV2CoinTransaction({ userId, requestId: request }),
+        ),
+      );
+      expect(
+        outcomes.filter((o) => o.status === "posted" || o.status === "duplicate"),
+      ).not.toHaveLength(0);
+      const rows = (
+        await storage.pool.query(
+          "SELECT count(*)::int AS n FROM public.core_wallet_ledger WHERE owner_id=$1 AND idempotency_key=$2",
+          [userId, `farm-v2:${request}:compensation`],
+        )
+      ).rows[0].n;
+      expect(rows).toBe(1);
+      const claimed = (
+        await storage.pool.query(
+          "SELECT count(*)::int AS n FROM public.farm_v2_coin_compensation WHERE user_id=$1 AND request_id=$2",
+          [userId, request],
+        )
+      ).rows[0].n;
+      expect(claimed).toBe(1);
+    });
+
+    it("50%/COIN-COMPENSATION: crystals and delivered requests are never refunded", async () => {
+      const { compensateFarmV2CoinTransaction } = await import(
+        "./farm-v2-coin-compensation"
+      );
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,'crystal-refund','crop-exchange:6','WALLET_APPLIED','credit','crystal',4),($1,'delivered-ok','seed-purchase:1:2','COMPLETED','debit','coin',9)",
+        [userId],
+      );
+      expect(
+        await compensateFarmV2CoinTransaction({
+          userId,
+          requestId: "crystal-refund",
+        }),
+      ).toEqual({ status: "not_due", reason: "NOT_A_COIN_WALLET" });
+      expect(
+        await compensateFarmV2CoinTransaction({
+          userId,
+          requestId: "delivered-ok",
+        }),
+      ).toEqual({ status: "not_due", reason: "DELIVERED" });
+      const rows = (
+        await storage.pool.query(
+          "SELECT count(*)::int AS n FROM public.farm_v2_coin_compensation WHERE user_id=$1 AND request_id IN ('crystal-refund','delivered-ok')",
+          [userId],
+        )
+      ).rows[0].n;
+      expect(rows).toBe(0);
+    });
+
+    it("50%/COIN-COMPENSATION: frequent compensation is listed for review, never blocked", async () => {
+      const { listFarmV2CoinCompensationWatch } = await import(
+        "./farm-v2-coin-compensation"
+      );
+      const watch = await listFarmV2CoinCompensationWatch({ minimum: 1 });
+      const mine = watch.find((row) => row.user_id === userId);
+      expect(mine).toBeTruthy();
+      expect(Number(mine!.compensation_count)).toBeGreaterThanOrEqual(2);
+    });
+
     it("POT-GALLERY-004/TX-IDEMPOTENCY-001: concurrent synthesis grants first reward once; replay cannot copy assets", async () => {
       await workshopFixture();
       const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =

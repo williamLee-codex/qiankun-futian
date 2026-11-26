@@ -137,3 +137,36 @@ export const farmV2ReconciliationEventTable = pgTable(
       .defaultNow(),
   },
 );
+
+/**
+ * Coin grace compensation. One row per original request and wallet, so a
+ * duplicate or delayed attempt can never credit the player twice.
+ */
+export const farmV2CoinCompensationTable = pgTable(
+  "farm_v2_coin_compensation",
+  {
+    userId: uuid("user_id").notNull(),
+    requestId: text("request_id").notNull(),
+    walletScope: text("wallet_scope").notNull(),
+    amount: integer("amount").notNull(),
+    status: text("status").notNull(),
+    evidence: text("evidence").notNull(),
+    originalTransactionId: uuid("original_transaction_id"),
+    ledgerId: uuid("ledger_id"),
+    failureCode: text("failure_code"),
+    attempts: integer("attempts").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    postedAt: timestamp("posted_at", { withTimezone: true }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.requestId, table.walletScope] }),
+    check("wallet_scope", sql`${table.walletScope} in ('central','farm')`),
+    check("amount", sql`${table.amount} > 0`),
+    check("status", sql`${table.status} in ('claimed','posted','failed')`),
+  ],
+);
