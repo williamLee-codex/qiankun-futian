@@ -1,6 +1,6 @@
 /** Presentation only: do not reinterpret an uncertain transaction as failed. */
 export function farmV2ErrorMessage(code: string): string {
-  if (code === "FARM_COIN_INSUFFICIENT")
+  if (code === "FARM_COIN_INSUFFICIENT" || code === "CORE_COIN_INSUFFICIENT" || code === "insufficient_funds")
     return "福田金幣不足，請開啟福田錢包，手動從中央轉入金幣。";
   if (code === "FARM_TRANSFER_PENDING")
     return "上一筆轉帳尚未確認，請先重試原轉帳。";

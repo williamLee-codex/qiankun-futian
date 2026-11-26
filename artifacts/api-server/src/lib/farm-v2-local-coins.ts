@@ -13,7 +13,7 @@ export function bankError(error: unknown): never {
   let cause: unknown = error;
   for (let i = 0; i < 5 && cause && typeof cause === "object"; i++) {
     const e = cause as { code?: string; message?: string; cause?: unknown };
-    if (e.code === "P0001" && e.message) throw new Error(e.message);
+    if (e.code === "P0001" && e.message) throw new Error(e.message, { cause: e });
     cause = e.cause;
   }
   throw error;

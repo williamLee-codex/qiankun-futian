@@ -195,12 +195,27 @@ export async function runFarmV2RecoveryWithPostRollbackCompensation<T>(input: {
   try {
     return await input.recover();
   } catch (error) {
-    if (
-      !(error instanceof Error) ||
-      error.message !== "PERMANENT_MUTATION_RECOVERY_FAILURE"
-    ) {
-      throw error;
-    }
+    if (!(error instanceof Error)) throw error;
+    // A permanent recovery failure and a permanent precheck refusal both end
+    // the attempt. Only a journal that already posted the wallet effect is
+    // compensated; anything else keeps its original error.
+    const permanent =
+      error.message === "PERMANENT_MUTATION_RECOVERY_FAILURE" ||
+      isPermanentFarmV2RecoveryError(error);
+    if (!permanent) throw error;
+    const [journalRow] = await db
+      .select({ state: farmV2MutationTable.transactionState })
+      .from(farmV2MutationTable)
+      .where(mutationWhere(input.userId, input.requestId))
+      .limit(1);
+    const posted = ["COMPENSATING", "WALLET_APPLIED", "WALLET_PENDING"];
+    if (!journalRow || !posted.includes(journalRow.state as string)) throw error;
+    if (journalRow.state !== "COMPENSATING")
+      // Mark the intent first so a concurrent retry cannot finalize assets.
+      await db
+        .update(farmV2MutationTable)
+        .set({ transactionState: "COMPENSATING", updatedAt: new Date() })
+        .where(mutationWhere(input.userId, input.requestId));
     // Recovery transaction has already rolled back before compensation starts.
     await compensateFarmV2WalletStep({
       userId: input.userId,

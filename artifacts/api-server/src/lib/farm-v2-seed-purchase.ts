@@ -1,9 +1,12 @@
 import { and, eq } from "drizzle-orm";
-import { farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
+import { db, farmV2LandTable, farmV2MutationTable, farmV2PlayerStateTable } from "@workspace/db";
 import { getSeedPack } from "../../../qiankun-farm/src/game/v2/canonicalEconomyData";
 import type { FarmLandId } from "../../../qiankun-farm/src/game/v2/canonicalLandData";
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
+import { precheckSeedPurchase } from "./farm-v2-precheck";
+import { readPurchaseWalletBalance } from "./farm-v2-coin-balance";
+import { localCoinsEnabled } from "./farm-v2-local-coins";
 import {
   applyFarmV2WalletStep,
   readFarmV2WalletIntent,
@@ -29,6 +32,52 @@ export async function purchaseFarmV2SeedPacks(input: {
   const landId = input.landId as FarmLandId;
   const pack = getSeedPack(landId);
   if (!pack.purchasable) throw new Error("SEED_NOT_PURCHASABLE");
+
+  // Normal business refusals happen before a mutation row exists, so a short
+  // balance or locked land never leaves a PENDING residue behind.
+  const [prePlayer] = await db
+    .select({ userId: farmV2PlayerStateTable.userId })
+    .from(farmV2PlayerStateTable)
+    .where(eq(farmV2PlayerStateTable.userId, input.userId))
+    .limit(1);
+  const [preLand] = await db
+    .select({ unlocked: farmV2LandTable.accessActive })
+    .from(farmV2LandTable)
+    .where(and(eq(farmV2LandTable.userId, input.userId), eq(farmV2LandTable.landId, landId)))
+    .limit(1);
+  // Seed purchases debit the farm bank when local coins are enabled, and the
+  // central wallet otherwise; the pre-check must read that same wallet.
+  const wallet = localCoinsEnabled() ? ("farm" as const) : ("core" as const);
+  // A request that already owns a journal is a retry: the journal decides.
+  const [journal] = await db
+    .select({ requestId: farmV2MutationTable.requestId })
+    .from(farmV2MutationTable)
+    .where(
+      and(
+        eq(farmV2MutationTable.userId, input.userId),
+        eq(farmV2MutationTable.requestId, input.requestId),
+      ),
+    )
+    .limit(1);
+  const precheck = journal
+    ? { ok: true as const }
+    : precheckSeedPurchase({
+    playerExists: Boolean(prePlayer),
+    landUnlocked: Boolean(preLand?.unlocked),
+    unitPrice: pack.price,
+    packs: input.packs,
+        availableCoins: await readPurchaseWalletBalance(input.userId, wallet),
+        wallet,
+      });
+  if (!precheck.ok)
+    throw Object.assign(
+      new Error(
+        precheck.code === "CORE_COIN_INSUFFICIENT"
+          ? "insufficient_funds"
+          : precheck.code,
+      ),
+      { code: precheck.code, details: precheck.details },
+    );
 
   return runFarmV2RecoveryWithPostRollbackCompensation({
     userId: input.userId,

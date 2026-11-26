@@ -58,7 +58,7 @@ export async function mutateFarmV2AtomicPot(input: {
           };
           if (["42883", "42P01", "42501"].includes(e.code ?? ""))
             throw new Error("FARM_ATOMIC_POT_TOPOLOGY_REQUIRED");
-          if (e.code === "P0001" && e.message) throw new Error(e.message);
+          if (e.code === "P0001" && e.message) throw new Error(e.message, { cause: e });
           cause = e.cause;
         }
         throw error;

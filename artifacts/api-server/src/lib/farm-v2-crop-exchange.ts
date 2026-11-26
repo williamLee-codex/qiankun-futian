@@ -1,5 +1,6 @@
-import { eq } from "drizzle-orm";
-import { farmV2PlayerStateTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
+import { db } from "@workspace/db";
+import { farmV2MutationTable, farmV2PlayerStateTable } from "@workspace/db";
 import { getExchangeRate } from "../../../qiankun-farm/src/game/v2/canonicalEconomyData";
 import {
   applyCoinReward,
@@ -10,6 +11,8 @@ import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseR
 import type { MissionState } from "../../../qiankun-farm/src/game/v2/missionRuntime";
 import { recordMissionEvent } from "../../../qiankun-farm/src/game/v2/missionRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
+import { precheckCropExchange } from "./farm-v2-precheck";
+import { assertLandAssetsFree } from "./farm-v2-reservation-guard";
 import {
   applyFarmV2WalletStep,
   readFarmV2WalletIntent,
@@ -35,6 +38,49 @@ export async function exchangeFarmV2Crops(input: {
     throw new Error("INVALID_EXCHANGE_QUANTITY");
   const landId = input.landId as FarmLandId;
   const rate = getExchangeRate(landId);
+
+  // A request that already owns a journal is a retry: the journal decides what
+  // happens, so the fresh-request prechecks must not short-circuit it.
+  const [journal] = await db
+    .select({ requestId: farmV2MutationTable.requestId })
+    .from(farmV2MutationTable)
+    .where(
+      and(
+        eq(farmV2MutationTable.userId, input.userId),
+        eq(farmV2MutationTable.requestId, input.requestId),
+      ),
+    )
+    .limit(1);
+  // Exchanging more than the player holds is a normal refusal; it must not
+  // reach the wallet saga, which is where a PENDING residue could be created.
+  const [prePlayer] = journal
+    ? [{ warehouseState: null }]
+    : await db
+    .select({ warehouseState: farmV2PlayerStateTable.warehouseState })
+    .from(farmV2PlayerStateTable)
+    .where(eq(farmV2PlayerStateTable.userId, input.userId))
+    .limit(1);
+  if (!journal) {
+    if (!prePlayer) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
+    const preWarehouse = prePlayer.warehouseState as FarmWarehouse;
+    // The exchange settles the largest whole units the stock allows, so only an
+    // empty stock is refused here; the executed plan reports the real quantity.
+    const stock = preWarehouse.crops[landId] ?? 0;
+    const precheck = precheckCropExchange({
+      cropStock: stock,
+      quantity: Math.min(input.cropQuantity, stock),
+      rate: rate.cropQuantity,
+    });
+    if (!precheck.ok) throw new Error(precheck.code);
+    // A reserved workshop plan already holds this land's crops.
+    await assertLandAssetsFree(
+      db,
+      input.userId,
+      input.requestId,
+      landId,
+      "WORKSHOP_RECOVERY_REQUIRED",
+    );
+  }
 
   return runFarmV2RecoveryWithPostRollbackCompensation({
     userId: input.userId,
@@ -127,9 +173,9 @@ export async function exchangeFarmV2Crops(input: {
             currency: rate.currency === "coins" ? "coin" : "crystal",
             direction: "credit",
             launchToken: input.launchToken,
-            reason: "farm_crop_exchange",
+            reason: "farm_crop_reward",
             referenceId: `${landId}:${cropsConsumed}`,
-            referenceType: "farm_crop_exchange",
+            referenceType: "farm_crop_reward",
             requestId: input.requestId,
           });
 

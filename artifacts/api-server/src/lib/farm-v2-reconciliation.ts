@@ -110,7 +110,7 @@ export async function reconcileFarmWallet(
         (action[1] === "seed-purchase"
           ? primary.reason !== "farm_seed_purchase" ||
             action[3] !== reference[2]
-          : primary.reason !== "farm_crop_exchange" ||
+          : !["farm_crop_exchange", "farm_crop_reward"].includes(primary.reason) ||
             Number(reference[2]) > Number(action[3]));
       const conflict =
         command &&
