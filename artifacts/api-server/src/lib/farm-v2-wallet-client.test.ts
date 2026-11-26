@@ -78,6 +78,43 @@ describe("Farm V2 Core Wallet bridge", () => {
     });
   });
 
+  it("uses the dedicated Farm bridge for fvs1 sessions with no legacy secret", async () => {
+    vi.stubEnv("REPLIT_APP_SHARED_SECRET", "");
+    vi.stubEnv("FARM_V2_BRIDGE_SHARED_SECRET", "farm-only-secret");
+    vi.stubEnv("PLATFORM_BASE_URL", "https://platform.example");
+    const launchToken = `fvs1.${"a".repeat(43)}`;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        duplicate: false,
+        transaction: {
+          id: "tx-1", ownerId: "user-1", amount: 1, currency: "coin",
+          direction: "debit", reason: "farm_seed_purchase", referenceId: "1:1",
+          referenceType: "farm_seed_pack", idempotencyKey: "farm-v2:request-1:primary",
+          reversalOf: null, walletId: "wallet-1",
+        },
+        wallet: { id: "wallet-1", ownerId: "user-1" },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(mutateFarmV2Wallet({ ...input, launchToken }))
+      .resolves.toMatchObject({ duplicate: false });
+    const [, request] = fetchMock.mock.calls[0];
+    expect(request.headers["x-farm-v2-shared-secret"]).toBe("farm-only-secret");
+    expect(request.headers["x-replit-shared-secret"]).toBeUndefined();
+  });
+
+  it("never accepts a dedicated Farm credential for a legacy launch token", async () => {
+    vi.stubEnv("REPLIT_APP_SHARED_SECRET", "");
+    vi.stubEnv("FARM_V2_BRIDGE_SHARED_SECRET", "farm-only-secret");
+    vi.stubEnv("PLATFORM_BASE_URL", "https://platform.example");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(mutateFarmV2Wallet(input))
+      .rejects.toThrow("FARM_WALLET_BRIDGE_NOT_CONFIGURED");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("rejects an incomplete success response", async () => {
     vi.stubEnv("REPLIT_APP_SHARED_SECRET", "secret");
     vi.stubEnv("PLATFORM_BASE_URL", "https://platform.example");
