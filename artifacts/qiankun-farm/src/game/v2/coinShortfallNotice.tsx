@@ -69,11 +69,11 @@ export function CoinShortfallNotice(props: {
             style={{ maxWidth: "100%", display: "block" }}
             onError={() => setArtMissing(true)}
           />
-          {hotspot("取消", props.onCancel, { left: "4%", bottom: "6%", width: "26%", height: "14%" })}
+          {hotspot("取消", props.onCancel, { left: "22.5%", top: "66%", width: "23.5%", height: "12.5%" })}
           {coverable
-            ? hotspot("轉換", () => props.onConvert(direction), { left: "37%", bottom: "6%", width: "26%", height: "14%" })
+            ? hotspot("轉換", () => props.onConvert(direction), { left: "49.5%", top: "66%", width: "28%", height: "12.5%" })
             : null}
-          {hotspot("關閉", props.onCancel, { right: "3%", top: "3%", width: "12%", height: "12%" })}
+          {hotspot("關閉", props.onCancel, { left: "83.5%", top: "10%", width: "6.5%", height: "9%" })}
         </div>
       </section>
     );
