@@ -35,6 +35,7 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:farm-v2-test@127.0.0.1:5432/farm_v2_test
       FARM_V2_TEST_DATABASE_URL: postgres://postgres:farm-v2-test@127.0.0.1:5432/farm_v2_test
+      FARM_V2_INIT_TEST_DATABASE_URL: postgres://postgres:farm-v2-test@127.0.0.1:5432/farm_v2_init_disposable
       FARM_V2_PLATFORM_CHECKOUT: ${{ github.workspace }}/artifacts/api-server/scripts/dev/platform-fixtures
       PGPASSWORD: farm-v2-test
     steps:
@@ -50,6 +51,7 @@ jobs:
       - name: Prepare Supabase-compatible database
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -c "CREATE DATABASE farm_v2_test"
+          psql -h 127.0.0.1 -U postgres -d postgres -c "CREATE DATABASE farm_v2_init_disposable"
           psql -h 127.0.0.1 -U postgres -d farm_v2_test -v ON_ERROR_STOP=1 <<'SQL'
           CREATE TABLE IF NOT EXISTS public._harness_applied (file text PRIMARY KEY);
           CREATE SCHEMA IF NOT EXISTS auth;
