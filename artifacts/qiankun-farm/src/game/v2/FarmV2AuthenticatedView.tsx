@@ -671,7 +671,30 @@ export function FarmV2AuthenticatedView(props: {
         結束遊玩並登出
       </button>
       {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
-      {error === "FARM_COIN_INSUFFICIENT" && <p role="status">金幣不足，請透過上方福田金幣錢包查看餘額與轉換狀態。</p>}
+      {error === "FARM_COIN_INSUFFICIENT" && (
+        <section role="status" aria-live="polite" className="farm-v2-coin-shortfall">
+          <img
+            src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-conversion-approved.png`}
+            alt="福田金幣不足"
+          />
+          <p>福田金幣不足，請先轉換金幣再回來確認購買。</p>
+          <button type="button" onClick={() => setWalletOpen(true)}>
+            轉換金幣
+          </button>
+        </section>
+      )}
+      {error === "CORE_COIN_INSUFFICIENT" && (
+        <section role="status" aria-live="polite" className="farm-v2-coin-shortfall">
+          <img
+            src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-conversion.png`}
+            alt="中央金幣不足"
+          />
+          <p>中央金幣不足，請先轉換金幣再回來確認購買。</p>
+          <button type="button" onClick={() => setWalletOpen(true)}>
+            轉換金幣
+          </button>
+        </section>
+      )}
       {notice && <p role="status">{notice}</p>}
       <button
         type="button"
