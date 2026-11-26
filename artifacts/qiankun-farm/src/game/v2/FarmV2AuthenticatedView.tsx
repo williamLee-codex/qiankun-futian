@@ -1,5 +1,6 @@
 import type { FarmSeedRecovery } from "./farmV2ApiClient";
 import { FarmCoinWallet } from "./FarmCoinWallet";
+import { CoinShortfallNotice } from "./coinShortfallNotice";
 import { FarmFirstPurchaseRewards } from "./FarmFirstPurchaseRewards";
 import { FarmNewbieBoost } from "./FarmNewbieBoost";
 import { farmV2ErrorMessage } from "./farmV2ErrorMessage";
@@ -74,6 +75,7 @@ export function FarmV2AuthenticatedView(props: {
   const [seedRecoveries,setSeedRecoveries]=useState<FarmSeedRecovery[]>([]);
   const [checkingSeeds,setCheckingSeeds]=useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [walletDirection, setWalletDirection] = useState<"in" | "out">("in");
   const [signInOpen, setSignInOpen] = useState(false);
   const [newcomerNoticeOpen, setNewcomerNoticeOpen] = useState(false);
   const [firstRechargeNoticeOpen, setFirstRechargeNoticeOpen] = useState(false);
@@ -456,6 +458,7 @@ export function FarmV2AuthenticatedView(props: {
             pending={pendingTransfers}
             busy={busy}
             onClose={() => setWalletOpen(false)}
+            initialDirection={walletDirection}
           />
         </DialogContent>
       </Dialog>
@@ -672,28 +675,10 @@ export function FarmV2AuthenticatedView(props: {
       </button>
       {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
       {error === "FARM_COIN_INSUFFICIENT" && (
-        <section role="status" aria-live="polite" className="farm-v2-coin-shortfall">
-          <img
-            src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-conversion-approved.png`}
-            alt="福田金幣不足"
-          />
-          <p>福田金幣不足，請先轉換金幣再回來確認購買。</p>
-          <button type="button" onClick={() => setWalletOpen(true)}>
-            轉換金幣
-          </button>
-        </section>
+        <CoinShortfallNotice scope="farm" onConvert={(d) => { setWalletDirection(d); setWalletOpen(true); }} />
       )}
       {error === "CORE_COIN_INSUFFICIENT" && (
-        <section role="status" aria-live="polite" className="farm-v2-coin-shortfall">
-          <img
-            src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-conversion.png`}
-            alt="中央金幣不足"
-          />
-          <p>中央金幣不足，請先轉換金幣再回來確認購買。</p>
-          <button type="button" onClick={() => setWalletOpen(true)}>
-            轉換金幣
-          </button>
-        </section>
+        <CoinShortfallNotice scope="core" onConvert={(d) => { setWalletDirection(d); setWalletOpen(true); }} />
       )}
       {notice && <p role="status">{notice}</p>}
       <button
