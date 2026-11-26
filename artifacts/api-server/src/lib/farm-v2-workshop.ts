@@ -20,7 +20,7 @@ import { farmAuthorityContext } from "./farm-v2-authority-context";
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { and, eq, isNull } from "drizzle-orm";
-import { farmV2PlayerStateTable, farmV2MutationTable } from "@workspace/db";
+import { db, farmV2PlayerStateTable, farmV2MutationTable } from "@workspace/db";
 import {
   planFormationMutation,
   planWorkshopMutation,
@@ -30,6 +30,11 @@ import {
   type WorkshopCommand,
 } from "../../../qiankun-farm/src/game/v2/workshopRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
+import {
+  assertSynthesisMaterials,
+  FarmV2PrecheckRefusal,
+  precheckSynthesisMaterials,
+} from "./farm-v2-precheck";
 import {
   applyFarmV2WalletStep,
   journalDb,
@@ -282,11 +287,19 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
           ...snapshots,
           pets: encodeFarmPetState(result.state),
         };
-      } else
+      } else {
+        // Authoritative refusal under the player row lock. A concurrent request
+        // that slipped past the fast pre-check must not consume shared stock.
+        if (input.command.kind === "synthesize")
+          assertSynthesisMaterials({
+            warehouse: before,
+            grade: input.command.grade,
+          });
         plan = {
           ...planWorkshopMutation(before, input.command, randomUUID(), now),
           ...snapshots,
         };
+      }
       if (paid) {
         await journalDb
           .update(farmV2MutationTable)
@@ -377,8 +390,41 @@ export function mutateLegacyFarmV2Workshop(input: Input) {
   });
 }
 
+/**
+ * A material shortfall is a normal outcome. It is refused here, before the
+ * journal row, wallet call or reservation exists, so nothing needs recovering.
+ * A request that already owns a journal keeps its original recovery contract
+ * and is never re-prechecked: its plan and wallet effect are already decided.
+ */
+async function precheckNewWorkshopMaterials(input: Input) {
+  if (input.command?.kind !== "synthesize") return;
+  const [existing] = await journalDb
+    .select({ requestId: farmV2MutationTable.requestId })
+    .from(farmV2MutationTable)
+    .where(
+      and(
+        eq(farmV2MutationTable.userId, input.userId),
+        eq(farmV2MutationTable.requestId, input.requestId),
+      ),
+    )
+    .limit(1);
+  if (existing) return;
+  const [player] = await db
+    .select({ warehouseState: farmV2PlayerStateTable.warehouseState })
+    .from(farmV2PlayerStateTable)
+    .where(eq(farmV2PlayerStateTable.userId, input.userId))
+    .limit(1);
+  if (!player) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
+  const result = precheckSynthesisMaterials({
+    warehouse: player.warehouseState as WorkshopWarehouse,
+    grade: input.command.grade,
+  });
+  if (!result.ok) throw new FarmV2PrecheckRefusal(result);
+}
+
 /** Public dispatcher: every NEW pot settlement requires verified co-location. */
 export async function mutateFarmV2Workshop(input: Input) {
+  await precheckNewWorkshopMaterials(input);
   if (input.command?.kind !== "synthesize" || localCoinsEnabled())
     return mutateLegacyFarmV2Workshop(input);
   const [existing] = await journalDb

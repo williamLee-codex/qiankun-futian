@@ -40,6 +40,32 @@ export const FARM_V2_EXCHANGE: readonly CropExchangeDefinition[] = [
   { landId: 6, cropQuantity: 1, rewardQuantity: 1, currency: 'crystals' },
 ] as const;
 
+export type SynthesisMaterialId = '蘊靈砂' | '九霄玉髓';
+
+export interface SynthesisMaterialRequirement {
+  material: SynthesisMaterialId;
+  quantity: number;
+}
+
+/**
+ * Pot synthesis materials, indexed by POT_GRADES position (0 = 黃).
+ * The material name is already the display name the player sees.
+ */
+export const FARM_V2_POT_SYNTHESIS_MATERIALS: readonly SynthesisMaterialRequirement[] = [
+  { material: '蘊靈砂', quantity: 1 },
+  { material: '蘊靈砂', quantity: 1 },
+  { material: '蘊靈砂', quantity: 4 },
+  { material: '九霄玉髓', quantity: 2 },
+  { material: '九霄玉髓', quantity: 4 },
+  { material: '九霄玉髓', quantity: 10 },
+] as const;
+
+export function getSynthesisMaterials(gradeIndex: number): SynthesisMaterialRequirement {
+  const item = FARM_V2_POT_SYNTHESIS_MATERIALS[gradeIndex];
+  if (!item) throw new Error(`Unknown synthesis grade index: ${gradeIndex}`);
+  return item;
+}
+
 export function getSeedPack(landId: FarmLandId): SeedPackDefinition {
   const item = FARM_V2_SEED_PACKS.find((x) => x.landId === landId);
   if (!item) throw new Error(`Unknown seed pack land: ${landId}`);

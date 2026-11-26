@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { farmV2PlayerStateTable, farmV2MutationTable } from "@workspace/db";
 import { farmAuthorityContext } from "./farm-v2-authority-context";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
+import { assertSynthesisMaterials } from "./farm-v2-precheck";
 import {
   planWorkshopMutation,
   workshopPublicState,
@@ -31,6 +32,11 @@ export async function mutateFarmV2AtomicPot(input: {
         .where(eq(farmV2PlayerStateTable.userId, input.userId))
         .for("update");
       if (!player) throw new Error("FARM_PLAYER_STATE_NOT_FOUND");
+      // Refuse under the row lock before the Core wallet function can charge.
+      assertSynthesisMaterials({
+        warehouse: player.warehouseState as WorkshopWarehouse,
+        grade: input.command.grade,
+      });
       const plan = planWorkshopMutation(
         player.warehouseState as WorkshopWarehouse,
         input.command,

@@ -55,6 +55,8 @@ export function FarmV2AuthenticatedView(props: {
     endSession,
     workshop,
     pendingWorkshop,
+    materialShortages,
+    clearMaterialShortages,
     readFriends,
     readWallet,
     readSignIn,
@@ -596,6 +598,8 @@ export function FarmV2AuthenticatedView(props: {
               pets={data.pets}
               busy={busy || loading}
               transact={workshop}
+              materialShortages={materialShortages}
+              clearMaterialShortages={clearMaterialShortages}
             />
           )}
         </DialogContent>

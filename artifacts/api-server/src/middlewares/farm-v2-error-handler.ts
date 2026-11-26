@@ -56,6 +56,7 @@ const FARM_V2_STATUS_BY_ERROR: Readonly<Record<string, number>> = {
   INSUFFICIENT_PET_FOOD: 409,
   INVALID_POT_GRADE: 400,
   INSUFFICIENT_MATERIALS: 409,
+  FARM_MATERIALS_INSUFFICIENT: 409,
   INSUFFICIENT_CROPS: 409,
   DISPLAYED_SOURCE_MISMATCH: 409,
   INSUFFICIENT_SAME_GRADE_POTS: 409,
@@ -142,7 +143,14 @@ export const farmV2ErrorHandler: ErrorRequestHandler = (
     }
   }
   res.setHeader("Cache-Control", "no-store");
+  // Structured refusal details let the client show a normal notice (for example
+  // every short material) instead of a generic failure sentence.
+  const details = (error as { details?: unknown })?.details;
   res
     .status(status)
-    .json({ error: code, ...(reauthenticateUrl ? { reauthenticateUrl } : {}) });
+    .json({
+      error: code,
+      ...(details && typeof details === "object" ? { details } : {}),
+      ...(reauthenticateUrl ? { reauthenticateUrl } : {}),
+    });
 };

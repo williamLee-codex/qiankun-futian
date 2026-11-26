@@ -361,10 +361,15 @@ describe.skipIf(!enabled)(
     });
     async function authorizedPot(
       requestId: string,
-      command = {
-        kind: "synthesize" as const,
+      command: {
+        kind: "synthesize";
+        species: number;
+        grade: "黃" | "玄" | "地" | "天" | "仙" | "神";
+        useDisplayed: boolean;
+      } = {
+        kind: "synthesize",
         species: 1,
-        grade: "黃" as const,
+        grade: "黃",
         useDisplayed: false,
       },
     ) {
@@ -826,6 +831,208 @@ describe.skipIf(!enabled)(
         ],
       );
     }
+    // Everything a refused synthesis must leave untouched, in one snapshot.
+    async function assetSnapshot() {
+      const query = async (sql: string) =>
+        (await storage.pool.query(sql, [userId])).rows;
+      return {
+        player: await query(
+          "SELECT warehouse_state, mission_state, pet_state FROM farm_v2_player_state WHERE user_id=$1",
+        ),
+        land: await query(
+          "SELECT land_id, lifecycle, planted_quantity FROM farm_v2_land WHERE user_id=$1 ORDER BY land_id",
+        ),
+        journal: await query(
+          "SELECT request_id, transaction_state, wallet_transaction FROM farm_v2_mutation WHERE user_id=$1 ORDER BY request_id",
+        ),
+        ledgers: (await storage.pool.query(
+          "SELECT count(*)::int AS rows FROM public.core_wallet_ledger",
+        )).rows[0],
+        wallets: (await storage.pool.query(
+          "SELECT count(*)::int AS rows, coalesce(sum(coin_balance),0)::int AS coins, coalesce(sum(crystal_balance),0)::int AS crystals FROM public.core_wallets",
+        )).rows[0],
+      };
+    }
+    it("40%/MATERIAL-PRECHECK: a short material refuses before journal, charge, consumption or reservation", async () => {
+      await workshopFixture();
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(warehouse_state,'{workshop,materials}',$2) WHERE user_id=$1",
+        [userId, { 蘊靈砂: 4, 九霄玉髓: 1 }],
+      );
+      const before = await assetSnapshot();
+      // 天 grade needs 九霄玉髓 2 and the player holds 1.
+      const failure = await authorizedPot("material-short", {
+        kind: "synthesize",
+        species: 1,
+        grade: "天",
+        useDisplayed: false,
+      }).catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(Error);
+      expect((failure as Error).message).toBe("FARM_MATERIALS_INSUFFICIENT");
+      expect((failure as Error).name).toBe("FarmV2PrecheckRefusal");
+      expect((failure as { details?: unknown }).details).toEqual({
+        materials: "九霄玉髓：需求 2、持有 1、不足 1",
+        shortages: [
+          { material: "九霄玉髓", name: "九霄玉髓", required: 2, held: 1, missing: 1 },
+        ],
+      });
+      expect(await assetSnapshot()).toEqual(before);
+    });
+    it("40%/MATERIAL-PRECHECK: a material the player never held counts as zero held", async () => {
+      await workshopFixture();
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(warehouse_state,'{workshop,materials}',$2) WHERE user_id=$1",
+        [userId, {}],
+      );
+      const before = await assetSnapshot();
+      const failure = await authorizedPot("material-absent").catch(
+        (error: unknown) => error,
+      );
+      expect((failure as Error).message).toBe("FARM_MATERIALS_INSUFFICIENT");
+      expect((failure as { details?: unknown }).details).toEqual({
+        materials: "蘊靈砂：需求 1、持有 0、不足 1",
+        shortages: [
+          { material: "蘊靈砂", name: "蘊靈砂", required: 1, held: 0, missing: 1 },
+        ],
+      });
+      expect(await assetSnapshot()).toEqual(before);
+    });
+    it("40%/MATERIAL-PRECHECK: concurrent synthesis never over-consumes shared stock", async () => {
+      await workshopFixture();
+      vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "1");
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(jsonb_set(warehouse_state,'{workshop,materials}',$2),'{crops}',$3) WHERE user_id=$1",
+        [userId, { 蘊靈砂: 1, 九霄玉髓: 0 }, { 1: 6, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }],
+      );
+      // 黃 grade needs 1 蘊靈砂 and 3 crops: the stock covers one synthesis only.
+      const results = await Promise.allSettled([
+        authorizedPot("material-race-a"),
+        authorizedPot("material-race-b"),
+      ]);
+      const refused = results.filter(
+        (result) =>
+          result.status === "rejected" &&
+          (result.reason as Error).message === "FARM_MATERIALS_INSUFFICIENT",
+      );
+      expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      expect(refused).toHaveLength(1);
+      const { warehouse_state: warehouse } = (
+        await storage.pool.query(
+          "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+          [userId],
+        )
+      ).rows[0];
+      expect(warehouse.workshop.materials.蘊靈砂).toBe(0);
+      expect(warehouse.crops[1]).toBe(3);
+      expect(warehouse.workshop.pots).toHaveLength(1);
+      const journals = (
+        await storage.pool.query(
+          "SELECT request_id FROM farm_v2_mutation WHERE user_id=$1 AND request_id LIKE 'material-race-%'",
+          [userId],
+        )
+      ).rows;
+      expect(journals).toHaveLength(1);
+      vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "");
+    });
+    it("40%/MATERIAL-PRECHECK: an existing request keeps its original outcome and is never re-prechecked", async () => {
+      await workshopFixture();
+      vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "1");
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(jsonb_set(warehouse_state,'{workshop,materials}',$2),'{crops}',$3) WHERE user_id=$1",
+        [userId, { 蘊靈砂: 1, 九霄玉髓: 0 }, { 1: 3, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }],
+      );
+      const first = await authorizedPot("material-replay");
+      const afterFirst = (
+        await storage.pool.query(
+          "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+          [userId],
+        )
+      ).rows[0].warehouse_state;
+      expect(afterFirst.workshop.materials.蘊靈砂).toBe(0);
+      // Materials are now exhausted; the original request must still answer
+      // with its recorded result instead of a fresh material refusal.
+      const replay = await authorizedPot("material-replay");
+      expect(replay).toEqual(first);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT warehouse_state FROM farm_v2_player_state WHERE user_id=$1",
+            [userId],
+          )
+        ).rows[0].warehouse_state,
+      ).toEqual(afterFirst);
+      // A different request is a new transaction and is refused normally.
+      await expect(authorizedPot("material-replay-new")).rejects.toMatchObject({
+        message: "FARM_MATERIALS_INSUFFICIENT",
+      });
+      vi.stubEnv("FARM_V2_ATOMIC_POT_ENABLED", "");
+    });
+    it("40%/MATERIAL-PRECHECK: other resource shortages stay normal refusals without a journal", async () => {
+      await workshopFixture();
+      await storage.pool.query(
+        "UPDATE farm_v2_player_state SET warehouse_state=jsonb_set(warehouse_state,'{crops}',$2) WHERE user_id=$1",
+        [userId, { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }],
+      );
+      // An empty stock is the only crop refusal: the exchange settles what the
+      // stock allows, so a partial stock is a smaller settlement, not an error.
+      await expect(
+        exchange({
+          userId,
+          launchToken: "test",
+          requestId: "crop-short",
+          landId: 1,
+          cropQuantity: 5,
+        }),
+      ).rejects.toThrow(/INVALID_EXCHANGE_QUANTITY|INSUFFICIENT/);
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT count(*)::int AS n FROM farm_v2_mutation WHERE user_id=$1 AND request_id='crop-short'",
+            [userId],
+          )
+        ).rows[0].n,
+      ).toBe(0);
+      // A coin shortage is the same kind of normal refusal.
+      const wallets = (
+        await storage.pool.query("SELECT id, coin_balance FROM public.core_wallets")
+      ).rows;
+      const ledgerRows = (
+        await storage.pool.query("SELECT count(*)::int AS n FROM public.core_wallet_ledger")
+      ).rows[0].n;
+      await storage.pool.query("UPDATE public.core_wallets SET coin_balance=0");
+      try {
+        const failure = await purchase({
+          userId,
+          launchToken: "test",
+          requestId: "seed-short",
+          landId: 1,
+          packs: 2,
+        }).catch((error: Error) => error);
+        expect(failure).toMatchObject({
+          message: "insufficient_funds",
+          code: "CORE_COIN_INSUFFICIENT",
+        });
+      } finally {
+        for (const wallet of wallets)
+          await storage.pool.query(
+            "UPDATE public.core_wallets SET coin_balance=$2 WHERE id=$1",
+            [wallet.id, wallet.coin_balance],
+          );
+      }
+      expect(
+        (
+          await storage.pool.query(
+            "SELECT count(*)::int AS n FROM farm_v2_mutation WHERE user_id=$1 AND request_id='seed-short'",
+            [userId],
+          )
+        ).rows[0].n,
+      ).toBe(0);
+      expect(
+        (
+          await storage.pool.query("SELECT count(*)::int AS n FROM public.core_wallet_ledger")
+        ).rows[0].n,
+      ).toBe(ledgerRows);
+    });
     it("POT-GALLERY-004/TX-IDEMPOTENCY-001: concurrent synthesis grants first reward once; replay cannot copy assets", async () => {
       await workshopFixture();
       const { mutateLegacyFarmV2Workshop: mutateFarmV2Workshop } =

@@ -5,12 +5,19 @@
  * to the client and nothing is reserved, charged or journalled. Only real
  * faults may reach the recovery path.
  */
+import { POT_GRADES, type PotGrade } from "../../../qiankun-farm/src/game/v2/potRuntime";
+import { getSynthesisMaterials } from "../../../qiankun-farm/src/game/v2/canonicalEconomyData";
+import {
+  workshopState,
+  type WorkshopWarehouse,
+} from "../../../qiankun-farm/src/game/v2/workshopRuntime";
+
 export type PrecheckFailure = {
   ok: false;
   code: string;
   /** Wallet that must be topped up, when the failure is a coin shortfall. */
   wallet?: "core" | "farm";
-  details?: Record<string, number | string>;
+  details?: Record<string, unknown>;
 };
 
 export type PrecheckResult = { ok: true } | PrecheckFailure;
@@ -154,6 +161,43 @@ export function precheckWorkshopMaterials(input: {
       materials: shortages
         .map((s) => `${s.name}：需求 ${s.required}、持有 ${s.held}、不足 ${s.missing}`)
         .join("；"),
+      shortages,
     },
   };
+}
+
+/** A normal refusal the client renders as a notice, never as a fault. */
+export class FarmV2PrecheckRefusal extends Error {
+  readonly details?: Record<string, unknown>;
+  constructor(failure: PrecheckFailure) {
+    super(failure.code);
+    this.name = "FarmV2PrecheckRefusal";
+    if (failure.details) this.details = failure.details;
+  }
+}
+
+/**
+ * Authoritative synthesis material check. Callers pass the state they already
+ * hold under a row lock, so the same rule serves both the fast refusal before a
+ * journal row exists and the in-transaction backstop against over-consumption.
+ */
+export function precheckSynthesisMaterials(input: {
+  warehouse: WorkshopWarehouse;
+  grade: PotGrade;
+}): PrecheckResult {
+  const index = POT_GRADES.indexOf(input.grade);
+  if (index < 0) return { ok: false, code: "INVALID_POT_GRADE" };
+  const recipe = getSynthesisMaterials(index);
+  return precheckWorkshopMaterials({
+    required: { [recipe.material]: recipe.quantity },
+    available: workshopState(input.warehouse).materials,
+  });
+}
+
+export function assertSynthesisMaterials(input: {
+  warehouse: WorkshopWarehouse;
+  grade: PotGrade;
+}): void {
+  const result = precheckSynthesisMaterials(input);
+  if (!result.ok) throw new FarmV2PrecheckRefusal(result);
 }

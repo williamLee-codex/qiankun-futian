@@ -4,7 +4,9 @@ import { POT_GRADES, POT_GRADE_COSTS, POT_FIRST_UNLOCK_REWARDS } from "./potRunt
 import { workshopState, planWorkshopMutation, type WorkshopCommand, type WorkshopWarehouse } from "./workshopRuntime";
 import "./potSynthesisGrid.css";
 import { potDisplayBonus } from "./potDisplayRuntime";
-import { getExchangeRate } from "./canonicalEconomyData";
+import { getExchangeRate, getSynthesisMaterials } from "./canonicalEconomyData";
+import { MaterialShortageNotice } from "./MaterialShortageNotice";
+import type { MaterialShortage } from "./materialShortageNotice";
 
 type Selection = { species: FarmLandId; level: number };
 const gradeColors = ["#b7e3b0", "#d5c36a", "#70b9ef", "#c19bef", "#efcd73", "#f08d8d", "#dfc5ff"];
@@ -15,6 +17,8 @@ export function PotSynthesisGrid(props: {
   busy: boolean;
   readWallet: () => Promise<{ coins: number }>;
   transact: (command: WorkshopCommand) => Promise<boolean>;
+  materialShortages?: MaterialShortage[];
+  clearMaterialShortages?: () => void;
 }) {
   const [selected, setSelected] = useState<Selection>({ species: 1, level: 1 });
   const [useDisplayed, setUseDisplayed] = useState(false);
@@ -29,8 +33,7 @@ export function PotSynthesisGrid(props: {
   const land = FARM_V2_LANDS[selected.species - 1];
   const grade = POT_GRADES[Math.max(0, selected.level - 1)];
   const command = { kind: "synthesize", species: selected.species, grade, useDisplayed } as const;
-  const material = selected.level <= 3 ? "蘊靈砂" : "九霄玉髓";
-  const materialCost = [1, 1, 4, 2, 4, 10][Math.max(0, selected.level - 1)];
+  const { material, quantity: materialCost } = getSynthesisMaterials(Math.max(0, selected.level - 1));
   const required = selected.level === 1 ? 3 : selected.species === 6 ? 2 : 3;
   const sourceGrade = POT_GRADES[selected.level - 2];
   const displayed = state.pots.find(p => p.species === selected.species && p.displayed && p.grade === sourceGrade);
@@ -78,6 +81,10 @@ export function PotSynthesisGrid(props: {
     catch { setStage("failed"); }
     finally { inFlight.current = false; }
   }
+  const shortage = (props.materialShortages?.length ?? 0) > 0;
+  // A material shortfall is answered by the notice and returns to this recipe
+  // with the product and quantity intact; it is never an uncertain transaction.
+  useEffect(() => { if (shortage && stage === "failed") setStage("recipe"); }, [shortage, stage]);
   return <section className="pot-synthesis" aria-label="42 格靈植與盆栽合成">
     {!inventoryAvailable && <p role="alert">伺服器尚未提供盆栽及合成材料庫存，已停止合成與擺放操作，請重新讀取農田。</p>}
     <header><div><h3>靈植合成圖鑑</h3><p>點選目標盆栽，查看配方與合成條件</p></div><p>蘊靈砂 {state.materials.蘊靈砂} · 九霄玉髓 {state.materials.九霄玉髓}<br/>金幣 {coins === null ? "確認中" : coins}</p></header>
@@ -94,6 +101,12 @@ export function PotSynthesisGrid(props: {
         })]).flat()}
       </div></div>
       <div className="pot-recipe-column">
+          {shortage && (
+            <MaterialShortageNotice
+              shortages={props.materialShortages!}
+              onClose={() => props.clearMaterialShortages?.()}
+            />
+          )}
           <div className="pot-placement-action">
             <button type="button" disabled={!selectedOwnedPot || !inventoryAvailable || props.busy || placementPending || stage === "working" || stage === "failed"} onClick={() => selectedOwnedPot && void changePlacement(selectedOwnedPot)}>
               {placementPending ? "處理中…" : selectedOwnedPot?.displayed ? "取下盆栽" : "展示盆栽"}
@@ -134,7 +147,7 @@ export function PotSynthesisGrid(props: {
           </ul>
           {selected.level > 1 && displayed && <label className="pot-display-choice"><input type="checkbox" checked={useDisplayed} disabled={props.busy || stage === "working"} onChange={e => setUseDisplayed(e.target.checked)}/>使用展示中的 {sourceGrade} 階盆栽，並以成品替換</label>}
           {state.potGallery[`${selected.species}:${grade}`] === undefined && <p>首次取得圖鑑獎勵：{POT_FIRST_UNLOCK_REWARDS[grade]} 金幣</p>}
-          <p role="status" aria-live="polite">{stage === "working" ? "靈氣匯聚中，正在確認合成…" : stage === "success" ? "合成成功！成品已列入盆栽持有統計。" : stage === "failed" ? "尚未確認合成結果，請先更新農田並查核庫存，暫勿重複送出。" : ready ? "材料與金幣齊全，可以合成" : "暫不可合成，請補足上方標示的缺項"}</p>
+          <p role="status" aria-live="polite">{stage === "working" ? "靈氣匯聚中，正在確認合成…" : stage === "success" ? "合成成功！成品已列入盆栽持有統計。" : stage === "failed" && !shortage ? "尚未確認合成結果，請先更新農田並查核庫存，暫勿重複送出。" : ready ? "材料與金幣齊全，可以合成" : "暫不可合成，請補足上方標示的缺項"}</p>
           {walletError && <button type="button" onClick={() => void reloadWallet()}>金幣讀取失敗，重新確認</button>}
           <button type="button" className="pot-craft-button" disabled={!ready} onClick={() => void synthesize()}>{stage === "working" ? "合成中…" : `合成${grade}階盆栽`}</button>
           <small>金幣與材料以伺服器最後確認為準。</small>

@@ -6,6 +6,13 @@ export function farmV2ErrorMessage(code: string): string {
     return "上一筆轉帳尚未確認，請先重試原轉帳。";
   if (code === "FARM_COIN_BALANCE_LIMIT")
     return "轉入後餘額超過上限，請減少金額。";
+  if (code === "FARM_MATERIALS_INSUFFICIENT") return "您的合成材料不足，請補足後再合成。";
+  if (code === "INSUFFICIENT_CROPS") return "同種靈植數量不足，請先收成更多靈植。";
+  if (code === "INSUFFICIENT_SAME_GRADE_POTS") return "同階同種盆栽數量不足，請先合成更多來源盆栽。";
+  if (code === "INSUFFICIENT_PET_FOOD") return "靈獸百味糧不足，請先購買飼糧。";
+  if (code === "SEED_INSUFFICIENT") return "這塊田的種子不足，請先購買種子。";
+  if (code === "CROP_INSUFFICIENT") return "田裡可兌換的作物數量不足。";
+  if (code === "CRYSTAL_INSUFFICIENT") return "水晶不足，請先補足水晶。";
   if (code === "FARM_SEED_LAND_LOCKED") return "請先解鎖這塊田，再購買種子。";
   if (
     /AUTH_REQUIRED|UNAUTHORIZED|NOT_AUTHORIZED|FORBIDDEN|SESSION|LAUNCH_TOKEN|LOGIN|TOKEN_EXPIRED/.test(
