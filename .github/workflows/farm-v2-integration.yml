@@ -193,15 +193,19 @@ jobs:
             v_owner uuid := '00000000-0000-4000-8000-0000000000aa';
           begin
             -- 1. the three functions actually loaded carry the new label
-            foreach v_def in array array[
-              pg_get_functiondef('public.farm_v2_apply_wallet_transaction(uuid,text,integer,text,text,text,text,text,uuid)'::regprocedure),
-              pg_get_functiondef('public.farm_v2_operator_wallet_reconcile(uuid,text,text,text,text,text)'::regprocedure),
-              pg_get_functiondef('public.farm_v2_closed_wallet_request_guard()'::regprocedure)
-            ] loop
-              if position('farm_crop_reward' in v_def) = 0 then
-                raise exception 'PROBE_MISSING_LABEL';
-              end if;
-            end loop;
+            raise notice 'BRIDGE_LABEL %', position('farm_crop_reward' in pg_get_functiondef('public.farm_v2_apply_wallet_transaction(uuid,text,integer,text,text,text,text,text,uuid)'::regprocedure));
+            raise notice 'RECON_LABEL %', position('farm_crop_reward' in pg_get_functiondef('public.farm_v2_operator_wallet_reconcile(uuid,text,text,text,text,text)'::regprocedure));
+            raise notice 'GUARD_LABEL %', position('farm_crop_reward' in pg_get_functiondef('public.farm_v2_closed_wallet_request_guard()'::regprocedure));
+            raise notice 'PROSRC %', (select count(*) from pg_proc where proname='farm_v2_apply_wallet_transaction' and prosrc like '%farm_crop_reward%');
+            if position('farm_crop_reward' in pg_get_functiondef('public.farm_v2_apply_wallet_transaction(uuid,text,integer,text,text,text,text,text,uuid)'::regprocedure)) = 0 then
+              raise exception 'PROBE_MISSING_LABEL bridge';
+            end if;
+            if position('farm_crop_reward' in pg_get_functiondef('public.farm_v2_operator_wallet_reconcile(uuid,text,text,text,text,text)'::regprocedure)) = 0 then
+              raise exception 'PROBE_MISSING_LABEL reconcile';
+            end if;
+            if position('farm_crop_reward' in pg_get_functiondef('public.farm_v2_closed_wallet_request_guard()'::regprocedure)) = 0 then
+              raise exception 'PROBE_MISSING_LABEL guard';
+            end if;
             -- 2. the crystal guard trigger is still installed
             if not exists (select 1 from pg_trigger where tgname like '%crystal_policy%' and not tgisinternal) then
               raise exception 'PROBE_GUARD_MISSING';
