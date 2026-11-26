@@ -1036,6 +1036,84 @@ describe.skipIf(!enabled)(
         ).rows[0].n,
       ).toBe(ledgerRows);
     });
+    it("70%/ISOLATION: an unresolved request on one land never blocks another land", async () => {
+      await gameplayFixture();
+      const { enqueueFarmV2RecoveryTask } = await import("./farm-v2-recovery-queue");
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,'iso-land1','seed-purchase:1:1','WALLET_PENDING','debit','coin',3)",
+        [userId],
+      );
+      await enqueueFarmV2RecoveryTask({
+        userId,
+        requestId: "iso-land1",
+        action: "seed-purchase:1:1",
+      });
+      // A different land is untouched by the unresolved request.
+      await purchase({
+        userId,
+        launchToken: "test",
+        requestId: "iso-land2",
+        landId: 2,
+        packs: 1,
+      });
+      const states = (
+        await storage.pool.query(
+          "SELECT request_id, transaction_state FROM farm_v2_mutation WHERE user_id=$1 AND request_id IN ('iso-land1','iso-land2') ORDER BY request_id",
+          [userId],
+        )
+      ).rows;
+      expect(states).toEqual([
+        { request_id: "iso-land1", transaction_state: "WALLET_PENDING" },
+        { request_id: "iso-land2", transaction_state: "COMPLETED" },
+      ]);
+      // A new request on the affected land is also served normally.
+      await purchase({
+        userId,
+        launchToken: "test",
+        requestId: "iso-land1-new",
+        landId: 1,
+        packs: 1,
+      });
+    });
+
+    it("70%/ISOLATION: compensation releases the request and the land works again", async () => {
+      await gameplayFixture();
+      const { compensateFarmV2CoinTransaction } = await import(
+        "./farm-v2-coin-compensation"
+      );
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,'iso-release','seed-purchase:1:1','WALLET_PENDING','debit','coin',3)",
+        [userId],
+      );
+      expect(
+        await compensateFarmV2CoinTransaction({
+          userId,
+          requestId: "iso-release",
+        }),
+      ).toMatchObject({ status: "posted" });
+      const [closed] = (
+        await storage.pool.query(
+          "SELECT transaction_state FROM farm_v2_mutation WHERE user_id=$1 AND request_id='iso-release'",
+          [userId],
+        )
+      ).rows;
+      expect(closed.transaction_state).toBe("WALLET_PENDING");
+      await purchase({
+        userId,
+        launchToken: "test",
+        requestId: "iso-land1-after",
+        landId: 1,
+        packs: 1,
+      });
+      const [after] = (
+        await storage.pool.query(
+          "SELECT transaction_state FROM farm_v2_mutation WHERE user_id=$1 AND request_id='iso-land1-after'",
+          [userId],
+        )
+      ).rows;
+      expect(after.transaction_state).toBe("COMPLETED");
+    });
+
     it("60%/RECOVERY-QUEUE: a lost charge is repaired by a later sweep, once", async () => {
       const { enqueueFarmV2RecoveryTask, runFarmV2RecoverySweep } = await import(
         "./farm-v2-recovery-queue"
