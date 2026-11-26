@@ -37,7 +37,7 @@ export function FarmCoinWallet(props: {
 }) {
   const [balances, setBalances] = useState<FarmCoinBalances | null>(null),
     [amount, setAmount] = useState(""),
-    [direction, setDirection] = useState<"in" | "out">(props.initialDirection ?? "in");
+    [direction, setDirection] = useState<"in" | "out" | null>(props.initialDirection ?? null);
   const [artLoaded, setArtLoaded] = useState(
     () => preloadedArt?.complete === true && preloadedArt.naturalWidth > 0,
   );
@@ -110,7 +110,7 @@ export function FarmCoinWallet(props: {
     }
   }
   async function submit() {
-    if (working || props.busy || (!pending && !valid) || !transferEnabled)
+    if (working || props.busy || (!pending && (!direction || !valid)) || !transferEnabled)
       return;
     const command = pending ?? { direction, amount: number };
     setWorking(true);
@@ -139,7 +139,7 @@ export function FarmCoinWallet(props: {
   if (artLoaded && !pending && !readError && props.onClose) {
     const locked = working || props.busy;
     const enabled = transferEnabled && !locked;
-    const available = balances ? (direction === "in" ? balances.centralCoins : balances.coins) : 0;
+    const available = balances && direction ? (direction === "in" ? balances.centralCoins : balances.coins) : 0;
     const note =
       message ||
       (!balances
@@ -154,15 +154,15 @@ export function FarmCoinWallet(props: {
       onDirectionChange={(next)=>{ setDirection(next); setAmount(""); }}
       amount={amount}
       onAmountChange={setAmount}
-      onMax={() => setAmount(String(Math.min(available, 2147483647)))}
-      onAdd={(value) => setAmount((current) => {
+      onMax={() => { if (direction) setAmount(String(Math.min(available, 2147483647))); }}
+      onAdd={(value) => { if (!direction) return; setAmount((current) => {
         const base = /^\d+$/.test(current) ? Number(current) : 0;
         return String(Math.min(base + value, available, 2147483647));
-      })}
+      }); }}
       onSubmit={() => void submit()}
       onClose={props.onClose}
       disabled={!enabled}
-      submitDisabled={!enabled || !valid || number > available}
+      submitDisabled={!enabled || !direction || !valid || number > available}
       message={note}
     />;
   }
@@ -219,13 +219,13 @@ export function FarmCoinWallet(props: {
               inputMode="numeric"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              disabled={working || props.busy || !transferEnabled}
+              disabled={working || props.busy || !transferEnabled || !direction}
             />
           </label>
         </>
       )}
       <button
-        style={{ ...controlStyle, background: "#d6b76c", fontWeight: 600, opacity: working || props.busy || (!pending && !valid) || !transferEnabled ? 0.55 : 1 }}
+        style={{ ...controlStyle, background: "#d6b76c", fontWeight: 600, opacity: working || props.busy || (!pending && (!direction || !valid)) || !transferEnabled ? 0.55 : 1 }}
         onClick={() => void submit()}
         disabled={working || props.busy || (!pending && !valid) || !transferEnabled}
       >
@@ -235,7 +235,9 @@ export function FarmCoinWallet(props: {
             ? "重試原轉帳"
             : direction === "in"
               ? "轉入福田"
-              : "回存中央"}
+              : direction === "out"
+                ? "回存中央"
+                : "請先選擇方向"}
       </button>
       {message && <p role="status">{message}</p>}
     </div>
