@@ -78,8 +78,13 @@ export async function mutateFarmV2Wallet(
     throw new Error("INVALID_FARM_WALLET_OPERATION");
   }
   const platformBaseUrl = process.env.PLATFORM_BASE_URL;
-  const sharedSecret = process.env.REPLIT_APP_SHARED_SECRET;
-  if (!platformBaseUrl || !sharedSecret || !input.launchToken) {
+  const sharedSecret = process.env.REPLIT_APP_SHARED_SECRET ?? "";
+  const dedicatedSecret = process.env.FARM_V2_BRIDGE_SHARED_SECRET;
+  const isFarmSession = /^fvs1\.[A-Za-z0-9_-]{43}$/.test(input.launchToken);
+  const bridgeConfigured = isFarmSession
+    ? Boolean(dedicatedSecret || sharedSecret)
+    : Boolean(sharedSecret);
+  if (!platformBaseUrl || !bridgeConfigured || !input.launchToken) {
     throw new Error("FARM_WALLET_BRIDGE_NOT_CONFIGURED");
   }
   const base = new URL(platformBaseUrl);

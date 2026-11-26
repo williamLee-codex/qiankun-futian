@@ -14,7 +14,9 @@ router.get("/healthz", (_req, res) => {
 router.get("/healthz/ready", async (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
   const configured = Boolean(
-    process.env.PLATFORM_BASE_URL && process.env.REPLIT_APP_SHARED_SECRET,
+    process.env.PLATFORM_BASE_URL &&
+      (process.env.FARM_V2_BRIDGE_SHARED_SECRET ||
+        process.env.REPLIT_APP_SHARED_SECRET),
   );
   if (!configured) {
     console.warn("FARM_READINESS_CONFIGURATION_MISSING");
