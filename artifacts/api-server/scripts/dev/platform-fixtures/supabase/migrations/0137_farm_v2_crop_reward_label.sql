@@ -1,11 +1,11 @@
 BEGIN;
 -- Additive Farm migration: a same-wallet crop reward may be recorded as
 -- farm_crop_reward, which the crystal policy guard does not read as a transfer.
--- Rebased on the current definitions in 0130, not the older 0128 body, so no
--- later workshop, wallet-creation or revocation fix is overwritten. Only the
--- label is added: owner, quantity, amount, currency, direction, reference,
--- lifecycle and idempotency rules are unchanged, and reference_type must equal
--- the reason. The crystal guard trigger and history stay untouched.
+-- Rebased on the current 0130 bodies, so no later workshop, wallet-creation or
+-- revocation fix is overwritten. Only the label is added: owner, quantity,
+-- amount, currency, direction, reference, lifecycle and idempotency rules are
+-- unchanged, and reference_type must equal the reason. The crystal guard
+-- trigger and every historical migration stay untouched.
 CREATE OR REPLACE FUNCTION public.farm_v2_apply_wallet_transaction(
   p_owner_id uuid, p_request_id text, p_amount integer, p_currency text,
   p_direction text, p_reason text, p_reference_id text, p_reference_type text,
@@ -108,11 +108,6 @@ BEGIN
 END;
 $fn$;
 
-REVOKE ALL ON FUNCTION public.farm_v2_apply_wallet_transaction(uuid,text,integer,text,text,text,text,text,uuid)
-  FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.farm_v2_apply_wallet_transaction(uuid,text,integer,text,text,text,text,text,uuid)
-  TO service_role;
-
 CREATE OR REPLACE FUNCTION public.farm_v2_operator_wallet_reconcile(p_user_id uuid,p_request_id text,p_mode text,p_case_id text,p_actor text,p_evidence text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $fn$
 DECLARE v_entries jsonb; v_original public.core_wallet_ledger; v_count integer; v_result jsonb; v_land integer; v_qty bigint; v_unit integer; v_reward integer;
@@ -180,20 +175,6 @@ BEGIN
  RETURN NEW;
 END;
 $fn$;
--- FRIEND-REL-001 / CAVE-VISIT-001: reuse authoritative platform relationships.
-CREATE FUNCTION public.farm_v2_read_friend_access(p_owner_id uuid,p_target_id uuid DEFAULT NULL)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $fn$
-BEGIN
- IF NOT public.farm_v2_identity_active(p_owner_id) THEN RETURN jsonb_build_object('allowed',false); END IF;
- IF p_target_id IS NOT NULL THEN
-  RETURN jsonb_build_object('allowed',public.farm_v2_identity_active(p_target_id) AND EXISTS(SELECT 1 FROM public.platform_friendships WHERE user_a_id=least(p_owner_id,p_target_id) AND user_b_id=greatest(p_owner_id,p_target_id) AND status='active'));
- END IF;
- RETURN jsonb_build_object('friends',coalesce((SELECT jsonb_agg(jsonb_build_object('id',CASE WHEN user_a_id=p_owner_id THEN user_b_id ELSE user_a_id END)) FROM public.platform_friendships WHERE p_owner_id IN (user_a_id,user_b_id) AND status='active' AND public.farm_v2_identity_active(CASE WHEN user_a_id=p_owner_id THEN user_b_id ELSE user_a_id END)),'[]'::jsonb));
-END;
-$fn$;
-REVOKE ALL ON FUNCTION public.farm_v2_read_friend_access(uuid,uuid) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.farm_v2_read_friend_access(uuid,uuid) TO service_role;
-COMMIT;
 
 
 REVOKE ALL ON FUNCTION public.farm_v2_apply_wallet_transaction(uuid,text,integer,text,text,text,text,text,uuid) FROM PUBLIC,anon,authenticated;
