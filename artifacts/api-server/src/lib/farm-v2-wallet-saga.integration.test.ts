@@ -193,6 +193,7 @@ describe.skipIf(!enabled)(
         "0004_farm_v2_local_coin_bank.sql",
         "0006_farm_v2_coin_compensation.sql",
         "0007_farm_v2_recovery_task.sql",
+        "0008_farm_v2_transaction_health.sql",
       ])
         await applyOnce(
           storage.pool,
@@ -1036,6 +1037,49 @@ describe.skipIf(!enabled)(
         ).rows[0].n,
       ).toBe(ledgerRows);
     });
+    it("80%/MONITORING: a shortage is normal, an unconfirmed charge is pending, an abandoned task is major", async () => {
+      const { readFarmV2TransactionHealth } = await import(
+        "./farm-v2-transaction-health"
+      );
+      await storage.pool.query(
+        `INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,failure_code,wallet_direction,wallet_currency,wallet_amount)
+         VALUES($1,'health-short','WORKSHOP:{"kind":"synthesize"}','PENDING','FARM_MATERIALS_INSUFFICIENT','debit','coin',6),
+               ($1,'health-pending','seed-purchase:1:2','WALLET_PENDING','','debit','coin',12),
+               ($1,'health-major','seed-purchase:1:2','WALLET_APPLIED','','debit','coin',14)`,
+        [userId],
+      );
+      await storage.pool.query(
+        "INSERT INTO public.farm_v2_recovery_task(user_id,request_id,action,state,attempts,max_attempts) VALUES($1,'health-major','x','abandoned',4,4)",
+        [userId],
+      );
+      const health = await readFarmV2TransactionHealth({
+        since: new Date(Date.now() - 3600_000),
+      });
+      const byRequest = Object.fromEntries(
+        health.rows.map((row) => [row.request_id, row]),
+      );
+      expect(byRequest["health-short"]).toMatchObject({
+        anomaly_type: "RESOURCE_SHORTAGE",
+        severity: "NORMAL",
+      });
+      expect(byRequest["health-pending"]).toMatchObject({
+        anomaly_type: "AWAITING_CONFIRMATION",
+        severity: "PENDING",
+        wallet_scope: "central",
+        original_amount: 12,
+      });
+      expect(byRequest["health-major"]).toMatchObject({
+        anomaly_type: "UNRECOVERED",
+        severity: "MAJOR",
+        recovery_state: "abandoned",
+        retry_count: 4,
+      });
+      // The shortage is counted, but never as a fault.
+      expect(health.counts.normal).toBe(1);
+      expect(health.counts.major).toBe(1);
+      expect(health.counts.pending).toBe(1);
+    });
+
     it("70%/ISOLATION: an unresolved request on one land never blocks another land", async () => {
       await gameplayFixture();
       const { enqueueFarmV2RecoveryTask } = await import("./farm-v2-recovery-queue");

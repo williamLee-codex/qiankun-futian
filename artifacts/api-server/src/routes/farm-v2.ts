@@ -27,6 +27,10 @@ import { harvestFarmV2Land as rawharvestFarmV2Land } from "../lib/farm-v2-harves
 import { requireFarmV2LaunchIdentity } from "../middlewares/farm-v2-launch-auth";
 import { farmV2ErrorHandler } from "../middlewares/farm-v2-error-handler";
 import { runFarmV2RecoverySweep } from "../lib/farm-v2-recovery-queue";
+import {
+  farmV2OperatorKeyMatches,
+  readFarmV2TransactionHealth,
+} from "../lib/farm-v2-transaction-health";
 import { ensureFarmV2PlayerInitialized as rawensureFarmV2PlayerInitialized } from "../lib/farm-v2-init";
 import { purchaseFarmV2SeedPacks as rawpurchaseFarmV2SeedPacks } from "../lib/farm-v2-seed-purchase";
 import { exchangeFarmV2Crops as rawexchangeFarmV2Crops } from "../lib/farm-v2-crop-exchange";
@@ -109,6 +113,30 @@ const farmRecoverySweep: RequestHandler = async (req, res, next) => {
 };
 router.get("/farm/v2/recovery/sweep", farmRecoverySweep);
 router.post("/farm/v2/recovery/sweep", farmRecoverySweep);
+// Operator-only transaction health. Closed unless an operator key is set, and
+// never reachable from a player session.
+const farmTransactionHealth: RequestHandler = async (req, res, next) => {
+  try {
+    const offered =
+      req.header("x-farm-admin-key") ??
+      (req.header("authorization") ?? "").replace(/^Bearer\s+/i, "");
+    if (!farmV2OperatorKeyMatches(offered)) {
+      res.setHeader("Cache-Control", "no-store");
+      res.status(403).json({ error: "FARM_ADMIN_FORBIDDEN" });
+      return;
+    }
+    const days = Math.min(Math.max(Number(req.query.days) || 7, 1), 90);
+    const health = await readFarmV2TransactionHealth({
+      since: new Date(Date.now() - days * 86400000),
+      limit: Number(req.query.limit) || 200,
+    });
+    res.setHeader("Cache-Control", "no-store");
+    res.json(health);
+  } catch (error) {
+    next(error);
+  }
+};
+router.get("/farm/v2/admin/transaction-health", farmTransactionHealth);
 // Fail closed before identity validation, database access or session creation.
 // Revocation is cleanup only and still passes the existing platform verification.
 router.use("/farm/v2", (req, res, next) => {
