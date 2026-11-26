@@ -1,5 +1,6 @@
 import { localCoinTransaction, postLocalCoin } from "./farm-v2-local-coins";
 import { compensateFarmV2CoinTransaction } from "./farm-v2-coin-compensation";
+import { enqueueFarmV2RecoveryTask } from "./farm-v2-recovery-queue";
 import { and, eq, sql } from "drizzle-orm";
 import {
   db,
@@ -203,7 +204,16 @@ export async function runFarmV2RecoveryWithPostRollbackCompensation<T>(input: {
     const permanent =
       error.message === "PERMANENT_MUTATION_RECOVERY_FAILURE" ||
       isPermanentFarmV2RecoveryError(error);
-    if (!permanent) throw error;
+    if (!permanent) {
+      // An unresolved request is handed to the background recovery runner, so
+      // the player never has to retry or wait for an engineer.
+      await enqueueFarmV2RecoveryTask({
+        userId: input.userId,
+        requestId: input.requestId,
+        action: error.message,
+      });
+      throw error;
+    }
     const [journalRow] = await db
       .select({
         state: farmV2MutationTable.transactionState,
@@ -225,8 +235,15 @@ export async function runFarmV2RecoveryWithPostRollbackCompensation<T>(input: {
         userId: input.userId,
         requestId: input.requestId,
       });
-      if (outcome.status === "not_due" || outcome.status === "failed")
+      if (outcome.status === "not_due") throw error;
+      if (outcome.status === "failed") {
+        await enqueueFarmV2RecoveryTask({
+          userId: input.userId,
+          requestId: input.requestId,
+          action: "coin-compensation",
+        });
         throw error;
+      }
       await db
         .update(farmV2MutationTable)
         .set({

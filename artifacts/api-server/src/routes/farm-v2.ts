@@ -26,6 +26,7 @@ import { sowFarmV2Land as rawsowFarmV2Land } from "../lib/farm-v2-sow";
 import { harvestFarmV2Land as rawharvestFarmV2Land } from "../lib/farm-v2-harvest";
 import { requireFarmV2LaunchIdentity } from "../middlewares/farm-v2-launch-auth";
 import { farmV2ErrorHandler } from "../middlewares/farm-v2-error-handler";
+import { runFarmV2RecoverySweep } from "../lib/farm-v2-recovery-queue";
 import { ensureFarmV2PlayerInitialized as rawensureFarmV2PlayerInitialized } from "../lib/farm-v2-init";
 import { purchaseFarmV2SeedPacks as rawpurchaseFarmV2SeedPacks } from "../lib/farm-v2-seed-purchase";
 import { exchangeFarmV2Crops as rawexchangeFarmV2Crops } from "../lib/farm-v2-crop-exchange";
@@ -86,6 +87,28 @@ async function mutationResponse<T extends object>(
     read: () => ensureFarmV2PlayerInitialized({ userId }),
   });
 }
+// Scheduled recovery sweep. It runs without a player session because it repairs
+// requests that no session is waiting for, and it fails closed without a secret.
+const farmRecoverySweep: RequestHandler = async (req, res, next) => {
+  try {
+    const secret = process.env.FARM_V2_RECOVERY_CRON_SECRET ?? "";
+    const offered =
+      req.header("x-farm-recovery-key") ??
+      (req.header("authorization") ?? "").replace(/^Bearer\s+/i, "");
+    if (!secret || offered !== secret) {
+      res.setHeader("Cache-Control", "no-store");
+      res.status(403).json({ error: "RECOVERY_SWEEP_FORBIDDEN" });
+      return;
+    }
+    const result = await runFarmV2RecoverySweep({ limit: 20 });
+    res.setHeader("Cache-Control", "no-store");
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+router.get("/farm/v2/recovery/sweep", farmRecoverySweep);
+router.post("/farm/v2/recovery/sweep", farmRecoverySweep);
 // Fail closed before identity validation, database access or session creation.
 // Revocation is cleanup only and still passes the existing platform verification.
 router.use("/farm/v2", (req, res, next) => {

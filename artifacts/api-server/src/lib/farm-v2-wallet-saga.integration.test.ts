@@ -192,6 +192,7 @@ describe.skipIf(!enabled)(
         "0001_farm_v2_authority_reconciliation.sql",
         "0004_farm_v2_local_coin_bank.sql",
         "0006_farm_v2_coin_compensation.sql",
+        "0007_farm_v2_recovery_task.sql",
       ])
         await applyOnce(
           storage.pool,
@@ -1035,6 +1036,163 @@ describe.skipIf(!enabled)(
         ).rows[0].n,
       ).toBe(ledgerRows);
     });
+    it("60%/RECOVERY-QUEUE: a lost charge is repaired by a later sweep, once", async () => {
+      const { enqueueFarmV2RecoveryTask, runFarmV2RecoverySweep } = await import(
+        "./farm-v2-recovery-queue"
+      );
+      const request = "queue-lost-charge";
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,$2,'seed-purchase:1:2','WALLET_PENDING','debit','coin',21)",
+        [userId, request],
+      );
+      expect(
+        await enqueueFarmV2RecoveryTask({
+          userId,
+          requestId: request,
+          action: "FARM_WALLET_TIMEOUT",
+        }),
+      ).toBe(true);
+      // The same request is never queued twice.
+      expect(
+        await enqueueFarmV2RecoveryTask({
+          userId,
+          requestId: request,
+          action: "FARM_WALLET_TIMEOUT",
+        }),
+      ).toBe(false);
+      const sweep = await runFarmV2RecoverySweep({ limit: 10 });
+      expect(sweep.claimed).toBeGreaterThanOrEqual(1);
+      expect(sweep.done).toBeGreaterThanOrEqual(1);
+      const [task] = (
+        await storage.pool.query(
+          "SELECT state, attempts, outcome FROM public.farm_v2_recovery_task WHERE user_id=$1 AND request_id=$2",
+          [userId, request],
+        )
+      ).rows;
+      expect(task).toMatchObject({ state: "done", attempts: 1, outcome: "posted" });
+      const [mutation] = (
+        await storage.pool.query(
+          "SELECT transaction_state, failure_code FROM farm_v2_mutation WHERE user_id=$1 AND request_id=$2",
+          [userId, request],
+        )
+      ).rows;
+      expect(mutation).toMatchObject({
+        transaction_state: "COMPENSATED",
+        failure_code: "FARM_CHARGE_OUTCOME_UNKNOWN",
+      });
+      // A second sweep has nothing left to do for it.
+      const again = await runFarmV2RecoverySweep({ limit: 10 });
+      const [after] = (
+        await storage.pool.query(
+          "SELECT state, attempts FROM public.farm_v2_recovery_task WHERE user_id=$1 AND request_id=$2",
+          [userId, request],
+        )
+      ).rows;
+      expect(after).toMatchObject({ state: "done", attempts: 1 });
+      expect(again.done).toBe(0);
+    });
+
+    it("60%/RECOVERY-QUEUE: two runners never work the same task, and an expired lease is reclaimed", async () => {
+      const { enqueueFarmV2RecoveryTask, runFarmV2RecoverySweep } = await import(
+        "./farm-v2-recovery-queue"
+      );
+      const request = "queue-lease";
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,$2,'seed-purchase:1:2','WALLET_PENDING','debit','coin',5)",
+        [userId, request],
+      );
+      await enqueueFarmV2RecoveryTask({ userId, requestId: request, action: "x" });
+      const [taskId] = (
+        await storage.pool.query(
+          "SELECT id FROM public.farm_v2_recovery_task WHERE user_id=$1 AND request_id=$2",
+          [userId, request],
+        )
+      ).rows;
+      const held = (
+        await storage.pool.query(
+          "SELECT * FROM public.farm_v2_claim_recovery_tasks('runner-a',10,60)",
+        )
+      ).rows.filter((row: { request_id: string }) => row.request_id === request);
+      expect(held).toHaveLength(1);
+      const stolen = (
+        await storage.pool.query(
+          "SELECT * FROM public.farm_v2_claim_recovery_tasks('runner-b',10,60)",
+        )
+      ).rows.filter((row: { request_id: string }) => row.request_id === request);
+      expect(stolen).toHaveLength(0);
+      // The worker died: its lease expires and the next runner takes over.
+      await storage.pool.query(
+        "UPDATE public.farm_v2_recovery_task SET lease_expires_at=now()-interval '1 second' WHERE id=$1",
+        [taskId.id],
+      );
+      const sweep = await runFarmV2RecoverySweep({ owner: "runner-b", limit: 10 });
+      expect(sweep.done).toBeGreaterThanOrEqual(1);
+      const [task] = (
+        await storage.pool.query(
+          "SELECT state, attempts FROM public.farm_v2_recovery_task WHERE id=$1",
+          [taskId.id],
+        )
+      ).rows;
+      expect(task.state).toBe("done");
+      expect(task.attempts).toBe(2);
+    });
+
+    it("60%/RECOVERY-QUEUE: nothing owed resolves as done, conflicting evidence is abandoned", async () => {
+      const { runFarmV2RecoverySweep } = await import("./farm-v2-recovery-queue");
+      // No journal: nothing can be owed, so the task closes without a refund.
+      await storage.pool.query(
+        "INSERT INTO public.farm_v2_recovery_task(user_id,request_id,action) VALUES($1,'queue-no-journal','no-journal')",
+        [userId],
+      );
+      await runFarmV2RecoverySweep({ limit: 50 });
+      const [settled] = (
+        await storage.pool.query(
+          "SELECT state, outcome, completed_at FROM public.farm_v2_recovery_task WHERE user_id=$1 AND request_id='queue-no-journal'",
+          [userId],
+        )
+      ).rows;
+      expect(settled.state).toBe("done");
+      expect(settled.outcome).toBe("not_due");
+      expect(settled.completed_at).toBeTruthy();
+
+      // The journal claims 5 but the ledger proves a charge of 99. Compensation
+      // must refuse to invent a refund, retry, and stop at its attempt limit.
+      const request = "queue-conflict";
+      await storage.pool.query(
+        "SELECT public.core_wallet_apply_transaction($1::uuid,99,'coin','debit','farm-v2:'||($2)::text||':primary','farm_seed_purchase','1:2','farm_seed_pack',null)",
+        [userId, request],
+      );
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,$2,'seed-purchase:1:2','WALLET_APPLIED','debit','coin',5)",
+        [userId, request],
+      );
+      await storage.pool.query(
+        "INSERT INTO public.farm_v2_recovery_task(user_id,request_id,action,max_attempts) VALUES($1,$2,'x',1)",
+        [userId, request],
+      );
+      await runFarmV2RecoverySweep({ limit: 50 });
+      const [task] = (
+        await storage.pool.query(
+          "SELECT state, attempts, outcome, last_error FROM public.farm_v2_recovery_task WHERE user_id=$1 AND request_id=$2",
+          [userId, request],
+        )
+      ).rows;
+      expect(task).toMatchObject({
+        state: "abandoned",
+        attempts: 1,
+        outcome: "failed",
+        last_error: "evidence_conflict",
+      });
+      // Nothing was credited for the conflicting request.
+      const credits = (
+        await storage.pool.query(
+          "SELECT count(*)::int AS n FROM public.core_wallet_ledger WHERE owner_id=$1 AND idempotency_key=$2",
+          [userId, `farm-v2:${request}:compensation`],
+        )
+      ).rows[0].n;
+      expect(credits).toBe(0);
+    });
+
     it("50%/COIN-COMPENSATION: a charge whose answer was lost is refunded in full, once", async () => {
       const { compensateFarmV2CoinTransaction } = await import(
         "./farm-v2-coin-compensation"

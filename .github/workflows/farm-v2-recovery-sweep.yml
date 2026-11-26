@@ -1,0 +1,38 @@
+name: Farm V2 recovery sweep
+# Scheduled background recovery. It only calls the deployed sweep endpoint; the
+# endpoint itself holds the retry policy, the lease and the idempotency.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Skip when the sweep secret is not configured
+        id: gate
+        env:
+          SECRET: ${{ secrets.FARM_V2_RECOVERY_CRON_SECRET }}
+          BASE: ${{ vars.FARM_V2_API_BASE_URL }}
+        run: |
+          if [ -z "$SECRET" ] || [ -z "$BASE" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Recovery sweep skipped: FARM_V2_RECOVERY_CRON_SECRET / FARM_V2_API_BASE_URL not set." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run the sweep
+        if: steps.gate.outputs.configured == 'true'
+        env:
+          SECRET: ${{ secrets.FARM_V2_RECOVERY_CRON_SECRET }}
+          BASE: ${{ vars.FARM_V2_API_BASE_URL }}
+        run: |
+          set -o pipefail
+          curl -sS -f -X POST "$BASE/api/farm/v2/recovery/sweep" \
+            -H "x-farm-recovery-key: $SECRET" | tee sweep.json
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat sweep.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

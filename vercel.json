@@ -36,5 +36,11 @@
   },
   "regions": [
     "sin1"
+  ],
+  "crons": [
+    {
+      "path": "/api/farm/v2/recovery/sweep",
+      "schedule": "*/5 * * * *"
+    }
   ]
 }
