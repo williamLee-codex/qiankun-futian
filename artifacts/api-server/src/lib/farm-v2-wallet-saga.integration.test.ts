@@ -1142,6 +1142,10 @@ describe.skipIf(!enabled)(
         [userId],
       );
       await storage.pool.query(
+        "UPDATE farm_v2_mutation SET wallet_transaction=jsonb_build_object('settlement','ATOMIC_FARM_COINS') WHERE user_id=$1 AND request_id='health-farm'",
+        [userId],
+      );
+      await storage.pool.query(
         "SELECT farm_v2_bank.post_coin($1,'fund-health',500,'credit','farm_crop_exchange','ref')",
         [userId],
       );
@@ -1521,6 +1525,28 @@ describe.skipIf(!enabled)(
       ).rejects.toThrow(/FARM_BANK_MUTATION_COMPENSATED/);
     });
 
+    it("TSC/RUNTIME-BOUNDARY: forged coin compensation cannot credit without a journal", async () => {
+      const forged = await storage.pool.query(
+        "SELECT public.farm_v2_post_coin_compensation($1,'tsc-no-journal','central',999,'forged') AS r",
+        [userId],
+      );
+      expect(forged.rows[0].r.result_status).toBe("evidence_conflict");
+      const { rows: rights } = await storage.pool.query(`
+        SELECT has_function_privilege('farm_v2_runtime',
+          'public.farm_v2_post_coin_compensation(uuid,text,text,integer,text)','EXECUTE') AS can_compensate,
+          has_function_privilege('farm_v2_runtime',
+          'public.farm_v2_find_compensation_ledger_id(uuid,text,text,integer)','EXECUTE') AS can_verify,
+          has_table_privilege('farm_v2_runtime','public.core_wallet_ledger','SELECT') AS can_read_core,
+          has_table_privilege('farm_v2_runtime','farm_v2_bank.ledger','SELECT') AS can_read_farm
+      `);
+      expect(rights[0]).toMatchObject({
+        can_compensate: true,
+        can_verify: true,
+        can_read_core: false,
+        can_read_farm: false,
+      });
+    });
+
     it("FIX/FARM-EVIDENCE: a farm compensation that does not match the bank debit is refused", async () => {
       const { compensateFarmV2CoinTransaction } = await import(
         "./farm-v2-coin-compensation"
@@ -1528,6 +1554,10 @@ describe.skipIf(!enabled)(
       const request = "fix-farm-evidence";
       await storage.pool.query(
         "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,$2,'land-unlock:2','WALLET_PENDING','debit','coin',10)",
+        [userId, request],
+      );
+      await storage.pool.query(
+        "UPDATE farm_v2_mutation SET wallet_transaction=jsonb_build_object('settlement','ATOMIC_FARM_COINS') WHERE user_id=$1 AND request_id=$2",
         [userId, request],
       );
       await storage.pool.query(
