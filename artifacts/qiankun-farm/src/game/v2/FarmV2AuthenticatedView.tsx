@@ -1,4 +1,5 @@
 import type { FarmSeedRecovery } from "./farmV2ApiClient";
+import { CoinShortfallNotice } from "./coinShortfallNotice";
 import { FarmCoinWallet } from "./FarmCoinWallet";
 import { FarmFirstPurchaseRewards } from "./FarmFirstPurchaseRewards";
 import { FarmNewbieBoost } from "./FarmNewbieBoost";
@@ -54,6 +55,8 @@ export function FarmV2AuthenticatedView(props: {
     endSession,
     workshop,
     pendingWorkshop,
+    coinRefusal,
+    clearCoinRefusal,
     materialShortages,
     clearMaterialShortages,
     readFriends,
@@ -76,6 +79,17 @@ export function FarmV2AuthenticatedView(props: {
   const [seedRecoveries,setSeedRecoveries]=useState<FarmSeedRecovery[]>([]);
   const [checkingSeeds,setCheckingSeeds]=useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [walletDirection, setWalletDirection] = useState<"in" | "out" | undefined>();
+  const [shortfallBalance, setShortfallBalance] = useState<{ centralCoins: number; coins: number } | null>(null);
+  useEffect(() => {
+    let active = true;
+    setShortfallBalance(null);
+    if (coinRefusal) void readWallet().then(value => { if (active) setShortfallBalance(value); }, () => {});
+    return () => { active = false; };
+  }, [coinRefusal, readWallet]);
+  const cost = coinRefusal?.details?.cost;
+  const available = coinRefusal?.details?.available;
+  const deficit = typeof cost === "number" && typeof available === "number" && Number.isSafeInteger(cost) && Number.isSafeInteger(available) && available >= 0 && cost > available ? cost - available : undefined;
   // Radix locks the scroll container it finds, but the game shell also scrolls
   // documentElement on some browsers. Pin both while the art modal is open and
   // restore the exact previous values on close.
@@ -462,6 +476,7 @@ export function FarmV2AuthenticatedView(props: {
         <DialogContent className="[&>button.absolute]:hidden" style={{ background: "transparent", color: "#f8f1df", border: "none", padding: 0, gap: 0, top: "50%", fontFamily: '"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', width: "min(1536px, calc(100vw - 16px), calc((100dvh - 64px) * 1.5))", maxWidth: "calc(100vw - 16px)", maxHeight: "calc(100dvh - 16px)", overflow: "hidden", lineHeight: 1.6 }}>
           <DialogTitle className="sr-only">福田金幣錢包</DialogTitle>
           <FarmCoinWallet
+            initialDirection={walletDirection}
             read={readWallet}
             transfer={async (direction, amount) => {
               const result = await transferCoins(direction, amount);
@@ -525,7 +540,7 @@ export function FarmV2AuthenticatedView(props: {
         onSection={openPanel}
       />
       <div className="farm-v2-corner-tools" aria-label="福田右上角工具" >
-        <button type="button" className="farm-v2-coin-launcher" aria-label="金幣轉換：中央與福田金幣轉入回存" title="金幣轉換" disabled={busy||loading} onClick={()=>setWalletOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-conversion.png`} alt="金幣轉換" /></button>
+        <button type="button" className="farm-v2-coin-launcher" aria-label="金幣轉換：中央與福田金幣轉入回存" title="金幣轉換" disabled={busy||loading} onClick={()=>{setWalletDirection(undefined);setWalletOpen(true);}}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/coin-conversion.png`} alt="金幣轉換" /></button>
         <button type="button" className="farm-v2-bag-launcher" aria-label="開啟乾坤寶囊" title="乾坤寶囊" disabled={busy||loading} onClick={()=>openPanel("乾坤寶囊")}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/qiankun-bag.webp`} alt="乾坤寶囊" /></button>
         <button type="button" className="farm-v2-signin-launcher" aria-label="開啟30日簽到" title="30日簽到" disabled={busy||loading} onClick={()=>void openSignIn()}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/30-day-signin-icon.png`} alt="30日簽到" /></button>
         <button type="button" className="farm-v2-newcomer-launcher" aria-label="查看新手六倍公告" title="新手六倍" onClick={()=>setNewcomerNoticeOpen(true)}><img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/newcomer-6x-icon.png`} alt="新手六倍" /></button>
@@ -690,7 +705,11 @@ export function FarmV2AuthenticatedView(props: {
         結束遊玩並登出
       </button>
       {error && <p role="alert">{farmV2ErrorMessage(error)}</p>}
-      {error === "FARM_COIN_INSUFFICIENT" && <p role="status">金幣不足，請透過上方福田金幣錢包查看餘額與轉換狀態。</p>}
+      <Dialog open={!!coinRefusal && !walletOpen} onOpenChange={open => { if (!open) clearCoinRefusal(); }}>
+        <DialogContent><DialogTitle className="sr-only">金幣不足</DialogTitle>
+          {coinRefusal && <CoinShortfallNotice scope={coinRefusal.code === "CORE_COIN_INSUFFICIENT" ? "core" : "farm"} balances={shortfallBalance} deficit={deficit} onConvert={direction => { clearCoinRefusal(); setWalletDirection(direction); setWalletOpen(true); }} onCancel={clearCoinRefusal} />}
+        </DialogContent>
+      </Dialog>
       {notice && <p role="status">{notice}</p>}
       <button
         type="button"
