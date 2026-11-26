@@ -12,6 +12,7 @@ import type { MissionState } from "../../../qiankun-farm/src/game/v2/missionRunt
 import { recordMissionEvent } from "../../../qiankun-farm/src/game/v2/missionRuntime";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
 import { precheckCropExchange } from "./farm-v2-precheck";
+import { assertLandAssetsFree } from "./farm-v2-reservation-guard";
 import {
   applyFarmV2WalletStep,
   readFarmV2WalletIntent,
@@ -71,6 +72,14 @@ export async function exchangeFarmV2Crops(input: {
       rate: rate.cropQuantity,
     });
     if (!precheck.ok) throw new Error(precheck.code);
+    // A reserved workshop plan already holds this land's crops.
+    await assertLandAssetsFree(
+      db,
+      input.userId,
+      input.requestId,
+      landId,
+      "WORKSHOP_RECOVERY_REQUIRED",
+    );
   }
 
   return runFarmV2RecoveryWithPostRollbackCompensation({
