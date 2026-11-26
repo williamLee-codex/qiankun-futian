@@ -1037,6 +1037,186 @@ describe.skipIf(!enabled)(
         ).rows[0].n,
       ).toBe(ledgerRows);
     });
+    it("FIX/LEASE: an expired lease can never be finished by its old owner", async () => {
+      await storage.pool.query(
+        "INSERT INTO public.farm_v2_recovery_task(user_id,request_id,action) VALUES($1,'lease-expired','x')",
+        [userId],
+      );
+      const [task] = (
+        await storage.pool.query(
+          "SELECT id FROM public.farm_v2_recovery_task WHERE user_id=$1 AND request_id='lease-expired'",
+          [userId],
+        )
+      ).rows;
+      await storage.pool.query(
+        "SELECT public.farm_v2_claim_recovery_tasks('owner-old',10,60)",
+      );
+      await storage.pool.query(
+        "UPDATE public.farm_v2_recovery_task SET lease_expires_at=now() - interval '1 second' WHERE id=$1",
+        [task.id],
+      );
+      // The owner's lease is over: its result must not be written.
+      await expect(
+        storage.pool.query(
+          "SELECT public.farm_v2_finish_recovery_task($1,'owner-old','done','compensated',null,null)",
+          [task.id],
+        ),
+      ).rejects.toThrow(/RECOVERY_LEASE_LOST/);
+      const [still] = (
+        await storage.pool.query(
+          "SELECT state FROM public.farm_v2_recovery_task WHERE id=$1",
+          [task.id],
+        )
+      ).rows;
+      expect(still.state).toBe("leased");
+      // A new owner takes over and can finish; the old owner still cannot.
+      await storage.pool.query(
+        "SELECT public.farm_v2_claim_recovery_tasks('owner-new',10,60)",
+      );
+      await expect(
+        storage.pool.query(
+          "SELECT public.farm_v2_finish_recovery_task($1,'owner-old','done','compensated',null,null)",
+          [task.id],
+        ),
+      ).rejects.toThrow(/RECOVERY_LEASE_LOST/);
+      const finished = (
+        await storage.pool.query(
+          "SELECT (public.farm_v2_finish_recovery_task($1,'owner-new','done','compensated',null,null)).state AS state",
+          [task.id],
+        )
+      ).rows[0].state;
+      expect(finished).toBe("done");
+    });
+
+    it("FIX/HEALTH: only posted compensation counts, and each wallet is reported separately", async () => {
+      const health = async (request: string) =>
+        (
+          await storage.pool.query(
+            "SELECT * FROM public.farm_v2_transaction_health(now() - interval '1 hour') WHERE request_id=$1",
+            [request],
+          )
+        ).rows[0];
+      const journal = async (request: string, amount: number) =>
+        storage.pool.query(
+          "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,$2,'seed-purchase:1:2','WALLET_PENDING','debit','coin',$3)",
+          [userId, request, amount],
+        );
+
+      // In flight: no money has moved, so no compensated amount may be shown.
+      await journal("health-claimed", 30);
+      await storage.pool.query(
+        "INSERT INTO farm_v2_coin_compensation(user_id,request_id,wallet_scope,amount,status,evidence,attempts) VALUES($1,'health-claimed','central',30,'claimed','x',1)",
+        [userId],
+      );
+      const claimed = await health("health-claimed");
+      expect(claimed.compensated_amount).toBeNull();
+      expect(claimed.anomaly_type).toBe("COMPENSATING");
+      expect(claimed.severity).toBe("PENDING");
+
+      // Failed: still nothing refunded, and it is a major fault.
+      await journal("health-failed", 40);
+      await storage.pool.query(
+        "INSERT INTO farm_v2_coin_compensation(user_id,request_id,wallet_scope,amount,status,evidence,attempts,failure_code) VALUES($1,'health-failed','central',40,'failed','x',1,'COIN_COMPENSATION_FAILED')",
+        [userId],
+      );
+      const failed = await health("health-failed");
+      expect(failed.compensated_amount).toBeNull();
+      expect(failed.anomaly_type).toBe("COMPENSATION_FAILED");
+      expect(failed.severity).toBe("MAJOR");
+
+      // Posted central: the amount is real and the scope is central.
+      await journal("health-central", 50);
+      await storage.pool.query(
+        "INSERT INTO farm_v2_coin_compensation(user_id,request_id,wallet_scope,amount,status,evidence,attempts,posted_at) VALUES($1,'health-central','central',50,'posted','x',1,now())",
+        [userId],
+      );
+      const central = await health("health-central");
+      expect(central.compensated_amount).toBe(50);
+      expect(central.wallet_scope).toBe("central");
+      expect(central.anomaly_type).toBe("COMPENSATED");
+      expect(central.recovered_at).toBeTruthy();
+
+      // Posted farm: a farm refund is never reported as central.
+      await storage.pool.query(
+        "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,'health-farm','land-unlock:2','WALLET_PENDING','debit','coin',60)",
+        [userId],
+      );
+      await storage.pool.query(
+        "SELECT farm_v2_bank.post_coin($1,'fund-health',500,'credit','farm_crop_exchange','ref')",
+        [userId],
+      );
+      await storage.pool.query(
+        "SELECT public.farm_v2_post_coin_compensation($1,'health-farm','farm',60,'farm-case')",
+        [userId],
+      );
+      await storage.pool.query(
+        "INSERT INTO farm_v2_coin_compensation(user_id,request_id,wallet_scope,amount,status,evidence,attempts,posted_at) VALUES($1,'health-farm','farm',60,'posted','farm-case',1,now())",
+        [userId],
+      );
+      const farm = await health("health-farm");
+      expect(farm.wallet_scope).toBe("farm");
+      expect(farm.compensated_amount).toBe(60);
+
+      // The repeat counter only counts posted rows.
+      const central2 = await health("health-central");
+      expect(Number(central2.user_repeat_count)).toBe(2);
+    });
+
+    it("FIX/SWEEP-AUTH: GET with a bearer and POST with the recovery key both authorize", async () => {
+      process.env.FARM_V2_RECOVERY_CRON_SECRET = "sweep-test-secret";
+      delete process.env.FARM_V2_ENTRY_ENABLED;
+      const mod = (await import("../routes/farm-v2")) as unknown as {
+        default?: { stack?: unknown[] };
+      };
+      const router = mod.default as {
+        stack: { route?: { path: string; methods: Record<string, boolean>; stack: { handle: unknown }[] } }[];
+      };
+      expect(router).toBeTruthy();
+      const layers = router.stack.filter(
+        (layer) => layer.route?.path === "/farm/v2/recovery/sweep",
+      );
+      expect(layers).toHaveLength(2);
+      const methods = layers.map((layer) => Object.keys(layer.route!.methods));
+      expect(methods.flat()).toEqual(expect.arrayContaining(["get", "post"]));
+
+      const call = async (headers: Record<string, string>) =>
+        await new Promise<number>((resolve) => {
+          const res = {
+            statusCode: 200,
+            setHeader() {},
+            status(code: number) {
+              this.statusCode = code;
+              return this;
+            },
+            json() {
+              resolve(this.statusCode);
+            },
+          };
+          const req = {
+            method: "POST",
+            path: "/recovery/sweep",
+            query: {},
+            body: {},
+            header: (name: string) => headers[name.toLowerCase()],
+          };
+          const handle = layers[0].route!.stack[0].handle as (
+            req: unknown,
+            res: unknown,
+            next: (error?: unknown) => void,
+          ) => void;
+          handle(req, res, (error?: unknown) => resolve(error ? 500 : 200));
+        });
+
+      // GitHub Actions style: POST with x-farm-recovery-key.
+      expect(await call({ "x-farm-recovery-key": "sweep-test-secret" })).toBe(200);
+      // Vercel Cron style: bearer token (the same secret).
+      expect(await call({ authorization: "Bearer sweep-test-secret" })).toBe(200);
+      // No secret and a wrong secret are both refused.
+      expect(await call({})).toBe(403);
+      expect(await call({ "x-farm-recovery-key": "nope" })).toBe(403);
+      expect(await call({ authorization: "Bearer nope" })).toBe(403);
+    });
+
     it("80%/MONITORING: a shortage is normal, an unconfirmed charge is pending, an abandoned task is major", async () => {
       const { readFarmV2TransactionHealth } = await import(
         "./farm-v2-transaction-health"
