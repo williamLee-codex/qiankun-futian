@@ -2,7 +2,6 @@ import { randomInt } from "node:crypto";
 import { eq, and } from "drizzle-orm";
 import { farmV2PlayerStateTable, farmV2LandTable } from "@workspace/db";
 import { runFarmV2IdempotentMutation } from "./farm-v2-idempotency";
-import { assertOwnerAssetsFree } from "./farm-v2-reservation-guard";
 import { farmAuthorityContext } from "./farm-v2-authority-context";
 import {
   farmV2LandRowToEntity,
@@ -51,14 +50,6 @@ export function mutateFarmV2Friend(input: {
     participantUserIds: [input.targetId],
     action: `FRIEND:${input.kind}:${input.targetId}:${input.landId}`,
     execute: async (tx) => {
-      // The target's reserved assets belong to its unresolved plan, not to the
-      // visiting friend.
-      await assertOwnerAssetsFree(
-        tx as never,
-        input.targetId,
-        input.requestId,
-        "FRIEND_ASSETS_RESERVED",
-      );
       const [actor] = await tx
         .select()
         .from(farmV2PlayerStateTable)
