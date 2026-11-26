@@ -56,7 +56,7 @@ export function mutateFarmV2Friend(input: {
         tx as never,
         input.targetId,
         input.requestId,
-        "FRIEND_ASSETS_RESERVED",
+        "WORKSHOP_RECOVERY_REQUIRED",
       );
       const [actor] = await tx
         .select()

@@ -54,12 +54,12 @@ async function reservedRows(
 ): Promise<ReservedRow[]> {
   const states = sql.raw(`array['${UNRESOLVED_STATES.join("','")}']`);
   const result = (await tx.execute(sql`
-    select action, coalesce(wallet_transaction->'plan', wallet_transaction->'rejectedPlan') as plan
+    select action, coalesce(wallet_transaction->'plan', wallet_transaction->'rejectedPlan', wallet_transaction->'assetPlan') as plan
       from public.farm_v2_mutation
      where user_id = ${ownerId}
        and request_id <> ${requestId}
        and transaction_state::text = any(${states}::text[])
-       and action like 'WORKSHOP:%'
+       and action like 'WORKSHOP%'
   `)) as { rows?: ReservedRow[] };
   return result.rows ?? [];
 }
