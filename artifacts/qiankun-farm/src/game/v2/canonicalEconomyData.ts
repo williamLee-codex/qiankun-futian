@@ -66,14 +66,19 @@ export function getSynthesisMaterials(gradeIndex: number): SynthesisMaterialRequ
   return item;
 }
 
+// Canonical economy data is immutable, so the lookups that run on every
+// purchase and exchange are built once instead of scanned per request.
+const SEED_PACK_BY_LAND = new Map(FARM_V2_SEED_PACKS.map((x) => [x.landId, x]));
+const EXCHANGE_BY_LAND = new Map(FARM_V2_EXCHANGE.map((x) => [x.landId, x]));
+
 export function getSeedPack(landId: FarmLandId): SeedPackDefinition {
-  const item = FARM_V2_SEED_PACKS.find((x) => x.landId === landId);
+  const item = SEED_PACK_BY_LAND.get(landId);
   if (!item) throw new Error(`Unknown seed pack land: ${landId}`);
   return item;
 }
 
 export function getExchangeRate(landId: FarmLandId): CropExchangeDefinition {
-  const item = FARM_V2_EXCHANGE.find((x) => x.landId === landId);
+  const item = EXCHANGE_BY_LAND.get(landId);
   if (!item) throw new Error(`Unknown exchange land: ${landId}`);
   return item;
 }

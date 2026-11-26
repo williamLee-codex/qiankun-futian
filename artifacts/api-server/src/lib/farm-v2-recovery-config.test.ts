@@ -12,6 +12,7 @@ describe("recovery retry configuration", () => {
       maxAttempts: 8,
       backoffSeconds: 30,
       maxBackoffSeconds: 3600,
+      shards: 1,
     });
   });
 
@@ -23,6 +24,7 @@ describe("recovery retry configuration", () => {
         FARM_V2_RECOVERY_MAX_ATTEMPTS: "4",
         FARM_V2_RECOVERY_BACKOFF_SECONDS: "45",
         FARM_V2_RECOVERY_MAX_BACKOFF_SECONDS: "900",
+        FARM_V2_RECOVERY_SHARDS: "4",
       }),
     ).toEqual({
       leaseSeconds: 120,
@@ -30,6 +32,7 @@ describe("recovery retry configuration", () => {
       maxAttempts: 4,
       backoffSeconds: 45,
       maxBackoffSeconds: 900,
+      shards: 4,
     });
   });
 
@@ -47,6 +50,7 @@ describe("recovery retry configuration", () => {
       maxAttempts: 1,
       backoffSeconds: 30,
       maxBackoffSeconds: 3600,
+      shards: 1,
     });
   });
 

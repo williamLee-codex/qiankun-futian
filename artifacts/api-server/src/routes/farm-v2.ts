@@ -104,7 +104,11 @@ const farmRecoverySweep: RequestHandler = async (req, res, next) => {
       res.status(403).json({ error: "RECOVERY_SWEEP_FORBIDDEN" });
       return;
     }
-    const result = await runFarmV2RecoverySweep({ limit: 20 });
+    const result = await runFarmV2RecoverySweep({
+      limit: 20,
+      shard: req.query.shard === undefined ? undefined : Number(req.query.shard),
+      shards: req.query.shards === undefined ? undefined : Number(req.query.shards),
+    });
     res.setHeader("Cache-Control", "no-store");
     res.json(result);
   } catch (error) {

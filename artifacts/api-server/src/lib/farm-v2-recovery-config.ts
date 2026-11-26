@@ -8,6 +8,7 @@ export type FarmV2RecoveryConfig = {
   maxAttempts: number;
   backoffSeconds: number;
   maxBackoffSeconds: number;
+  shards: number;
 };
 
 const int = (value: string | undefined, fallback: number) => {
@@ -31,6 +32,7 @@ export function readFarmV2RecoveryConfig(
       1,
       86400,
     ),
+    shards: clamp(int(env.FARM_V2_RECOVERY_SHARDS, 1), 1, 64),
   };
 }
 

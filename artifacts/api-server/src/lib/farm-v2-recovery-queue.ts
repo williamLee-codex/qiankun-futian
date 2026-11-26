@@ -54,14 +54,17 @@ export async function enqueueFarmV2RecoveryTask(input: {
  * guarantees a task is only worked by one of them.
  */
 export async function runFarmV2RecoverySweep(
-  input: { owner?: string; limit?: number } = {},
+  input: { owner?: string; limit?: number; shard?: number; shards?: number } = {},
 ): Promise<FarmV2RecoverySweepResult> {
   const config = readFarmV2RecoveryConfig();
   const owner = (input.owner ?? `sweep:${process.pid}:${Date.now()}`).slice(0, 120);
   const limit = clamp(input.limit ?? config.batch, 1, 100);
+  const shards = clamp(input.shards ?? config.shards, 1, 64);
+  const shard = shards > 1 ? clamp(input.shard ?? 0, 0, shards - 1) : null;
   const claimed = (
     await db.execute(sql`
-      SELECT * FROM public.farm_v2_claim_recovery_tasks(${owner},${limit},${config.leaseSeconds})
+      SELECT * FROM public.farm_v2_claim_recovery_tasks(
+        ${owner},${limit},${config.leaseSeconds},${shard},${shard === null ? null : shards})
     `)
   ).rows as FarmV2RecoveryTask[];
   const result: FarmV2RecoverySweepResult = {

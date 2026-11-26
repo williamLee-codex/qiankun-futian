@@ -194,6 +194,7 @@ describe.skipIf(!enabled)(
         "0006_farm_v2_coin_compensation.sql",
         "0007_farm_v2_recovery_task.sql",
         "0008_farm_v2_transaction_health.sql",
+        "0009_farm_v2_tsc_indexes.sql",
       ])
         await applyOnce(
           storage.pool,
@@ -1259,6 +1260,31 @@ describe.skipIf(!enabled)(
       expect(task.attempts).toBe(2);
     });
 
+    it("PERF/RECOVERY-SHARDS: two runners on separate shards claim disjoint tasks", async () => {
+      const requests = Array.from({ length: 8 }, (_, i) => `shard-${i}`);
+      for (const request of requests)
+        await storage.pool.query(
+          "INSERT INTO public.farm_v2_recovery_task(user_id,request_id,action) VALUES($1,$2,'x')",
+          [userId, request],
+        );
+      const claim = async (owner: string, shard: number) =>
+        (
+          await storage.pool.query(
+            "SELECT request_id FROM public.farm_v2_claim_recovery_tasks($1,10,60,$2,2)",
+            [owner, shard],
+          )
+        ).rows.map((row: { request_id: string }) => row.request_id);
+      const [left, right] = await Promise.all([claim("runner-l", 0), claim("runner-r", 1)]);
+      expect(left.length + right.length).toBe(requests.length);
+      // No task is handed to both runners.
+      expect(left.filter((id: string) => right.includes(id))).toHaveLength(0);
+      expect(new Set([...left, ...right]).size).toBe(requests.length);
+      // An invalid shard is refused rather than silently ignored.
+      await expect(
+        storage.pool.query("SELECT public.farm_v2_claim_recovery_tasks('x',10,60,3,2)"),
+      ).rejects.toThrow(/INVALID_RECOVERY_CLAIM/);
+    });
+
     it("60%/RECOVERY-QUEUE: nothing owed resolves as done, conflicting evidence is abandoned", async () => {
       const { runFarmV2RecoverySweep } = await import("./farm-v2-recovery-queue");
       // No journal: nothing can be owed, so the task closes without a refund.
@@ -1436,9 +1462,15 @@ describe.skipIf(!enabled)(
     });
 
     it("50%/COIN-COMPENSATION: frequent compensation is listed for review, never blocked", async () => {
-      const { listFarmV2CoinCompensationWatch } = await import(
-        "./farm-v2-coin-compensation"
-      );
+      const { listFarmV2CoinCompensationWatch, compensateFarmV2CoinTransaction } =
+        await import("./farm-v2-coin-compensation");
+      for (const request of ["watch-a", "watch-b"])
+        await storage.pool.query(
+          "INSERT INTO farm_v2_mutation(user_id,request_id,action,transaction_state,wallet_direction,wallet_currency,wallet_amount) VALUES($1,$2,'seed-purchase:1:2','WALLET_PENDING','debit','coin',4)",
+          [userId, request],
+        );
+      for (const request of ["watch-a", "watch-b"])
+        await compensateFarmV2CoinTransaction({ userId, requestId: request });
       const watch = await listFarmV2CoinCompensationWatch({ minimum: 1 });
       const mine = watch.find((row) => row.user_id === userId);
       expect(mine).toBeTruthy();
@@ -3039,7 +3071,7 @@ describe.skipIf(!enabled)(
       dropWalletResponse = false;
       dropFarmCommit = false;
       await storage.pool.query(
-        `truncate farm_v2_land, farm_v2_mutation, farm_v2_player_state, farm_test_failures, farm_v2_authorization_attempt, farm_v2_reconciliation_event, farm_v2_reconciliation_case cascade; truncate farm_v2_friend_operations, farm_v2_paid_operations, farm_v2_wallet_closures, farm_v2_wallet_reconciliation_audit cascade; truncate core.wallet_ledgers cascade; insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','credit',600,'payment','fixture-payment'); truncate farm_v2_atomic_pot_receipts, core_wallet_ledger, core_wallets cascade; select core_wallet_get_or_create('${userId}'); update core_wallets set coin_balance=100;`,
+        `truncate farm_v2_land, farm_v2_mutation, farm_v2_player_state, farm_test_failures, farm_v2_authorization_attempt, farm_v2_reconciliation_event, farm_v2_reconciliation_case cascade; truncate farm_v2_friend_operations, farm_v2_paid_operations, farm_v2_wallet_closures, farm_v2_wallet_reconciliation_audit cascade; truncate core.wallet_ledgers cascade; insert into core.wallet_ledgers(wallet_id,currency_type,entry_type,amount,reference_type,idempotency_key) values('${userId}','paid_crystal','credit',600,'payment','fixture-payment'); truncate farm_v2_atomic_pot_receipts, farm_v2_recovery_task, farm_v2_coin_compensation, core_wallet_ledger, core_wallets cascade; select core_wallet_get_or_create('${userId}'); update core_wallets set coin_balance=100;`,
       );
       const warehouse = {
         seeds: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
