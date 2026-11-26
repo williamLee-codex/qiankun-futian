@@ -71,8 +71,8 @@ const OVERFLOW_MS = 60 * 60_000;
 /** 好友借運後的因果鎖印冷卻 */
 const FRIEND_COOLDOWN_MS = 24 * 3600_000;
 
-/* ── 測試用成長時間（正式版由 growthHours 顯示）── */
-const GROW_TIME_MS = 10_000;
+/* 前端原型與正式作物成熟時長一致；最終權威仍須由 Farm V2 API 提供。 */
+const growthTimeMs = (plot: Plot) => plot.growthHours * 60 * 60 * 1000;
 
 /* ── 收成動畫間距 ── */
 const ANIM_STAGGER = 130;
@@ -115,11 +115,12 @@ function reducer(state: GameState, action: Action): GameState {
       const plot = state.plots.find(p => p.id === action.plotId);
       if (!plot || !plot.unlocked || plot.state !== 'empty') return state;
       const seedStock = state.seedInventory[plot.cropId];
-      const qty = Math.min(action.quantity, plot.maxSeeds, seedStock);
-      if (qty <= 0) return state;
+      // V1.1: 播種必須一次使用整批種子，不允許部分播種。
+      if (action.quantity < plot.maxSeeds || seedStock < plot.maxSeeds) return state;
+      const qty = plot.maxSeeds;
       const newPlots = state.plots.map(p =>
         p.id === action.plotId
-          ? { ...p, state: 'growing' as const, plantCount: qty, growthEndTime: Date.now() + GROW_TIME_MS }
+          ? { ...p, state: 'growing' as const, plantCount: qty, growthEndTime: Date.now() + growthTimeMs(plot) }
           : p
       );
       const tasks = state.tasks.map(t => t.id === 'plant' ? { ...t, done: true } : t);
@@ -139,10 +140,10 @@ function reducer(state: GameState, action: Action): GameState {
       const newPlots = state.plots.map(plot => {
         if (!plot.unlocked || plot.state !== 'empty') return plot;
         const avail = seedInv[plot.cropId];
-        if (avail <= 0) return plot;
-        const qty = Math.min(avail, plot.maxSeeds);
+        if (avail < plot.maxSeeds) return plot;
+        const qty = plot.maxSeeds;
         seedInv[plot.cropId] = avail - qty;
-        return { ...plot, state: 'growing' as const, plantCount: qty, growthEndTime: now + GROW_TIME_MS };
+        return { ...plot, state: 'growing' as const, plantCount: qty, growthEndTime: now + growthTimeMs(plot) };
       });
       const tasks = state.tasks.map(t => t.id === 'plant' ? { ...t, done: true } : t);
       return { ...state, plots: newPlots, seedInventory: seedInv, tasks };
@@ -229,10 +230,10 @@ function reducer(state: GameState, action: Action): GameState {
 
             /* 農夫自動補種：種子足夠才播種同一作物，否則保持空地 */
             const seedStock = seedInv[p.cropId];
-            if (seedStock > 0) {
-              const qty = Math.min(seedStock, p.maxSeeds);
+            if (seedStock >= p.maxSeeds) {
+              const qty = p.maxSeeds;
               seedInv[p.cropId] = seedStock - qty;
-              return { ...p, state: 'growing' as const, plantCount: qty, growthEndTime: now + GROW_TIME_MS, readyAt: null };
+              return { ...p, state: 'growing' as const, plantCount: qty, growthEndTime: now + growthTimeMs(p), readyAt: null };
             }
             return { ...p, state: 'empty' as const, plantCount: 0, growthEndTime: null, readyAt: null };
           }
@@ -382,6 +383,8 @@ function reducer(state: GameState, action: Action): GameState {
 
     /* ── 種子商店：直接購買（不播種）── */
     case 'BUY_SEEDS': {
+      // Chaos seeds are time-granted, never sold, even through direct dispatch.
+      if (action.cropId === 'heijin' || action.seeds <= 0) return state;
       if (state.coins < action.coinsUsed || state.crystals < action.crystalsUsed) return state;
       return {
         ...state,
@@ -396,6 +399,7 @@ function reducer(state: GameState, action: Action): GameState {
 
     /* ── 智慧收播：依各田缺少的種子分別補足後播種 ── */
     case 'BUY_SEEDS_AND_PLANT_ALL': {
+      if (action.purchases.some(p => p.cropId === 'heijin' || p.seeds <= 0)) return state;
       const afterCoins    = state.coins    - action.coinsUsed;
       const afterCrystals = state.crystals - action.crystalsUsed;
       if (afterCoins < 0 || afterCrystals < 0) return state;
@@ -405,10 +409,10 @@ function reducer(state: GameState, action: Action): GameState {
       const newPlots = state.plots.map(plot => {
         if (!plot.unlocked || plot.state !== 'empty') return plot;
         const avail = seedInv[plot.cropId];
-        if (avail <= 0) return plot;
-        const qty = Math.min(avail, plot.maxSeeds);
+        if (avail < plot.maxSeeds) return plot;
+        const qty = plot.maxSeeds;
         seedInv[plot.cropId] = avail - qty;
-        return { ...plot, state: 'growing' as const, plantCount: qty, growthEndTime: now + GROW_TIME_MS };
+        return { ...plot, state: 'growing' as const, plantCount: qty, growthEndTime: now + growthTimeMs(plot) };
       });
       const tasks = state.tasks.map(t => t.id === 'plant' ? { ...t, done: true } : t);
       return {

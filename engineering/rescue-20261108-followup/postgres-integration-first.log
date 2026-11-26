@@ -1,0 +1,81 @@
+
+ RUN  v4.1.9 /workspace/scratch/144c97612380/farm
+
+ ❯ lib/db/src/connection-lifecycle.integration.test.ts (4 tests | 4 failed) 43ms
+   × server applies timeouts and interrupts a slow statement 26ms
+   × session lock stays on its client; independent journal survives occupied gameplay pool 2ms
+   × exhaustion is bounded and releasing the only client restores the pool 3ms
+   × idle transaction is terminated and its writes roll back 5ms
+ ❯ artifacts/api-server/src/lib/farm-v2-wallet-saga.integration.test.ts (47 tests | 47 skipped) 1312ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  artifacts/api-server/src/lib/farm-v2-wallet-saga.integration.test.ts > durable Farm/Core transaction integration on isolated PostgreSQL
+Error: connect ECONNREFUSED 127.0.0.1:55432
+ ❯ node_modules/.pnpm/pg-pool@3.14.0_pg@8.22.0/node_modules/pg-pool/index.js:45:11
+ ❯ artifacts/api-server/src/lib/farm-v2-wallet-saga.integration.test.ts:41:7
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/db/src/connection-lifecycle.integration.test.ts > server applies timeouts and interrupts a slow statement
+Error: connect ECONNREFUSED 127.0.0.1:55432
+ ❯ node_modules/.pnpm/pg-pool@3.14.0_pg@8.22.0/node_modules/pg-pool/index.js:45:11
+ ❯ lib/db/src/connection-lifecycle.integration.test.ts:26:20
+     24|   "server applies timeouts and interrupts a slow statement",
+     25|   async () => {
+     26|     const client = await primary.connect();
+       |                    ^
+     27|     try {
+     28|       for (const [name, value] of [
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  lib/db/src/connection-lifecycle.integration.test.ts > session lock stays on its client; independent journal survives occupied gameplay pool
+Error: connect ECONNREFUSED 127.0.0.1:55432
+ ❯ node_modules/.pnpm/pg-pool@3.14.0_pg@8.22.0/node_modules/pg-pool/index.js:45:11
+ ❯ lib/db/src/connection-lifecycle.integration.test.ts:49:18
+     47|   "session lock stays on its client; independent journal survives occu…
+     48|   async () => {
+     49|     const held = await authority.connect();
+       |                  ^
+     50|     const game = await primary.connect();
+     51|     try {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  lib/db/src/connection-lifecycle.integration.test.ts > exhaustion is bounded and releasing the only client restores the pool
+Error: connect ECONNREFUSED 127.0.0.1:55432
+ ❯ node_modules/.pnpm/pg-pool@3.14.0_pg@8.22.0/node_modules/pg-pool/index.js:45:11
+ ❯ lib/db/src/connection-lifecycle.integration.test.ts:84:20
+     82|   "exhaustion is bounded and releasing the only client restores the po…
+     83|   async () => {
+     84|     const client = await primary.connect();
+       |                    ^
+     85|     try {
+     86|       await expect(primary.connect()).rejects.toThrow(/timeout/);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  lib/db/src/connection-lifecycle.integration.test.ts > idle transaction is terminated and its writes roll back
+Error: connect ECONNREFUSED 127.0.0.1:55432
+ ❯ node_modules/.pnpm/pg-pool@3.14.0_pg@8.22.0/node_modules/pg-pool/index.js:45:11
+ ❯ lib/db/src/connection-lifecycle.integration.test.ts:98:20
+     96|   "idle transaction is terminated and its writes roll back",
+     97|   async () => {
+     98|     const client = await primary.connect();
+       |                    ^
+     99|     client.on("error", () => {
+    100|       /* Socket closure after PostgreSQL termination is expected. */
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  4 failed | 47 skipped (51)
+   Start at  22:25:10
+   Duration  2.02s (transform 657ms, setup 0ms, import 530ms, tests 1.35s, environment 0ms)
+

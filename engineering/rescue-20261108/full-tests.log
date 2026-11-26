@@ -1,0 +1,117 @@
+$ vitest run
+
+ RUN  v4.1.9 /workspace/scratch/144c97612380/farm
+
+✔ preserves the operation result and records bounded numeric timing (4.436725ms)
+✔ preserves failures and does not log exception details or credentials (3.703545ms)
+✔ invalid stage labels cannot leak arbitrary input into logs (0.234444ms)
+✔ a failing logging sink cannot turn a committed operation into an error (0.18452ms)
+✔ decorated domain calls preserve arguments, return identity and call count (0.341174ms)
+✔ authority_register stage reports success and preserves a successful write (0.983927ms)
+✔ authority_register stage reports failure without masking or logging the database error (0.319414ms)
+✔ correlates concurrent authorization stages without logging request identity (0.486252ms)
+✔ records only validated SQLSTATE and preserves exact error identity (0.516605ms)
+ ❯ artifacts/api-server/src/lib/farm-v2-stage-timing.test.mjs (0 test)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 51.31471
+ ❯ artifacts/api-server/src/routes/farm-v2-entry.test.ts (0 test)
+stderr | test/isolation-check.test.mjs
+FARM_ISOLATED_CONNECTION_CHECK_FAILED UNKNOWN
+
+ ❯ test/isolation-check.test.mjs (0 test)
+✔ reject production before acquiring credentials (2.428659ms)
+✔ reject open entry before acquiring credentials (3.532866ms)
+✔ reject wrong database before acquiring credentials (0.149621ms)
+✔ reject transaction mode before acquiring credentials (0.081295ms)
+✔ reject write methods (0.163ms)
+✔ driver failures never expose secrets (12.515719ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 37.837833
+ ❯ artifacts/qiankun-farm/src/game/v2/farmerInteractionBridge.test.ts (3 tests | 2 failed) 43ms
+     × does not treat entitlement alone as active automation 30ms
+     × blocks only a land whose farmer switch is enabled 1ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/isolation-check.test.mjs [ test/isolation-check.test.mjs ]
+Error: No test suite found in file /workspace/scratch/144c97612380/farm/test/isolation-check.test.mjs
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  artifacts/api-server/src/lib/farm-v2-stage-timing.test.mjs [ artifacts/api-server/src/lib/farm-v2-stage-timing.test.mjs ]
+Error: No test suite found in file /workspace/scratch/144c97612380/farm/artifacts/api-server/src/lib/farm-v2-stage-timing.test.mjs
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  artifacts/api-server/src/routes/farm-v2-entry.test.ts [ artifacts/api-server/src/routes/farm-v2-entry.test.ts ]
+Error: DATABASE_URL must be set. Did you forget to provision a database?
+ ❯ lib/db/src/index.ts:9:9
+      7|
+      8| if (!process.env.DATABASE_URL) {
+      9|   throw new Error(
+       |         ^
+     10|     "DATABASE_URL must be set. Did you forget to provision a database?…
+     11|   );
+ ❯ artifacts/api-server/src/routes/farm-v2.ts:4:1
+ ❯ artifacts/api-server/src/routes/farm-v2-entry.test.ts:45:1
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  artifacts/qiankun-farm/src/game/v2/farmerInteractionBridge.test.ts > Farm V2 farmer interaction bridge > does not treat entitlement alone as active automation
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ artifacts/qiankun-farm/src/game/v2/farmerInteractionBridge.test.ts:12:45
+     10|   it('does not treat entitlement alone as active automation', () => {
+     11|     const farmer = reconcileFarmerEntitlement(createFarmerState(), 999…
+     12|     expect(isFarmerActiveOnAnyLand(farmer)).toBe(false);
+       |                                             ^
+     13|     expect(isFarmerActiveOnLand(farmer, 2)).toBe(false);
+     14|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  artifacts/qiankun-farm/src/game/v2/farmerInteractionBridge.test.ts > Farm V2 farmer interaction bridge > blocks only a land whose farmer switch is enabled
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ artifacts/qiankun-farm/src/game/v2/farmerInteractionBridge.test.ts:20:58
+     18|     farmer = setFarmerLandEnabled(farmer, 2, true);
+     19|     expect(targetFarmerBlocksLandInteraction(farmer, 2)).toBe(true);
+     20|     expect(targetFarmerBlocksLandInteraction(farmer, 3)).toBe(false);
+       |                                                          ^
+     21|   });
+     22|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  4 failed | 47 passed | 3 skipped (54)
+      Tests  2 failed | 176 passed | 52 skipped (230)
+   Start at  22:05:15
+   Duration  14.78s (transform 5.71s, setup 0ms, import 12.60s, tests 1.67s, environment 42ms)
+
+[ELIFECYCLE] Test failed. See above for more details.

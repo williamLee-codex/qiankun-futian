@@ -1,10 +1,13 @@
-import express, { type Express } from "express";
+import { farmV2ErrorDiagnostic } from "./lib/farm-v2-error-diagnostic";
+import express, { type Express, type ErrorRequestHandler } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { requestDeadline } from "./lib/farm-v2-request-deadline";
 
 const app: Express = express();
+app.use(requestDeadline());
 
 app.use(
   pinoHttp({
@@ -25,10 +28,35 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use((req, res, next) => {
+  const origin = req.header("origin");
+  if (
+    process.env.NODE_ENV === "production" &&
+    origin &&
+    origin !== process.env.FARM_V2_ALLOWED_ORIGIN
+  ) {
+    res.status(403).json({ error: "FARM_ORIGIN_NOT_ALLOWED" });
+    return;
+  }
+  next();
+});
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.FARM_V2_ALLOWED_ORIGIN || false
+        : true,
+    credentials: false,
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+// Unexpected driver/runtime errors must not expose connection details.
+app.use(((error, _req, res, _next) => {
+  logger.error({ code: "FARM_API_INTERNAL_ERROR", ...farmV2ErrorDiagnostic(error) });
+  if (!res.headersSent) res.status(503).json({ error: "FARM_API_UNAVAILABLE" });
+}) as ErrorRequestHandler);
 
 export default app;

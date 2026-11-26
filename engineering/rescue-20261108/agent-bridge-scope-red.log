@@ -1,0 +1,27 @@
+
+ RUN  v4.1.9 /workspace/scratch/144c97612380/agent-current
+
+ ❯ src/features/agent-center/farmBridgeRepairScope.test.ts (2 tests | 1 failed) 27ms
+   × permits the authorized bridge source repair only on the existing isolation branch 17ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/agent-center/farmBridgeRepairScope.test.ts > permits the authorized bridge source repair only on the existing isolation branch
+Error: unsafe_change_path
+ ❯ planApprovedCodeChange src/features/agent-center/approvedCodeChange.ts:44:11
+     42|       input.sourcePath.split("/").some(segment => segment.startsWith("…
+     43|       input.sourcePath.includes("//"))
+     44|     throw new Error("unsafe_change_path");
+       |           ^
+     45|   if (input.original.length < 1 || input.original.length > 10000 ||
+     46|       input.replacement.length < 1 || input.replacement.length > 10000…
+ ❯ src/features/agent-center/farmBridgeRepairScope.test.ts:13:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  22:09:51
+   Duration  7.41s (transform 119ms, setup 0ms, import 157ms, tests 27ms, environment 5.39s)
+
