@@ -36,6 +36,7 @@ CREATE OR REPLACE FUNCTION public.farm_v2_post_coin_compensation(
  p_user_id uuid, p_request_id text, p_wallet_scope text, p_amount integer, p_evidence text
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $fn$
 DECLARE v_original public.core_wallet_ledger; v_bank farm_v2_bank.ledger;
+        v_journal public.farm_v2_mutation; v_expected_scope text;
         v_result jsonb; v_grace boolean := true; v_ledger uuid;
 BEGIN
  IF p_user_id IS NULL OR p_request_id IS NULL OR p_request_id !~ '^[A-Za-z0-9._:-]{1,120}$'
@@ -43,6 +44,21 @@ BEGIN
    OR p_amount IS NULL OR p_amount <= 0 OR nullif(btrim(p_evidence),'') IS NULL THEN
   RAISE EXCEPTION 'INVALID_COIN_COMPENSATION'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('farm-v2-wallet:'||p_user_id::text,0));
+ -- The stored, server-accepted journal is the authority for the amount,
+ -- wallet and eligible state. Runtime callers may not invent a claim.
+ SELECT * INTO v_journal FROM public.farm_v2_mutation
+   WHERE user_id=p_user_id::text AND request_id=p_request_id;
+ v_expected_scope := CASE WHEN v_journal.wallet_transaction->>'settlement'='ATOMIC_FARM_COINS'
+                          THEN 'farm' ELSE 'central' END;
+ IF v_journal.request_id IS NULL OR v_journal.wallet_currency IS DISTINCT FROM 'coin'
+    OR v_journal.wallet_direction IS DISTINCT FROM 'debit'
+    OR v_journal.wallet_amount IS DISTINCT FROM p_amount
+    OR v_expected_scope IS DISTINCT FROM p_wallet_scope
+    OR v_journal.transaction_state NOT IN ('WALLET_PENDING','WALLET_APPLIED','PENDING')
+    OR (v_journal.transaction_state='PENDING' AND
+        nullif(v_journal.wallet_transaction->>'command','') IS NULL) THEN
+   RETURN jsonb_build_object('result_status','evidence_conflict');
+ END IF;
  SELECT * INTO v_original FROM public.core_wallet_ledger
   WHERE owner_id=p_user_id AND idempotency_key='farm-v2:'||p_request_id||':primary'
     AND reversal_of IS NULL;
