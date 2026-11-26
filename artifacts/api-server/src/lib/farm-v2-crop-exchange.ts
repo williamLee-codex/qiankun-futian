@@ -164,9 +164,9 @@ export async function exchangeFarmV2Crops(input: {
             currency: rate.currency === "coins" ? "coin" : "crystal",
             direction: "credit",
             launchToken: input.launchToken,
-            reason: "farm_crop_reward",
+            reason: "farm_crop_exchange",
             referenceId: `${landId}:${cropsConsumed}`,
-            referenceType: "farm_crop_reward",
+            referenceType: "farm_crop_exchange",
             requestId: input.requestId,
           });
 
