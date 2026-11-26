@@ -58,6 +58,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   );
   const [data, setData] = useState<SceneData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [coinRefusal, setCoinRefusal] = useState<{ code: string; details?: Record<string, unknown> } | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pendingWorkshop, setPendingWorkshop] = useState<WorkshopCommand[]>([]);
@@ -146,6 +147,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       if (!Number.isInteger(landId) || landId < 1 || landId > 6) return false;
       mutationInFlight.current = true;
       setBusy(true);
+      setCoinRefusal(null);
       try {
         if (!api) throw new Error("FARM_V2_LAUNCH_TOKEN_REQUIRED");
         let result: unknown;
@@ -171,6 +173,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         // must not replace the whole farm with a fatal loading screen.
         // Only an explicitly invalid session requires reauthentication.
         const code = cause instanceof Error ? cause.message : "";
+        setCoinRefusal(cause instanceof FarmV2ApiError && (code === "FARM_COIN_INSUFFICIENT" || code === "CORE_COIN_INSUFFICIENT") ? { code, details: cause.details } : null);
         const sessionInvalid = code === "FARM_SESSION_NOT_ACTIVE" ||
           code === "FARM_V2_LAUNCH_TOKEN_REQUIRED" ||
           code === "AUTH_REQUIRED";
@@ -193,6 +196,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       if (!api || mutationInFlight.current) return false;
       mutationInFlight.current = true;
       setBusy(true);
+      setCoinRefusal(null);
       // A previous refusal belongs to the previous attempt.
       setMaterialShortages([]);
       try {
@@ -201,6 +205,7 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
         return await refresh();
       } catch (cause) {
         setPendingWorkshop(api.pendingWorkshop());
+        setCoinRefusal(cause instanceof FarmV2ApiError && (cause.code === "FARM_COIN_INSUFFICIENT" || cause.code === "CORE_COIN_INSUFFICIENT") ? { code: cause.code, details: cause.details } : null);
         // A short material is normal usage: show every short material and stay
         // on the same interface instead of an uncertain-transaction message.
         const shortages =
@@ -320,6 +325,8 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     },
     workshop,
     pendingWorkshop,
+    coinRefusal,
+    clearCoinRefusal: () => setCoinRefusal(null),
     materialShortages,
     clearMaterialShortages: () => setMaterialShortages([]),
     endSession,
