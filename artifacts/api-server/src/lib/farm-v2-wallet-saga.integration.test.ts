@@ -42,7 +42,16 @@ async function applyOnce(
   runner: { query: (sql: string, values?: unknown[]) => Promise<unknown> },
   file: string,
   sql: string,
+  options: { force?: boolean } = {},
 ) {
+  // force runs the file even when the harness already built the schema, so a
+  // duplicate-application assertion sees the real SQL error instead of a skip.
+  if (options.force) {
+    await runner.query("begin");
+    await runner.query(sql);
+    await runner.query("rollback");
+    return true;
+  }
   // When the harness has already built the schema, the suite never applies a
   // file: it only asserts. The ledger is the single source of truth.
   const seeded = (await runner.query(
@@ -2942,7 +2951,9 @@ describe.skipIf(!enabled)(
           ),
         ]) {
           await expect(
-            applyOnce(client, basename(String(file)), readFileSync(file, "utf8")),
+            applyOnce(client, basename(String(file)), readFileSync(file, "utf8"), {
+              force: true,
+            }),
           ).rejects.toThrow("already exists");
           await client.query("ROLLBACK");
         }

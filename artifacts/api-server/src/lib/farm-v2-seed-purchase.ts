@@ -69,7 +69,15 @@ export async function purchaseFarmV2SeedPacks(input: {
         availableCoins: await readPurchaseWalletBalance(input.userId, wallet),
         wallet,
       });
-  if (!precheck.ok) throw new Error(precheck.code);
+  if (!precheck.ok)
+    throw Object.assign(
+      new Error(
+        precheck.code === "CORE_COIN_INSUFFICIENT"
+          ? "insufficient_funds"
+          : precheck.code,
+      ),
+      { code: precheck.code, details: precheck.details },
+    );
 
   return runFarmV2RecoveryWithPostRollbackCompensation({
     userId: input.userId,
