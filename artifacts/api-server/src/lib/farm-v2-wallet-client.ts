@@ -46,8 +46,8 @@ export async function mutateFarmV2Wallet(
       input.referenceType === "farm_seed_pack" &&
       input.currency === "coin" &&
       input.direction === "debit") ||
-    (input.reason === "farm_crop_exchange" &&
-      input.referenceType === "farm_crop_exchange" &&
+    (input.reason === "farm_crop_reward" &&
+      input.referenceType === "farm_crop_reward" &&
       input.direction === "credit" &&
       (input.currency === "coin" || input.currency === "crystal")) ||
     ([

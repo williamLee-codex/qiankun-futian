@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { db, farmV2LandTable, farmV2PlayerStateTable } from "@workspace/db";
+import { db, farmV2LandTable, farmV2MutationTable, farmV2PlayerStateTable } from "@workspace/db";
 import { getSeedPack } from "../../../qiankun-farm/src/game/v2/canonicalEconomyData";
 import type { FarmLandId } from "../../../qiankun-farm/src/game/v2/canonicalLandData";
 import type { FarmWarehouse } from "../../../qiankun-farm/src/game/v2/warehouseRuntime";
@@ -48,14 +48,27 @@ export async function purchaseFarmV2SeedPacks(input: {
   // Seed purchases debit the farm bank when local coins are enabled, and the
   // central wallet otherwise; the pre-check must read that same wallet.
   const wallet = localCoinsEnabled() ? ("farm" as const) : ("core" as const);
-  const precheck = precheckSeedPurchase({
+  // A request that already owns a journal is a retry: the journal decides.
+  const [journal] = await db
+    .select({ requestId: farmV2MutationTable.requestId })
+    .from(farmV2MutationTable)
+    .where(
+      and(
+        eq(farmV2MutationTable.userId, input.userId),
+        eq(farmV2MutationTable.requestId, input.requestId),
+      ),
+    )
+    .limit(1);
+  const precheck = journal
+    ? { ok: true as const }
+    : precheckSeedPurchase({
     playerExists: Boolean(prePlayer),
     landUnlocked: Boolean(preLand?.unlocked),
     unitPrice: pack.price,
     packs: input.packs,
-    availableCoins: await readPurchaseWalletBalance(input.userId, wallet),
-    wallet,
-  });
+        availableCoins: await readPurchaseWalletBalance(input.userId, wallet),
+        wallet,
+      });
   if (!precheck.ok) throw new Error(precheck.code);
 
   return runFarmV2RecoveryWithPostRollbackCompensation({
