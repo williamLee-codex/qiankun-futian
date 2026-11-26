@@ -75,3 +75,9 @@
 .farm-v2-operation-dialog .pot-recipe-column{height:calc(41px + var(--pot-row) * 7)}
 .farm-v2-operation-dialog .pot-recipe-column>.pot-recipe{height:calc(100% - 42px);min-height:0}
 }
+
+/* A short material is normal usage: a calm inline notice, not a fault banner. */
+.farm-v2-material-shortage{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border:1px solid #d3b76c;border-radius:7px;background:#1e2a22;color:#f0e6c8;font-size:13px;line-height:1.4}
+.farm-v2-material-shortage>strong{font-size:13px;color:#f4d98b}
+.farm-v2-material-shortage>ul{margin:0;padding-left:18px}
+.farm-v2-material-shortage>button{align-self:flex-start;min-height:30px;padding:4px 12px;border:1px solid #d3b76c;border-radius:6px;background:#b99c50;color:#17251d;font-weight:700}

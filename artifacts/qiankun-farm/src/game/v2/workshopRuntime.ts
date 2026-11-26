@@ -7,6 +7,7 @@ import {
 import { potDisplayBonus } from "./potDisplayRuntime";
 import { RELEASED_DECOR } from "./decorCatalog";
 import type { FarmLandId } from "./canonicalLandData";
+import { getSynthesisMaterials } from "./canonicalEconomyData";
 import type { FarmWarehouse } from "./warehouseRuntime";
 import {
   PREMIUM_FORMATION_ID,
@@ -121,8 +122,9 @@ export function planWorkshopMutation(
     if (index < 0) throw new Error("INVALID_POT_GRADE");
     const key = `${species}:${command.grade}`;
     cost = POT_GRADE_COSTS[command.grade].coins;
-    const material = index < 3 ? "蘊靈砂" : "九霄玉髓",
-      materialCost = [1, 1, 4, 2, 4, 10][index];
+    const recipe = getSynthesisMaterials(index),
+      material = recipe.material,
+      materialCost = recipe.quantity;
     if (
       !Number.isSafeInteger(state.materials[material]) ||
       state.materials[material] < materialCost

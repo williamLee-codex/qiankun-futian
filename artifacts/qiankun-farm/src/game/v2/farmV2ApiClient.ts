@@ -45,6 +45,8 @@ export class FarmV2ApiError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
+    /** Structured refusal details, for example every short synthesis material. */
+    readonly details?: Record<string, unknown>,
   ) {
     super(code);
     this.name = "FarmV2ApiError";
@@ -128,6 +130,7 @@ export function createFarmV2Api(input: {
         error?: string;
         status?: string;
         reauthenticateUrl?: string;
+        details?: Record<string, unknown>;
       } | null;
       if (payload?.reauthenticateUrl) {
         const login = new URL(payload.reauthenticateUrl);
@@ -145,6 +148,9 @@ export function createFarmV2Api(input: {
         payload?.error ??
           (response.url.includes("/farm/v2/signin") ? payload?.status : undefined) ??
           "FARM_V2_REQUEST_FAILED",
+        payload?.details && typeof payload.details === "object"
+          ? payload.details
+          : undefined,
       );
     }
     return response.json() as Promise<T>;

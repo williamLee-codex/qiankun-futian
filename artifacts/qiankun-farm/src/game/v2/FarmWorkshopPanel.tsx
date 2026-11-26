@@ -63,6 +63,9 @@ export function FarmWorkshopPanel(props: {
   };
   busy: boolean;
   transact: (c: WorkshopCommand) => Promise<boolean>;
+  /** Short synthesis materials the server refused; a normal outcome. */
+  materialShortages?: import("./materialShortageNotice").MaterialShortage[];
+  clearMaterialShortages?: () => void;
 }) {
   const [friends, setFriends] = useState<{ id: string }[]>([]),
     [visit, setVisit] = useState<{
@@ -158,7 +161,7 @@ export function FarmWorkshopPanel(props: {
             )}
           </section>
         )}
-        {tab === "盆栽" && <PotSynthesisGrid warehouse={props.warehouse} busy={props.busy} readWallet={props.readWallet ?? unavailableWallet} transact={props.transact} />}
+        {tab === "盆栽" && <PotSynthesisGrid warehouse={props.warehouse} busy={props.busy} readWallet={props.readWallet ?? unavailableWallet} transact={props.transact} materialShortages={props.materialShortages} clearMaterialShortages={props.clearMaterialShortages} />}
         {tab === "洞府" && (
           <>
             <h3>洞府陳設管理</h3>

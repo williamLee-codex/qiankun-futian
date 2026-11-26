@@ -1,7 +1,8 @@
 import type { FarmSeedRecovery } from "./farmV2ApiClient";
 import type { WorkshopCommand, WorkshopWarehouse } from "./workshopRuntime";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createFarmV2Api } from "./farmV2ApiClient";
+import { createFarmV2Api, FarmV2ApiError } from "./farmV2ApiClient";
+import { readMaterialShortages } from "./materialShortageNotice";
 import { resolveFarmV2MutationSnapshot } from "./farmV2MutationSnapshot";
 import { mapServerLands, mapServerWarehouse } from "./farmV2SceneAdapter";
 import type { Plot, CropInventory } from "../types";
@@ -60,6 +61,9 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pendingWorkshop, setPendingWorkshop] = useState<WorkshopCommand[]>([]);
+  const [materialShortages, setMaterialShortages] = useState<
+    import("./materialShortageNotice").MaterialShortage[]
+  >([]);
   const [pendingFriends, setPendingFriends] = useState<
     { targetId: string; kind: "BORROW" | "ASSIST"; landId: number }[]
   >([]);
@@ -189,13 +193,24 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
       if (!api || mutationInFlight.current) return false;
       mutationInFlight.current = true;
       setBusy(true);
+      // A previous refusal belongs to the previous attempt.
+      setMaterialShortages([]);
       try {
         await api.workshop(command);
         setPendingWorkshop(api.pendingWorkshop());
         return await refresh();
       } catch (cause) {
         setPendingWorkshop(api.pendingWorkshop());
-        setError(cause instanceof Error ? cause.message : "WORKSHOP_FAILED");
+        // A short material is normal usage: show every short material and stay
+        // on the same interface instead of an uncertain-transaction message.
+        const shortages =
+          cause instanceof FarmV2ApiError &&
+          cause.code === "FARM_MATERIALS_INSUFFICIENT"
+            ? readMaterialShortages(cause.details)
+            : [];
+        setMaterialShortages(shortages);
+        if (shortages.length) setError(null);
+        else setError(cause instanceof Error ? cause.message : "WORKSHOP_FAILED");
         return false;
       } finally {
         mutationInFlight.current = false;
@@ -305,6 +320,8 @@ export function useFarmV2Scene(baseUrl: string, launchToken: string | null) {
     },
     workshop,
     pendingWorkshop,
+    materialShortages,
+    clearMaterialShortages: () => setMaterialShortages([]),
     endSession,
     data,
     error,
