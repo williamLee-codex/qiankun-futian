@@ -49,9 +49,8 @@ export function CoinShortfallNotice(props: {
   const [artMissing, setArtMissing] = useState(false);
   const direction = coinShortfallDirection(props.scope);
   const coverable =
-    props.deficit === undefined
-      ? true
-      : canCoverShortfall(props.balances ?? null, props.deficit, props.scope);
+    props.deficit !== undefined &&
+    canCoverShortfall(props.balances ?? null, props.deficit, props.scope);
   const base = import.meta.env.BASE_URL ?? "/";
   const hotspot = (label: string, onClick: () => void, style: React.CSSProperties) => (
     <button
@@ -62,7 +61,7 @@ export function CoinShortfallNotice(props: {
     />
   );
 
-  if (!artMissing) {
+  if (!artMissing && coverable) {
     return (
       <section role="status" aria-live="polite" className="farm-v2-coin-shortfall">
         <div style={{ position: "relative", display: "inline-block", maxWidth: "100%" }}>
@@ -84,7 +83,7 @@ export function CoinShortfallNotice(props: {
 
   return (
     <section role="status" aria-live="polite" className="farm-v2-coin-shortfall">
-      <p>{coinShortfallText(props.scope)}</p>
+      <p>{coverable ? coinShortfallText(props.scope) : "金幣不足，請確認兩個錢包餘額。"}</p>
       {coverable && (
         <button type="button" onClick={() => props.onConvert(direction)}>
           轉換
