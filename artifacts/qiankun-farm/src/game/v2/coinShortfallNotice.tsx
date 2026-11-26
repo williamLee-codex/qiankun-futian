@@ -83,7 +83,7 @@ export function CoinShortfallNotice(props: {
 
   return (
     <section role="status" aria-live="polite" className="farm-v2-coin-shortfall">
-      <p>{coverable ? coinShortfallText(props.scope) : "金幣不足，請確認兩個錢包餘額。"}</p>
+      <p>{coverable ? coinShortfallText(props.scope) : `您的${props.scope === "core" ? "中央" : "福田"}金幣不足，請確認兩個錢包餘額。`}</p>
       {coverable && (
         <button type="button" onClick={() => props.onConvert(direction)}>
           轉換
