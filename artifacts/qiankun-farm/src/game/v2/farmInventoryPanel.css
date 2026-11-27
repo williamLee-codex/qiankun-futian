@@ -1,0 +1,13 @@
+.farm-art-inventory { position:fixed; inset:0; margin:auto; padding:0; border:0; max-width:none; max-height:none; overflow:hidden; background:transparent; color:white; container-type:inline-size; }
+.farm-art-inventory::backdrop { background:#000a; }
+.farm-inventory-art { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; }
+.farm-inventory-hotspot { position:absolute; display:block; padding:0; border:0; background:transparent; color:inherit; cursor:pointer; }
+.farm-inventory-hotspot[aria-pressed=true] { box-shadow:inset 0 0 1.5em #ffbe4e; border-radius:10%; }
+.farm-inventory-hotspot:focus-visible { outline:2px solid #f9d86b; outline-offset:-3px; }
+.farm-inventory-hotspot:disabled { cursor:default; }
+.farm-inventory-item { display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:clamp(9px,1.8cqw,16px); user-select:none; touch-action:manipulation; }
+.farm-inventory-item img { display:block; width:65%; height:62%; object-fit:contain; pointer-events:none; }
+.farm-inventory-item span { font-size:clamp(14px,4cqw,34px); }
+.farm-inventory-item strong { line-height:1; text-shadow:0 1px 3px black; }
+.farm-inventory-detail,.farm-inventory-status { position:absolute; z-index:1; inset:auto 8% 18%; margin-inline:auto; width:max-content; max-width:84%; border:1px solid #c9ab54; border-radius:6px; color:#fff3cf; background:#17130f; padding:6px 10px; font-size:clamp(11px,2.4cqw,16px); }
+.farm-inventory-status { inset:24% 8% auto; pointer-events:none; }

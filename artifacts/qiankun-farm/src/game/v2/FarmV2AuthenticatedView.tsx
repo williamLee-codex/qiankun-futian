@@ -1,3 +1,5 @@
+import { FarmInventoryPanel, preloadInventoryArt } from "./FarmInventoryPanel";
+import { warehouseSlots } from "./warehousePanelInventory";
 import type { FarmSeedRecovery } from "./farmV2ApiClient";
 import { CoinShortfallNotice } from "./coinShortfallNotice";
 import { FarmCoinWallet } from "./FarmCoinWallet";
@@ -15,7 +17,6 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { signInRewards } from "../../signInRewards";
 import { useFarmV2Scene } from "./useFarmV2Scene";
 import { CROP_DATA, type Plot } from "../types";
-import { FARM_V2_LANDS } from "./canonicalLandData";
 
 function MaturityCountdown({ end }: { end: number }) {
   const [now, setNow] = useState(Date.now);
@@ -110,7 +111,7 @@ export function FarmV2AuthenticatedView(props: {
   const [signInData, setSignInData] = useState<Awaited<ReturnType<typeof readSignIn>> | null>(null);
   const [signInBusy, setSignInBusy] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
-  const [warehouseTab, setWarehouseTab] = useState<"crops" | "items">("crops");
+  useEffect(preloadInventoryArt, []);
   const [visited, setVisited] = useState<FarmV2PublicCave | null>(null);
   const [panelTab, setPanelTab] = useState("盆栽");
   const [activityNotice, setActivityNotice] = useState("");
@@ -371,6 +372,7 @@ export function FarmV2AuthenticatedView(props: {
     return (
       <>
         {friendRetries}
+
         <FarmSceneInteractionLayer
           plots={mapServerLands(visited.lands)}
           state={visited}
@@ -548,15 +550,7 @@ export function FarmV2AuthenticatedView(props: {
       </div>
       </div>
       {friendRetries}
-      <Dialog open={panelOpen} onOpenChange={setPanelOpen}>
-        <DialogContent
-          className="farm-v2-operation-dialog"
-          aria-describedby={undefined}
-        >
-          <DialogTitle>{panelTab}</DialogTitle>
-          {panelTab === "福田倉庫" ? (
-            <section aria-label="福田倉庫庫存">
-              <p>以下數量來自目前伺服器回傳的農田庫存。</p>
+            <section aria-label="買種子訂單復原">
               <button type="button" disabled={busy || loading || checkingSeeds} onClick={async () => {
                 setCheckingSeeds(true);
                 try { const result = await readSeedRecoveries(); setSeedRecoveries(result.purchases); setNotice(result.purchases.length ? "請接續原買種子交易，系統會先查核原扣款。" : "沒有待接續的買種子交易。"); }
@@ -571,40 +565,16 @@ export function FarmV2AuthenticatedView(props: {
       </section>}
 
 
-              <nav aria-label="倉庫分類" style={{ display: "flex", gap: 8, margin: "12px 0" }}>
-                <button type="button" aria-pressed={warehouseTab === "crops"} onClick={() => setWarehouseTab("crops")}>靈植倉庫</button>
-                <button type="button" aria-pressed={warehouseTab === "items"} onClick={() => setWarehouseTab("items")}>道具背包</button>
-              </nav>
-              <div role="list" aria-label={warehouseTab === "crops" ? "靈植倉庫格子" : "道具背包格子"} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(76px, 1fr))", gap: 8 }}>
-                {(warehouseTab === "crops"
-                  ? FARM_V2_LANDS.map(land => {
-                      const plot = data.plots.find(item => item.id === land.id - 1);
-                      return { key: "crop-" + land.id, name: land.cropName, icon: plot?.cropEmoji ?? "🌿", qty: plot ? data.cropInventory[plot.cropId] ?? 0 : null };
-                    })
-                  : [
-                      ...FARM_V2_LANDS.map(land => {
-                        const plot = data.plots.find(item => item.id === land.id - 1);
-                        return { key: "seed-" + land.id, name: land.seedName, icon: "🌱", qty: plot ? data.seedInventory[plot.cropId] ?? 0 : null };
-                      }),
-                      ...(data.warehouse.workshop ? [
-                        { key: "material-sand", name: "蘊靈砂", icon: "✨", qty: data.warehouse.workshop.materials.蘊靈砂 ?? 0 },
-                        { key: "material-jade", name: "九霄玉髓", icon: "💠", qty: data.warehouse.workshop.materials.九霄玉髓 ?? 0 },
-                        { key: "pet-food", name: "靈獸百味糧", icon: "🥣", qty: data.warehouse.workshop.petFood ?? 0 },
-                      ] : []),
-                    ]
-                ).map(item => (
-                  <div role="listitem" key={item.key} title={item.name} style={{ minHeight: 88, border: "1px solid #a99565", borderRadius: 8, padding: 6, background: "#25392e", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-                    {item.key.startsWith("crop-") ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/plants/${item.key.slice(5)}-0.webp`} alt="" width={48} height={48} style={{ objectFit: "contain" }} />
-                      : item.key.startsWith("material-") ? <img src={`${import.meta.env.BASE_URL ?? "/"}images/farm/items/${item.name}.png`} alt="" width={48} height={48} style={{ objectFit: "contain" }} />
-                      : <span aria-hidden="true" style={{ fontSize: 24 }}>{item.icon}</span>}
-                    <span style={{ fontSize: 12 }}>{item.name}</span>
-                    <strong style={{ fontSize: 12 }}>{item.qty === null ? "資料缺失" : "×" + item.qty}</strong>
-                  </div>
-                ))}
-              </div>
-              {warehouseTab === "items" && <p>此分類顯示伺服器回傳的種子、材料及靈獸飼料；尚未接入的道具不使用假數量。</p>}
             </section>
-          ) : (
+
+      {panelOpen && panelTab === "福田倉庫" && <FarmInventoryPanel kind="warehouse" {...warehouseSlots(data.warehouse)} onClose={() => setPanelOpen(false)} />}
+      <Dialog open={panelOpen && panelTab !== "福田倉庫"} onOpenChange={setPanelOpen}>
+        <DialogContent
+          className="farm-v2-operation-dialog"
+          aria-describedby={undefined}
+        >
+          <DialogTitle>{panelTab}</DialogTitle>
+          {panelTab !== "福田倉庫" && (
             <FarmWorkshopPanel
               tab={panelTab}
               petId={focusedPetId}
@@ -861,4 +831,3 @@ export function FarmV2AuthenticatedView(props: {
     </section>
   );
 }
-
