@@ -1,3 +1,4 @@
+import { treasureBagSlots } from "./treasureBagInventory";
 import { FarmInventoryPanel, preloadInventoryArt } from "./FarmInventoryPanel";
 import { warehouseSlots } from "./warehousePanelInventory";
 import type { FarmSeedRecovery } from "./farmV2ApiClient";
@@ -568,7 +569,8 @@ export function FarmV2AuthenticatedView(props: {
             </section>
 
       {panelOpen && panelTab === "福田倉庫" && <FarmInventoryPanel kind="warehouse" {...warehouseSlots(data.warehouse, import.meta.env.BASE_URL)} onClose={() => setPanelOpen(false)} />}
-      <Dialog open={panelOpen && panelTab !== "福田倉庫"} onOpenChange={setPanelOpen}>
+      {panelOpen && panelTab === "乾坤寶囊" && <FarmInventoryPanel kind="treasure-bag" {...treasureBagSlots(data.warehouse, import.meta.env.BASE_URL)} onClose={() => setPanelOpen(false)} />}
+      <Dialog open={panelOpen && panelTab !== "福田倉庫" && panelTab !== "乾坤寶囊"} onOpenChange={setPanelOpen}>
         <DialogContent
           className="farm-v2-operation-dialog"
           aria-describedby={undefined}

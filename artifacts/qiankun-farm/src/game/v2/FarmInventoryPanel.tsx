@@ -52,7 +52,7 @@ export function FarmInventoryPanel({ kind, items, unavailable, onClose }: {
   const last = Math.max(0, Math.ceil(selected.length / capacity) - 1);
   const current = Math.min(page, last);
   const tabs = kind === "warehouse" ? ["全部","種子","作物","材料"] : ["全部","靈物","道具","寶箱"];
-  return <dialog ref={dialog} className="farm-art-inventory" aria-label={kind === "warehouse" ? "乾坤倉庫" : "乾坤寶囊"} onCancel={event => {event.preventDefault(); onClose();}}
+  return <dialog ref={dialog} className="farm-art-inventory" aria-label={kind === "warehouse" ? "乾坤倉庫" : "乾坤寶囊"} onPointerDown={event => { if (!(event.target as HTMLElement).closest(".farm-inventory-item")) setDetail(null); }} onCancel={event => {event.preventDefault(); if (detail) setDetail(null); else onClose();}}
     style={{width: `min(calc(100vw - 12px), calc((100dvh - 12px) * ${w / h}), ${w}px)`, aspectRatio: `${w} / ${h}`}}>
     <img className="farm-inventory-art" src={base + key + ".png"} alt="" draggable={false} />
     {tabs.map((name,i) => <button key={name} type="button" className="farm-inventory-hotspot" aria-label={name} aria-pressed={category === name} style={box(controls[key][i])}
@@ -67,7 +67,7 @@ export function FarmInventoryPanel({ kind, items, unavailable, onClose }: {
         onMouseEnter={() => {if (!mobile) setDetail(item);}} onMouseLeave={() => {if (!mobile) setDetail(null);}}
         onFocus={() => {if (!mobile) setDetail(item);}} onBlur={() => setDetail(null)}
         onContextMenu={event => event.preventDefault()}
-        onPointerDown={() => {if (mobile) hold.current = setTimeout(() => setDetail(item), 450);}}
+        onPointerDown={() => {if (mobile) { clearTimeout(hold.current); setDetail(null); hold.current = setTimeout(() => setDetail(item), 450); }}} onPointerLeave={() => clearTimeout(hold.current)}
         onPointerUp={() => clearTimeout(hold.current)} onPointerCancel={() => clearTimeout(hold.current)}
         onClick={() => {if (!mobile) setDetail(item);}}>
         {item.icon ? <img src={item.icon} alt="" draggable={false} /> : <span aria-hidden="true">{item.symbol}</span>}
