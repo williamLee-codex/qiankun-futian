@@ -3,7 +3,7 @@ name: Farm V2 recovery sweep
 # endpoint itself holds the retry policy, the lease and the idempotency.
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "3,13,23,33,43,53 * * * *"
   workflow_dispatch: {}
 permissions:
   contents: read
