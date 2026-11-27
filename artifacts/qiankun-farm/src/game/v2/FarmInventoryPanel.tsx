@@ -3,15 +3,7 @@ import calibration from "../../../public/images/farm/inventory/grid-calibration.
 import "./farmInventoryPanel.css";
 
 type Kind = "warehouse" | "treasure-bag";
-export type InventorySlot = {
-  id: string;
-  category: string;
-  name: string;
-  quantity: number;
-  icon?: string;
-  symbol?: string;
-  description: string;
-};
+import type { InventorySlot } from "./warehousePanelInventory";
 
 const base = import.meta.env.BASE_URL + "images/farm/inventory/";
 const controls = {

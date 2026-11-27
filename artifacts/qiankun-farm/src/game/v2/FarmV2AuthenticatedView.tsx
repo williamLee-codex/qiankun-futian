@@ -567,7 +567,7 @@ export function FarmV2AuthenticatedView(props: {
 
             </section>
 
-      {panelOpen && panelTab === "福田倉庫" && <FarmInventoryPanel kind="warehouse" {...warehouseSlots(data.warehouse)} onClose={() => setPanelOpen(false)} />}
+      {panelOpen && panelTab === "福田倉庫" && <FarmInventoryPanel kind="warehouse" {...warehouseSlots(data.warehouse, import.meta.env.BASE_URL)} onClose={() => setPanelOpen(false)} />}
       <Dialog open={panelOpen && panelTab !== "福田倉庫"} onOpenChange={setPanelOpen}>
         <DialogContent
           className="farm-v2-operation-dialog"
