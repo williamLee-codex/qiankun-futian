@@ -5,7 +5,14 @@ import { FarmV2AuthenticatedView } from "./FarmV2AuthenticatedView";
 import { mapServerLands, mapServerWarehouse } from "./farmV2SceneAdapter";
 const { scene } = vi.hoisted(() => ({ scene: vi.fn() }));
 vi.mock("./useFarmV2Scene", () => ({ useFarmV2Scene: scene }));
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+if (!HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+  HTMLDialogElement.prototype.close = function () { this.open = false; };
+}
 function showFarm(secondUnlocked = false) {
   vi.stubGlobal("matchMedia", () => ({ matches:true,addEventListener(){},removeEventListener(){} }));
   const warehouse = { seeds: {1:0,2:10,3:0,4:0,5:0,6:0}, crops: {1:0,2:0,3:0,4:0,5:0,6:0} };
@@ -40,5 +47,6 @@ it("renders owned resting pets, an entitled farmer, and both inventory entrances
   expect(screen.getAllByRole("img",{name:"專屬農夫"})).toHaveLength(1);
   expect(screen.getByRole("button",{name:"開啟福田倉庫"})).toBeTruthy();
   fireEvent.click(screen.getByRole("button",{name:"福田倉庫：點擊農舍開啟倉庫"}));
-  expect(screen.getByRole("region",{name:"福田倉庫庫存"})).toBeTruthy();
+  expect(screen.getByRole("dialog",{name:"乾坤倉庫"})).toBeTruthy();
+  expect(screen.getByRole("button",{name:/持有 10/})).toBeTruthy();
 });
