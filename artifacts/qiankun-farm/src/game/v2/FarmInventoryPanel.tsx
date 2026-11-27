@@ -13,6 +13,12 @@ const controls = {
   "treasure-bag-mobile": [[72,190,214,92],[297,190,213,92],[519,190,212,92],[741,190,212,92],[853,31,104,92],[319,1207,81,80],[625,1207,81,80]],
 };
 
+const adSlots = {
+  "warehouse-desktop": [[98,803,720,99],[854,803,720,99]],
+  "warehouse-mobile": [[53,1315,918,166]],
+  "treasure-bag-desktop": [[75,874,683,102],[777,874,683,102]],
+  "treasure-bag-mobile": [[81,1308,862,160]],
+};
 export function preloadInventoryArt() {
   for (const name of Object.keys(controls)) new Image().src = base + name + ".png";
 }
@@ -74,6 +80,9 @@ export function FarmInventoryPanel({ kind, items, unavailable, onClose }: {
         <strong>{item.quantity}</strong>
       </button>;
     })}
+    {adSlots[key].map((rect, index) => <div key={index} aria-hidden="true"
+      data-farm-ad-placement={"farm-v2-" + key + "-" + (index + 1)}
+      className="farm-inventory-ad-slot" style={box(rect)} />)}
     {unavailable && <span className="farm-inventory-status" role="status">部分庫存暫無法確認</span>}
     {detail && <div className="farm-inventory-detail" role="tooltip" onClick={() => setDetail(null)}>
       <strong>{detail.name} ×{detail.quantity}</strong><br />{detail.description}

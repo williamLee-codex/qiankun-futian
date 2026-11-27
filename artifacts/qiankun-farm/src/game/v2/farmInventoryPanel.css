@@ -11,3 +11,4 @@
 .farm-inventory-item strong { line-height:1; text-shadow:0 1px 3px black; }
 .farm-inventory-detail,.farm-inventory-status { position:absolute; z-index:1; inset:auto 8% 18%; margin-inline:auto; width:max-content; max-width:84%; border:1px solid #c9ab54; border-radius:6px; color:#fff3cf; background:#17130f; padding:6px 10px; font-size:clamp(11px,2.4cqw,16px); }
 .farm-inventory-status { inset:24% 8% auto; pointer-events:none; }
+.farm-inventory-ad-slot { position:absolute; overflow:hidden; pointer-events:none; }
