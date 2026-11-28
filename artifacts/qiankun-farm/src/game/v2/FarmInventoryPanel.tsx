@@ -69,6 +69,8 @@ export function FarmInventoryPanel({ kind, items, unavailable, onClose }: {
       disabled={i ? current === last : current === 0} onClick={() => {setPage(current + direction); setDetailId(null);}} />)}
     {selected.slice(current * capacity, (current + 1) * capacity).map((item,i) => {
       const row = Math.floor(i / columns), col = i % columns;
+      const quantity = String(item.quantity);
+      const quantityWidth = (x[col + 1] - x[col]) / w * 100;
       return <button key={item.id} type="button" className="farm-inventory-hotspot farm-inventory-item" aria-label={`${item.name}，持有 ${item.quantity}`}
         style={box([x[col],y[row],x[col+1]-x[col],y[row+1]-y[row]])}
         onMouseEnter={() => {if (!mobile) setDetailId(item.id);}} onMouseLeave={() => {if (!mobile) setDetailId(null);}}
@@ -78,7 +80,7 @@ export function FarmInventoryPanel({ kind, items, unavailable, onClose }: {
         onPointerUp={() => clearTimeout(hold.current)} onPointerCancel={() => clearTimeout(hold.current)}
         onClick={() => {if (!mobile) setDetailId(item.id);}}>
         {item.icon ? <img src={item.icon} alt="" draggable={false} /> : <span aria-hidden="true">{item.symbol}</span>}
-        <strong>{item.quantity}</strong>
+        <strong style={{fontSize: `min(1em, ${quantityWidth * 0.8 / quantity.length}cqw)`}}>{quantity}</strong>
       </button>;
     })}
     {adSlots[key].map((rect, index) => <div key={index} aria-hidden="true"

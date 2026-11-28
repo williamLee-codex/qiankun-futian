@@ -19,7 +19,10 @@ export function treasureBagSlots(warehouse: WorkshopWarehouse, base: string) {
     items.push({id:"decor-" + decor.id, name, quantity:1, category:"道具", symbol:"🏮", description:"可於洞府陳設管理擺放或收回。"});
   }
   for (const formation of state.formations ?? []) {
-    items.push({id:"formation-" + formation.id, name:FORMATION_NAMES[formation.id] ?? formation.id, quantity:1, category:"靈物", symbol:"✦", description:"可在護陣管理查看狀態及裝備。"});
+    const visual = formation.id === "FORMATION_PREMIUM_V2"
+      ? {icon: base + "images/farm/formations/taixu-xinghe-formation.webp"}
+      : {symbol: "✦"};
+    items.push({id:"formation-" + formation.id, name:FORMATION_NAMES[formation.id] ?? formation.id, quantity:1, category:"靈物", ...visual, description:"可在護陣管理查看狀態及裝備。"});
   }
   const food = state.petFood;
   if (typeof food === "number" && Number.isSafeInteger(food) && food > 0) {
