@@ -32,7 +32,8 @@ export function FarmInventoryPanel({ kind, items, unavailable, onClose }: {
   const [mobile, setMobile] = useState(() => matchMedia("(max-width: 767px)").matches);
   const [category, setCategory] = useState("全部");
   const [page, setPage] = useState(0);
-  const [detail, setDetail] = useState<InventorySlot | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const detail = items.find(item => item.id === detailId);
   const dialog = useRef<HTMLDialogElement>(null);
   const hold = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useLayoutEffect(() => {
@@ -42,7 +43,7 @@ export function FarmInventoryPanel({ kind, items, unavailable, onClose }: {
   }, []);
   useEffect(() => {
     const query = matchMedia("(max-width: 767px)");
-    const change = () => { setMobile(query.matches); setPage(0); setDetail(null); };
+    const change = () => { setMobile(query.matches); setPage(0); setDetailId(null); };
     query.addEventListener("change", change);
     return () => { query.removeEventListener("change", change); clearTimeout(hold.current); };
   }, []);
@@ -58,24 +59,24 @@ export function FarmInventoryPanel({ kind, items, unavailable, onClose }: {
   const last = Math.max(0, Math.ceil(selected.length / capacity) - 1);
   const current = Math.min(page, last);
   const tabs = kind === "warehouse" ? ["全部","種子","作物","材料"] : ["全部","靈物","道具","寶箱"];
-  return <dialog ref={dialog} className="farm-art-inventory" aria-label={kind === "warehouse" ? "乾坤倉庫" : "乾坤寶囊"} onPointerDown={event => { if (!(event.target as HTMLElement).closest(".farm-inventory-item")) setDetail(null); }} onCancel={event => {event.preventDefault(); if (detail) setDetail(null); else onClose();}}
+  return <dialog ref={dialog} className="farm-art-inventory" aria-label={kind === "warehouse" ? "乾坤倉庫" : "乾坤寶囊"} onPointerDown={event => { if (!(event.target as HTMLElement).closest(".farm-inventory-item")) setDetailId(null); }} onCancel={event => {event.preventDefault(); if (detail) setDetailId(null); else onClose();}}
     style={{width: `min(calc(100vw - 12px), calc((100dvh - 12px) * ${w / h}), ${w}px)`, aspectRatio: `${w} / ${h}`}}>
     <img className="farm-inventory-art" src={base + key + ".png"} alt="" draggable={false} />
     {tabs.map((name,i) => <button key={name} type="button" className="farm-inventory-hotspot" aria-label={name} aria-pressed={category === name} style={box(controls[key][i])}
-      onClick={() => {setCategory(name); setPage(0); setDetail(null);}} />)}
+      onClick={() => {setCategory(name); setPage(0); setDetailId(null);}} />)}
     <button type="button" autoFocus aria-label="關閉" className="farm-inventory-hotspot" style={box(controls[key][4])} onClick={onClose} />
     {[-1,1].map((direction,i) => <button key={direction} type="button" aria-label={i ? "下一頁" : "上一頁"} className="farm-inventory-hotspot" style={box(controls[key][5+i])}
-      disabled={i ? current === last : current === 0} onClick={() => {setPage(current + direction); setDetail(null);}} />)}
+      disabled={i ? current === last : current === 0} onClick={() => {setPage(current + direction); setDetailId(null);}} />)}
     {selected.slice(current * capacity, (current + 1) * capacity).map((item,i) => {
       const row = Math.floor(i / columns), col = i % columns;
       return <button key={item.id} type="button" className="farm-inventory-hotspot farm-inventory-item" aria-label={`${item.name}，持有 ${item.quantity}`}
         style={box([x[col],y[row],x[col+1]-x[col],y[row+1]-y[row]])}
-        onMouseEnter={() => {if (!mobile) setDetail(item);}} onMouseLeave={() => {if (!mobile) setDetail(null);}}
-        onFocus={() => {if (!mobile) setDetail(item);}} onBlur={() => setDetail(null)}
+        onMouseEnter={() => {if (!mobile) setDetailId(item.id);}} onMouseLeave={() => {if (!mobile) setDetailId(null);}}
+        onFocus={() => {if (!mobile) setDetailId(item.id);}} onBlur={() => setDetailId(null)}
         onContextMenu={event => event.preventDefault()}
-        onPointerDown={() => {if (mobile) { clearTimeout(hold.current); setDetail(null); hold.current = setTimeout(() => setDetail(item), 450); }}} onPointerLeave={() => clearTimeout(hold.current)}
+        onPointerDown={() => {if (mobile) { clearTimeout(hold.current); setDetailId(null); hold.current = setTimeout(() => setDetailId(item.id), 450); }}} onPointerLeave={() => clearTimeout(hold.current)}
         onPointerUp={() => clearTimeout(hold.current)} onPointerCancel={() => clearTimeout(hold.current)}
-        onClick={() => {if (!mobile) setDetail(item);}}>
+        onClick={() => {if (!mobile) setDetailId(item.id);}}>
         {item.icon ? <img src={item.icon} alt="" draggable={false} /> : <span aria-hidden="true">{item.symbol}</span>}
         <strong>{item.quantity}</strong>
       </button>;
@@ -84,9 +85,8 @@ export function FarmInventoryPanel({ kind, items, unavailable, onClose }: {
       data-farm-ad-placement={"farm-v2-" + key + "-" + (index + 1)}
       className="farm-inventory-ad-slot" style={box(rect)} />)}
     {unavailable && <span className="farm-inventory-status" role="status">部分庫存暫無法確認</span>}
-    {detail && <div className="farm-inventory-detail" role="tooltip" onClick={() => setDetail(null)}>
+    {detail && <div className="farm-inventory-detail" role="tooltip" onClick={() => setDetailId(null)}>
       <strong>{detail.name} ×{detail.quantity}</strong><br />{detail.description}
     </div>}
   </dialog>;
 }
-
